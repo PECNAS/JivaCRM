@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Главная{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/index.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="welcome">
+    <h1 class="welcome__title">Добро пожаловать, <span class="accent-text">Арина</span></h1>
+    <p class="welcome__sub">17 августа 2026 · 5 активных проектов</p>
+    <div class="quick-stats">
+        <div class="stat-card">
+            <span class="stat-number">24</span>
+            <span class="stat-label">сотрудников</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">8</span>
+            <span class="stat-label">заказов в работе</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">14</span>
+            <span class="stat-label">шоу проведено за месяц</span>
+        </div>
+    </div>
+</section>
+
+<section class="dashboard-grid">
+    <div class="card card--primary">
+        <div class="card__icon card__icon--calendar"></div>
+        <h3 class="card__title">Расписание</h3>
+        <p class="card__desc">Ближайшие выступления и репетиции</p>
+        <ul class="card__list">
+            <li>Репетиция «Стихия» — 15:00</li>
+            <li>Шоу «Космос» — 19:00 (Манжерок)</li>
+            <li>Пролог для «Сцены» — завтра 11:00</li>
+        </ul>
+        <a href="#" class="card__link">Подробнее →</a>
+    </div>
+
+    <div class="card card--secondary">
+        <div class="card__icon card__icon--users"></div>
+        <h3 class="card__title">Сотрудники</h3>
+        <p class="card__desc">Основной состав</p>
+        <ul class="card__list">
+            <li>Елена В. — режиссёр</li>
+            <li>Игорь П. — артист</li>
+            <li>Мария К. — хореограф</li>
+        </ul>
+        <a href="#" class="card__link">Все сотрудники →</a>
+    </div>
+
+    <div class="card card--tertiary">
+        <div class="card__icon card__icon--clipboard"></div>
+        <h3 class="card__title">Заказы</h3>
+        <p class="card__desc">Активные проекты</p>
+        <div class="ticket-stats">
+            <span>в работе: 5</span>
+            <span>на согласовании: 2</span>
+            <span>завершено: 1</span>
+        </div>
+        <a href="#" class="card__link">Все заказы →</a>
+    </div>
+
+    <div class="card card--clients">
+        <div class="card__icon card__icon--clients"></div>
+        <h3 class="card__title">Клиенты</h3>
+        <p class="card__desc">Постоянные и новые</p>
+        <ul class="card__list">
+            <li>ООО «Горизонт» — 3 заказа</li>
+            <li>Агентство «Событие» — 5 заказов</li>
+            <li>Корпорация «Вектор» — 2 заказа</li>
+        </ul>
+        <a href="{% url 'clients' %}" class="card__link">Все клиенты →</a>
+    </div>
+
+    <div class="card card--accent">
+        <div class="card__icon card__icon--chart"></div>
+        <h3 class="card__title">Аналитика</h3>
+        <p class="card__desc">Выручка и эффективность</p>
+        <div class="analytics-preview">
+            <span>+18% к прошлому месяцу</span>
+            <span>1 284 500 ₽</span>
+        </div>
+        <a href="#" class="card__link">Отчёты →</a>
+    </div>
+</section>
+
+<section class="quick-actions">
+    <h2 class="section-title">Быстрые действия</h2>
+    <div class="action-buttons">
+        <button class="action-btn" data-action="new-show">Новое шоу</button>
+        <button class="action-btn" data-action="add-artist">Добавить сотрудника</button>
+        <button class="action-btn" data-action="new-order">Создать заказ</button>
+        <button class="action-btn" data-action="new-client">Добавить клиента</button>
+        <button class="action-btn" data-action="reports">Сформировать отчёт</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/index.js' %}"></script>
+{% endblock %}
