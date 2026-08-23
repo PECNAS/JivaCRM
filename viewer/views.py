@@ -30,3 +30,17 @@ class ScheduleView(View):
 	def post(self, request):
 		return HttpResponse("POST request successfully!")
 
+class LoginView(View):
+	def get(self, request):
+		return render(request, "login.html")
+
+	def post(self, request):
+		pass
+
+class LogoutView(View):
+	def get(self, request):
+		return render(request, "login.html")
+
+	def post(self, request):
+		pass
+
