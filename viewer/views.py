@@ -201,8 +201,8 @@ class ClientDetailView(View):
                 'phone': client.phone,
                 'telegram': client.telegram_username or '—',
                 'agency': client.agency.name if client.agency else None,
-                'rating': client.get_rating_display(),
-                'rating_key': client.rating,
+                'rating': client.rating,
+                'rating_display': client.get_rating_display(),
                 'email': client.email or '—',
                 'city': client.city or '—',
                 'requests_count': client.requests_count,
@@ -212,6 +212,65 @@ class ClientDetailView(View):
             })
         except Client.DoesNotExist:
             return JsonResponse({'error': 'Клиент не найден'}, status=404)
+
+
+class ClientUpdateView(View):
+    def post(self, request, client_id):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+        
+        try:
+            client = get_object_or_404(Client, id=client_id)
+            
+            full_name = request.POST.get('full_name', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            telegram = request.POST.get('telegram', '').strip()
+            email = request.POST.get('email', '').strip()
+            agency_name = request.POST.get('agency', '').strip()
+            city = request.POST.get('city', '').strip()
+            rating = request.POST.get('rating', 'medium')
+            
+            if not full_name:
+                return JsonResponse({'error': 'ФИО обязательно для заполнения'}, status=400)
+            
+            if not phone:
+                return JsonResponse({'error': 'Телефон обязателен для заполнения'}, status=400)
+            
+            phone_digits = ''.join(filter(str.isdigit, phone))
+            if len(phone_digits) != 11:
+                return JsonResponse({'error': 'Номер телефона должен содержать 11 цифр'}, status=400)
+            
+            agency = None
+            if agency_name:
+                agency, _ = Agency.objects.get_or_create(name=agency_name)
+            
+            client.full_name = full_name
+            client.phone = phone
+            client.telegram_username = telegram
+            client.email = email
+            client.agency = agency
+            client.city = city
+            client.rating = rating
+            client.save()
+            
+            return JsonResponse({
+                'success': True,
+                'client': {
+                    'id': client.id,
+                    'full_name': client.full_name,
+                    'phone': client.phone,
+                    'telegram': client.telegram_username,
+                    'email': client.email,
+                    'agency': agency.name if agency else None,
+                    'city': client.city,
+                    'rating': client.rating,
+                    'rating_display': client.get_rating_display(),
+                    'orders_count': client.orders.count(),
+                    'requests_count': client.requests_count
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
 
 
 class ClientListView(View):

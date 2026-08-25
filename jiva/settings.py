@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-#seg67=h8_xxud+t^$ibo3n45kjedavkq_-3tvxex+o2+**-97
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["jiva-crm.ru", "158.160.116.199", "127.0.0.1"]
 
 
 # Application definition

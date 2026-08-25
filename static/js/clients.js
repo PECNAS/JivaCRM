@@ -10,7 +10,16 @@
     const addModalCancelBtn = document.getElementById('addModalCancelBtn');
     const addForm = document.getElementById('addClientForm');
     const phoneInput = document.getElementById('addPhone');
+    const editPhoneInput = document.getElementById('editPhone');
+    const editClientBtn = document.getElementById('editClientBtn');
+    const editCancelBtn = document.getElementById('editCancelBtn');
+    const editForm = document.getElementById('editClientForm');
+    const viewMode = document.getElementById('viewMode');
+    const editMode = document.getElementById('editMode');
+    
+    let currentClientId = null;
 
+    // Маска для телефона
     function phoneMask(input) {
         let value = input.value.replace(/\D/g, '');
         
@@ -45,21 +54,26 @@
         return input.value;
     }
 
-    phoneInput.addEventListener('input', function() {
-        phoneMask(this);
-    });
+    // Применяем маску к полям телефона
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() { phoneMask(this); });
+        phoneInput.addEventListener('focus', function() {
+            if (this.value === '') this.value = '+7';
+        });
+        phoneInput.addEventListener('blur', function() {
+            if (this.value === '+7') this.value = '';
+        });
+    }
 
-    phoneInput.addEventListener('focus', function() {
-        if (this.value === '') {
-            this.value = '+7';
-        }
-    });
-
-    phoneInput.addEventListener('blur', function() {
-        if (this.value === '+7') {
-            this.value = '';
-        }
-    });
+    if (editPhoneInput) {
+        editPhoneInput.addEventListener('input', function() { phoneMask(this); });
+        editPhoneInput.addEventListener('focus', function() {
+            if (this.value === '') this.value = '+7';
+        });
+        editPhoneInput.addEventListener('blur', function() {
+            if (this.value === '+7') this.value = '';
+        });
+    }
 
     function validatePhone(phone) {
         const digits = phone.replace(/\D/g, '');
@@ -67,6 +81,10 @@
     }
 
     function openClientModal(clientId) {
+        currentClientId = clientId;
+        viewMode.style.display = 'block';
+        editMode.style.display = 'none';
+        
         fetch(`/clients/${clientId}/`)
             .then(response => response.json())
             .then(data => {
@@ -76,15 +94,15 @@
                 }
 
                 document.getElementById('modalClientName').textContent = data.full_name;
-                document.getElementById('modalFullName').textContent = data.full_name;
-                document.getElementById('modalPhone').textContent = data.phone;
-                document.getElementById('modalAgency').textContent = data.agency || '—';
-                document.getElementById('modalRating').textContent = data.rating;
-                document.getElementById('modalEmail').textContent = data.email || '—';
-                document.getElementById('modalTelegram').textContent = data.telegram || '—';
-                document.getElementById('modalCity').textContent = data.city || '—';
+                document.getElementById('viewFullName').textContent = data.full_name;
+                document.getElementById('viewPhone').textContent = data.phone;
+                document.getElementById('viewAgency').textContent = data.agency || '—';
+                document.getElementById('viewRating').textContent = data.rating_display;
+                document.getElementById('viewEmail').textContent = data.email || '—';
+                document.getElementById('viewTelegram').textContent = data.telegram || '—';
+                document.getElementById('viewCity').textContent = data.city || '—';
 
-                const ordersContainer = document.getElementById('modalOrdersList');
+                const ordersContainer = document.getElementById('viewOrdersList');
                 if (data.orders && data.orders.length > 0) {
                     ordersContainer.innerHTML = data.orders.map(order => `
                         <div class="order-item">
@@ -107,6 +125,15 @@
                     ordersContainer.innerHTML = '<p class="orders-empty">Нет заказов</p>';
                 }
 
+                // Заполняем форму редактирования
+                document.getElementById('editFullName').value = data.full_name;
+                document.getElementById('editPhone').value = data.phone;
+                document.getElementById('editTelegram').value = data.telegram === '—' ? '' : data.telegram;
+                document.getElementById('editEmail').value = data.email === '—' ? '' : data.email;
+                document.getElementById('editAgency').value = data.agency || '';
+                document.getElementById('editCity').value = data.city === '—' ? '' : data.city;
+                document.getElementById('editRating').value = data.rating_key || 'medium';
+
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
             })
@@ -119,6 +146,19 @@
     function closeModal() {
         modal.classList.remove('active');
         document.body.style.overflow = '';
+        currentClientId = null;
+        viewMode.style.display = 'block';
+        editMode.style.display = 'none';
+    }
+
+    function openEditMode() {
+        viewMode.style.display = 'none';
+        editMode.style.display = 'block';
+    }
+
+    function cancelEdit() {
+        viewMode.style.display = 'block';
+        editMode.style.display = 'none';
     }
 
     function openAddModal() {
@@ -157,22 +197,100 @@
         return cookieValue ? cookieValue[2] : '';
     }
 
+    // Обработчики модального окна клиента
     modalCloseBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeModal();
-        }
+        if (e.target === this) closeModal();
     });
 
+    editClientBtn.addEventListener('click', openEditMode);
+    editCancelBtn.addEventListener('click', cancelEdit);
+
+    // Обработчик сохранения изменений
+    editForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const fullName = document.getElementById('editFullName').value.trim();
+        const phone = document.getElementById('editPhone').value.trim();
+        const telegram = document.getElementById('editTelegram').value.trim();
+        const email = document.getElementById('editEmail').value.trim();
+        const agency = document.getElementById('editAgency').value.trim();
+        const city = document.getElementById('editCity').value.trim();
+        const rating = document.getElementById('editRating').value;
+
+        if (!fullName) {
+            showToast('Пожалуйста, заполните поле ФИО');
+            document.getElementById('editFullName').focus();
+            return;
+        }
+
+        if (!phone || phone === '+7') {
+            showToast('Пожалуйста, введите номер телефона');
+            document.getElementById('editPhone').focus();
+            return;
+        }
+
+        if (!validatePhone(phone)) {
+            showToast('Пожалуйста, введите корректный номер телефона (11 цифр)');
+            document.getElementById('editPhone').focus();
+            return;
+        }
+
+        const data = {
+            full_name: fullName,
+            phone: phone,
+            telegram: telegram,
+            email: email,
+            agency: agency,
+            city: city,
+            rating: rating
+        };
+
+        fetch(`/clients/${currentClientId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: new URLSearchParams(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error);
+                return;
+            }
+            if (data.success) {
+                showToast('Данные клиента успешно обновлены');
+                cancelEdit();
+                // Обновляем просмотр
+                document.getElementById('viewFullName').textContent = data.client.full_name;
+                document.getElementById('viewPhone').textContent = data.client.phone;
+                document.getElementById('viewAgency').textContent = data.client.agency || '—';
+                document.getElementById('viewRating').textContent = data.client.rating_display;
+                document.getElementById('viewEmail').textContent = data.client.email || '—';
+                document.getElementById('viewTelegram').textContent = data.client.telegram || '—';
+                document.getElementById('viewCity').textContent = data.client.city || '—';
+                document.getElementById('modalClientName').textContent = data.client.full_name;
+                // Обновляем строку в таблице
+                setTimeout(() => location.reload(), 500);
+            }
+        })
+        .catch(error => {
+            showToast('Ошибка при обновлении клиента');
+            console.error(error);
+        });
+    });
+
+    // Обработчики модального окна добавления клиента
     addClientBtn.addEventListener('click', openAddModal);
     addModalCloseBtn.addEventListener('click', closeAddModal);
     addModalCancelBtn.addEventListener('click', closeAddModal);
     addModal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeAddModal();
-        }
+        if (e.target === this) closeAddModal();
     });
 
+    // Обработчик отправки формы добавления клиента
     addForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -238,6 +356,7 @@
         });
     });
 
+    // Обработчики для кнопок "Подробнее"
     tableBody.addEventListener('click', function(e) {
         const viewLink = e.target.closest('.view-link');
         if (viewLink) {
@@ -254,6 +373,7 @@
         }
     });
 
+    // Фильтрация
     function filterClients() {
         const search = searchInput.value.trim();
         const rating = ratingFilter.value;
@@ -271,14 +391,11 @@
 
     ratingFilter.addEventListener('change', filterClients);
 
+    // Закрытие модальных окон по Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            if (modal.classList.contains('active')) {
-                closeModal();
-            }
-            if (addModal.classList.contains('active')) {
-                closeAddModal();
-            }
+            if (modal.classList.contains('active')) closeModal();
+            if (addModal.classList.contains('active')) closeAddModal();
         }
     });
 })();
