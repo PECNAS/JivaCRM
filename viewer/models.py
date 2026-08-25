@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.utils import timezone
 
 
@@ -39,6 +39,13 @@ class Skill(models.Model):
         return self.name
 
 
+class EmployeeManager(UserManager):
+    def create_user(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_active', True)
+        return super().create_user(username, email, password, **extra_fields)
+
+
 class Employee(AbstractUser):
     ROLE_CHOICES = [
         ('manager', 'Менеджер'),
@@ -76,6 +83,8 @@ class Employee(AbstractUser):
         related_name='employee_permissions',
         related_query_name='employee',
     )
+
+    objects = EmployeeManager()
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['full_name', 'role']

@@ -323,16 +323,29 @@ class EmployeesView(View):
             if not role_id:
                 return JsonResponse({'error': 'Должность обязательна для заполнения'}, status=400)
             
-            # Проверяем существование сотрудника (который наследуется от AbstractUser)
+            from django.contrib.auth.models import User
+            
+            # Проверяем существование пользователя
+            if User.objects.filter(username=username).exists():
+                return JsonResponse({'error': 'Пользователь с таким логином уже существует'}, status=400)
+            
             if Employee.objects.filter(username=username).exists():
                 return JsonResponse({'error': 'Сотрудник с таким логином уже существует'}, status=400)
             
             role = get_object_or_404(Role, id=role_id)
             
-            # Создаем сотрудника напрямую - он автоматически создаст запись в auth_user
-            employee = Employee.objects.create(
+            # Сначала создаем пользователя в auth_user
+            user = User.objects.create_user(
                 username=username,
-                password=make_password(password),
+                password=password,
+                first_name=full_name,
+                is_active=is_active,
+                is_staff=True
+            )
+            
+            # Затем создаем сотрудника с тем же паролем
+            employee = Employee(
+                username=username,
                 full_name=full_name,
                 role=role,
                 phone=phone,
@@ -340,6 +353,9 @@ class EmployeesView(View):
                 is_active=is_active,
                 is_staff=True
             )
+            # Копируем хеш пароля из auth_user
+            employee.password = user.password
+            employee.save()
             
             return JsonResponse({
                 'success': True,
@@ -356,7 +372,6 @@ class EmployeesView(View):
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
-
 
 class EmployeeDetailView(View):
     def get(self, request, employee_id):
@@ -412,17 +427,29 @@ class EmployeeUpdateView(View):
             
             role = get_object_or_404(Role, id=role_id)
             
-            # Обновляем сотрудника (он наследуется от User, поэтому обновление происходит напрямую)
+            # Обновляем данные сотрудника
             employee.username = username
             employee.full_name = full_name
             employee.role = role
             employee.phone = phone
             employee.telegram_username = telegram
             employee.is_active = is_active
+            
+            # Если пароль передан, обновляем его
             if password:
-                employee.password = make_password(password)
+                employee.set_password(password)
             
             employee.save()
+            
+            # Синхронизируем пароль с auth_user
+            from django.contrib.auth.models import User
+            try:
+                user = User.objects.get(username=employee.username)
+                if user.password != employee.password:
+                    user.password = employee.password
+                    user.save()
+            except User.DoesNotExist:
+                pass
             
             return JsonResponse({
                 'success': True,
@@ -439,7 +466,6 @@ class EmployeeUpdateView(View):
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
-
 
 class EmployeeDeleteView(View):
     def post(self, request, employee_id):
