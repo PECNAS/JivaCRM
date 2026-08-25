@@ -14,12 +14,12 @@
         <button class="btn btn-primary" id="addClientBtn">+ Добавить клиента</button>
     </div>
     <div class="clients-filters">
-        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, агентству или телефону">
+        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, агентству или телефону" value="{{ search_query }}">
         <select class="filter-select" id="ratingFilter">
-            <option value="all">Все рейтинги</option>
-            <option value="high">Высокий</option>
-            <option value="medium">Средний</option>
-            <option value="low">Низкий</option>
+            <option value="all" {% if rating_filter == 'all' %}selected{% endif %}>Все рейтинги</option>
+            <option value="high" {% if rating_filter == 'high' %}selected{% endif %}>Высокий</option>
+            <option value="medium" {% if rating_filter == 'medium' %}selected{% endif %}>Средний</option>
+            <option value="low" {% if rating_filter == 'low' %}selected{% endif %}>Низкий</option>
         </select>
     </div>
 </section>
@@ -38,6 +38,29 @@
             </tr>
         </thead>
         <tbody id="clientsTableBody">
+            {% for client in clients %}
+            <tr data-client-id="{{ client.id }}">
+                <td>{{ client.full_name }}</td>
+                <td>{{ client.phone }}</td>
+                <td>{{ client.agency.name|default:"—" }}</td>
+                <td>
+                    <span class="rating-badge rating-badge--{{ client.rating }}">
+                        {{ client.get_rating_display }}
+                    </span>
+                </td>
+                <td>{{ client.requests_count|default:0 }}</td>
+                <td>{{ client.orders_count|default:0 }}</td>
+                <td>
+                    <button class="view-link" data-id="{{ client.id }}">Подробнее</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align:center; padding: 2rem; color: #7a7267;">
+                    Клиенты не найдены
+                </td>
+            </tr>
+            {% endfor %}
         </tbody>
     </table>
 </section>
@@ -71,6 +94,10 @@
                     <span class="detail-value" id="modalEmail">—</span>
                 </div>
                 <div class="detail-row">
+                    <span class="detail-label">Телеграм:</span>
+                    <span class="detail-value" id="modalTelegram">—</span>
+                </div>
+                <div class="detail-row">
                     <span class="detail-label">Город:</span>
                     <span class="detail-value" id="modalCity">—</span>
                 </div>
@@ -93,6 +120,7 @@
         </div>
         <div class="modal__body">
             <form id="addClientForm" class="add-client-form">
+                {% csrf_token %}
                 <div class="form-group">
                     <label class="form-label" for="addFullName">ФИО *</label>
                     <input type="text" class="form-input" id="addFullName" placeholder="Иванов Иван Иванович" required>
@@ -102,8 +130,20 @@
                     <input type="tel" class="form-input" id="addPhone" placeholder="+7 (999) 123-45-67" required>
                 </div>
                 <div class="form-group">
+                    <label class="form-label" for="addTelegram">Телеграм</label>
+                    <input type="text" class="form-input" id="addTelegram" placeholder="@username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="addEmail">Email</label>
+                    <input type="email" class="form-input" id="addEmail" placeholder="client@example.ru">
+                </div>
+                <div class="form-group">
                     <label class="form-label" for="addAgency">Агентство</label>
                     <input type="text" class="form-input" id="addAgency" placeholder="ООО «Агентство»">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="addCity">Город</label>
+                    <input type="text" class="form-input" id="addCity" placeholder="Москва">
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="addRating">Рейтинг *</label>
@@ -112,14 +152,6 @@
                         <option value="medium" selected>Средний</option>
                         <option value="low">Низкий</option>
                     </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addEmail">Email</label>
-                    <input type="email" class="form-input" id="addEmail" placeholder="client@example.ru">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addCity">Город</label>
-                    <input type="text" class="form-input" id="addCity" placeholder="Москва">
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" id="addModalCancelBtn">Отмена</button>
