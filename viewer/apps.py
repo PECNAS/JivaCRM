@@ -5,3 +5,6 @@ class ViewerConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'viewer'
     verbose_name = 'CRM Jiva'
+
+    def ready(self):
+        import viewer.signals
