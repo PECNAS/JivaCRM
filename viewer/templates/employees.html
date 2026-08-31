@@ -47,7 +47,7 @@
             {% for employee in employees %}
             <tr data-employee-id="{{ employee.id }}">
                 <td>{{ employee.full_name }}</td>
-                <td>{{ employee.username }}</td>
+                <td>{{ employee.user.username }}</td>
                 <td>{{ employee.role.name }}</td>
                 <td>{{ employee.phone|default:"—" }}</td>
                 <td>
@@ -70,6 +70,7 @@
     </table>
 </section>
 
+<!-- Остальная часть шаблона без изменений -->
 <div class="modal-overlay" id="employeeModal">
     <div class="modal modal--employee">
         <div class="modal__header">

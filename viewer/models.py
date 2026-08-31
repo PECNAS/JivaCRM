@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser, UserManager
+from django.contrib.auth.models import User
 from django.utils import timezone
 
 
@@ -39,55 +39,16 @@ class Skill(models.Model):
         return self.name
 
 
-class EmployeeManager(UserManager):
-    def create_user(self, username, email=None, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_active', True)
-        return super().create_user(username, email, password, **extra_fields)
-
-
-class Employee(AbstractUser):
-    ROLE_CHOICES = [
-        ('manager', 'Менеджер'),
-        ('admin', 'Администратор'),
-        ('senior_admin', 'Старший администратор'),
-        ('artist', 'Артист'),
-        ('tech', 'Техник'),
-    ]
-
-    username = models.CharField('Логин', max_length=150, unique=True)
-    password = models.CharField('Пароль', max_length=128)
+class Employee(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='employee_profile')
     full_name = models.CharField('ФИО', max_length=200)
     role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='employees', verbose_name='Должность')
-    photo = models.ImageField('Фотография', upload_to='employees/', blank=True, null=True)
     telegram_username = models.CharField('Юзернейм в телеграм', max_length=100, blank=True)
     phone = models.CharField('Номер телефона', max_length=20, blank=True)
     skills = models.ManyToManyField(Skill, related_name='employees', verbose_name='Навыки', blank=True)
     is_active = models.BooleanField('Активен', default=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
-
-    groups = models.ManyToManyField(
-        'auth.Group',
-        verbose_name='Группы',
-        blank=True,
-        help_text='Группы, к которым принадлежит этот пользователь. Пользователь получает все разрешения, предоставленные каждой из его групп.',
-        related_name='employee_groups',
-        related_query_name='employee',
-    )
-    user_permissions = models.ManyToManyField(
-        'auth.Permission',
-        verbose_name='Разрешения пользователя',
-        blank=True,
-        help_text='Конкретные разрешения для этого пользователя.',
-        related_name='employee_permissions',
-        related_query_name='employee',
-    )
-
-    objects = EmployeeManager()
-
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['full_name', 'role']
 
     class Meta:
         verbose_name = 'Сотрудник'
@@ -97,8 +58,37 @@ class Employee(AbstractUser):
     def __str__(self):
         return self.full_name
 
+    @property
+    def username(self):
+        return self.user.username
+
+    @property
+    def email(self):
+        return self.user.email
+
+    @property
+    def is_staff(self):
+        return self.user.is_staff
+
+    @property
+    def is_superuser(self):
+        return self.user.is_superuser
+
+    @property
+    def date_joined(self):
+        return self.user.date_joined
+
+    @property
+    def last_login(self):
+        return self.user.last_login
+
 
 class Client(models.Model):
+    CLIENT_TYPE_CHOICES = [
+        ('organizer', 'Организатор'),
+        ('agency', 'Агентство'),
+    ]
+
     RATING_CHOICES = [
         ('high', 'Высокий'),
         ('medium', 'Средний'),
@@ -106,6 +96,7 @@ class Client(models.Model):
     ]
 
     full_name = models.CharField('ФИО клиента', max_length=200)
+    client_type = models.CharField('Тип клиента', max_length=10, choices=CLIENT_TYPE_CHOICES, default='organizer')
     agency = models.ForeignKey(Agency, on_delete=models.SET_NULL, null=True, blank=True, related_name='clients', verbose_name='Агентство')
     phone = models.CharField('Номер телефона', max_length=20)
     telegram_username = models.CharField('Юзернейм в тг', max_length=100, blank=True)

@@ -1,4 +1,8 @@
 (function() {
+    let currentClientId = null;
+    let isEditMode = false;
+    let currentAgencySelect = null;
+
     const tableBody = document.getElementById('clientsTableBody');
     const searchInput = document.getElementById('searchInput');
     const ratingFilter = document.getElementById('ratingFilter');
@@ -9,6 +13,12 @@
     const addModalCloseBtn = document.getElementById('addModalCloseBtn');
     const addModalCancelBtn = document.getElementById('addModalCancelBtn');
     const addForm = document.getElementById('addClientForm');
+    const addClientType = document.getElementById('addClientType');
+    const addAgencyGroup = document.getElementById('addAgencyGroup');
+    const addAgencySelect = document.getElementById('addAgency');
+    const editClientType = document.getElementById('editClientType');
+    const editAgencyGroup = document.getElementById('editAgencyGroup');
+    const editAgencySelect = document.getElementById('editAgency');
     const phoneInput = document.getElementById('addPhone');
     const editPhoneInput = document.getElementById('editPhone');
     const editClientBtn = document.getElementById('editClientBtn');
@@ -16,10 +26,139 @@
     const editForm = document.getElementById('editClientForm');
     const viewMode = document.getElementById('viewMode');
     const editMode = document.getElementById('editMode');
-    
-    let currentClientId = null;
 
-    // Маска для телефона
+    const addAgencyModal = document.getElementById('addAgencyModal');
+    const addAgencyModalCloseBtn = document.getElementById('addAgencyModalCloseBtn');
+    const addAgencyCancelBtn = document.getElementById('addAgencyCancelBtn');
+    const addAgencyForm = document.getElementById('addAgencyForm');
+    const addAgencyName = document.getElementById('addAgencyName');
+
+    const addAddAgencyBtn = document.getElementById('addAddAgencyBtn');
+    const editAddAgencyBtn = document.getElementById('editAddAgencyBtn');
+
+    function toggleAgencyField(clientType, agencyGroup, isAdd = true) {
+        if (clientType === 'agency') {
+            agencyGroup.style.display = 'block';
+            if (isAdd) {
+                addAgencySelect.required = true;
+            } else {
+                editAgencySelect.required = true;
+            }
+        } else {
+            agencyGroup.style.display = 'none';
+            if (isAdd) {
+                addAgencySelect.required = false;
+                addAgencySelect.value = '';
+            } else {
+                editAgencySelect.required = false;
+                editAgencySelect.value = '';
+            }
+        }
+    }
+
+    if (addClientType) {
+        addClientType.addEventListener('change', function() {
+            toggleAgencyField(this.value, addAgencyGroup, true);
+        });
+    }
+
+    if (editClientType) {
+        editClientType.addEventListener('change', function() {
+            toggleAgencyField(this.value, editAgencyGroup, false);
+        });
+    }
+
+    function openAddAgencyModal(selectElement) {
+        currentAgencySelect = selectElement;
+        addAgencyModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        addAgencyForm.reset();
+        addAgencyName.focus();
+    }
+
+    function closeAddAgencyModal() {
+        addAgencyModal.classList.remove('active');
+        document.body.style.overflow = '';
+        currentAgencySelect = null;
+    }
+
+    function addAgencyToSelect(select, agencyId, agencyName) {
+        const option = document.createElement('option');
+        option.value = agencyId;
+        option.textContent = agencyName;
+        option.selected = true;
+        select.appendChild(option);
+    }
+
+    if (addAddAgencyBtn) {
+        addAddAgencyBtn.addEventListener('click', function() {
+            openAddAgencyModal(addAgencySelect);
+        });
+    }
+
+    if (editAddAgencyBtn) {
+        editAddAgencyBtn.addEventListener('click', function() {
+            openAddAgencyModal(editAgencySelect);
+        });
+    }
+
+    if (addAgencyModalCloseBtn) {
+        addAgencyModalCloseBtn.addEventListener('click', closeAddAgencyModal);
+    }
+    if (addAgencyCancelBtn) {
+        addAgencyCancelBtn.addEventListener('click', closeAddAgencyModal);
+    }
+    if (addAgencyModal) {
+        addAgencyModal.addEventListener('click', function(e) {
+            if (e.target === this) closeAddAgencyModal();
+        });
+    }
+
+    if (addAgencyForm) {
+        addAgencyForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = addAgencyName.value.trim();
+            if (!name) {
+                showToast('Пожалуйста, введите название агентства');
+                addAgencyName.focus();
+                return;
+            }
+
+            fetch('/agencies/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: new URLSearchParams({ name: name })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error);
+                    return;
+                }
+                if (data.success) {
+                    showToast(`Агентство "${data.agency.name}" успешно создано`);
+                    if (currentAgencySelect) {
+                        addAgencyToSelect(currentAgencySelect, data.agency.id, data.agency.name);
+                    }
+                    if (currentAgencySelect === addAgencySelect && editAgencySelect) {
+                        addAgencyToSelect(editAgencySelect, data.agency.id, data.agency.name);
+                    } else if (currentAgencySelect === editAgencySelect && addAgencySelect) {
+                        addAgencyToSelect(addAgencySelect, data.agency.id, data.agency.name);
+                    }
+                    closeAddAgencyModal();
+                }
+            })
+            .catch(error => {
+                showToast('Ошибка при создании агентства');
+                console.error(error);
+            });
+        });
+    }
+
     function phoneMask(input) {
         let value = input.value.replace(/\D/g, '');
         
@@ -54,7 +193,6 @@
         return input.value;
     }
 
-    // Применяем маску к полям телефона
     if (phoneInput) {
         phoneInput.addEventListener('input', function() { phoneMask(this); });
         phoneInput.addEventListener('focus', function() {
@@ -96,6 +234,7 @@
                 document.getElementById('modalClientName').textContent = data.full_name;
                 document.getElementById('viewFullName').textContent = data.full_name;
                 document.getElementById('viewPhone').textContent = data.phone;
+                document.getElementById('viewClientType').textContent = data.client_type_display || '—';
                 document.getElementById('viewAgency').textContent = data.agency || '—';
                 document.getElementById('viewRating').textContent = data.rating_display;
                 document.getElementById('viewEmail').textContent = data.email || '—';
@@ -125,14 +264,16 @@
                     ordersContainer.innerHTML = '<p class="orders-empty">Нет заказов</p>';
                 }
 
-                // Заполняем форму редактирования
                 document.getElementById('editFullName').value = data.full_name;
                 document.getElementById('editPhone').value = data.phone;
+                document.getElementById('editClientType').value = data.client_type_key || 'organizer';
+                document.getElementById('editAgency').value = data.agency_id || '';
                 document.getElementById('editTelegram').value = data.telegram === '—' ? '' : data.telegram;
                 document.getElementById('editEmail').value = data.email === '—' ? '' : data.email;
-                document.getElementById('editAgency').value = data.agency || '';
                 document.getElementById('editCity').value = data.city === '—' ? '' : data.city;
                 document.getElementById('editRating').value = data.rating_key || 'medium';
+
+                toggleAgencyField(data.client_type_key || 'organizer', editAgencyGroup, false);
 
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
@@ -166,7 +307,11 @@
         document.body.style.overflow = 'hidden';
         addForm.reset();
         document.getElementById('addRating').value = 'medium';
+        document.getElementById('addClientType').value = 'organizer';
         document.getElementById('addPhone').value = '';
+        addAgencyGroup.style.display = 'none';
+        addAgencySelect.value = '';
+        addAgencySelect.required = false;
     }
 
     function closeAddModal() {
@@ -197,7 +342,6 @@
         return cookieValue ? cookieValue[2] : '';
     }
 
-    // Обработчики модального окна клиента
     modalCloseBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', function(e) {
         if (e.target === this) closeModal();
@@ -206,15 +350,15 @@
     editClientBtn.addEventListener('click', openEditMode);
     editCancelBtn.addEventListener('click', cancelEdit);
 
-    // Обработчик сохранения изменений
     editForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
+        const clientType = document.getElementById('editClientType').value;
+        const agencyId = document.getElementById('editAgency').value;
         const fullName = document.getElementById('editFullName').value.trim();
         const phone = document.getElementById('editPhone').value.trim();
         const telegram = document.getElementById('editTelegram').value.trim();
         const email = document.getElementById('editEmail').value.trim();
-        const agency = document.getElementById('editAgency').value.trim();
         const city = document.getElementById('editCity').value.trim();
         const rating = document.getElementById('editRating').value;
 
@@ -236,12 +380,19 @@
             return;
         }
 
+        if (clientType === 'agency' && !agencyId) {
+            showToast('Пожалуйста, выберите агентство');
+            document.getElementById('editAgency').focus();
+            return;
+        }
+
         const data = {
             full_name: fullName,
             phone: phone,
+            client_type: clientType,
+            agency_id: agencyId,
             telegram: telegram,
             email: email,
-            agency: agency,
             city: city,
             rating: rating
         };
@@ -263,16 +414,6 @@
             if (data.success) {
                 showToast('Данные клиента успешно обновлены');
                 cancelEdit();
-                // Обновляем просмотр
-                document.getElementById('viewFullName').textContent = data.client.full_name;
-                document.getElementById('viewPhone').textContent = data.client.phone;
-                document.getElementById('viewAgency').textContent = data.client.agency || '—';
-                document.getElementById('viewRating').textContent = data.client.rating_display;
-                document.getElementById('viewEmail').textContent = data.client.email || '—';
-                document.getElementById('viewTelegram').textContent = data.client.telegram || '—';
-                document.getElementById('viewCity').textContent = data.client.city || '—';
-                document.getElementById('modalClientName').textContent = data.client.full_name;
-                // Обновляем строку в таблице
                 setTimeout(() => location.reload(), 500);
             }
         })
@@ -282,7 +423,6 @@
         });
     });
 
-    // Обработчики модального окна добавления клиента
     addClientBtn.addEventListener('click', openAddModal);
     addModalCloseBtn.addEventListener('click', closeAddModal);
     addModalCancelBtn.addEventListener('click', closeAddModal);
@@ -290,15 +430,15 @@
         if (e.target === this) closeAddModal();
     });
 
-    // Обработчик отправки формы добавления клиента
     addForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
+        const clientType = document.getElementById('addClientType').value;
+        const agencyId = document.getElementById('addAgency').value;
         const fullName = document.getElementById('addFullName').value.trim();
         const phone = document.getElementById('addPhone').value.trim();
         const telegram = document.getElementById('addTelegram').value.trim();
         const email = document.getElementById('addEmail').value.trim();
-        const agency = document.getElementById('addAgency').value.trim();
         const city = document.getElementById('addCity').value.trim();
         const rating = document.getElementById('addRating').value;
 
@@ -320,12 +460,19 @@
             return;
         }
 
+        if (clientType === 'agency' && !agencyId) {
+            showToast('Пожалуйста, выберите агентство');
+            document.getElementById('addAgency').focus();
+            return;
+        }
+
         const data = {
             full_name: fullName,
             phone: phone,
+            client_type: clientType,
+            agency_id: agencyId,
             telegram: telegram,
             email: email,
-            agency: agency,
             city: city,
             rating: rating
         };
@@ -356,7 +503,6 @@
         });
     });
 
-    // Обработчики для кнопок "Подробнее"
     tableBody.addEventListener('click', function(e) {
         const viewLink = e.target.closest('.view-link');
         if (viewLink) {
@@ -373,7 +519,6 @@
         }
     });
 
-    // Фильтрация
     function filterClients() {
         const search = searchInput.value.trim();
         const rating = ratingFilter.value;
@@ -391,11 +536,13 @@
 
     ratingFilter.addEventListener('change', filterClients);
 
-    // Закрытие модальных окон по Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            if (modal.classList.contains('active')) closeModal();
-            if (addModal.classList.contains('active')) closeAddModal();
+            if (addAgencyModal && addAgencyModal.classList.contains('active')) {
+                closeAddAgencyModal();
+            }
+            if (modal && modal.classList.contains('active')) closeModal();
+            if (addModal && addModal.classList.contains('active')) closeAddModal();
         }
     });
 })();

@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
 from .models import Agency, Role, Skill, Employee, Client, Order, ArtistSchedule
 
 
@@ -22,30 +21,30 @@ class SkillAdmin(admin.ModelAdmin):
 
 
 @admin.register(Employee)
-class EmployeeAdmin(UserAdmin):
-    list_display = ['id', 'full_name', 'username', 'role', 'phone', 'is_active']
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'full_name', 'user', 'role', 'phone', 'is_active']
     list_filter = ['role', 'is_active', 'skills']
-    search_fields = ['full_name', 'username', 'phone', 'telegram_username']
+    search_fields = ['full_name', 'user__username', 'phone', 'telegram_username']
+    raw_id_fields = ['user']
+    readonly_fields = ['created_at', 'updated_at']
     fieldsets = (
-        (None, {'fields': ('username', 'password')}),
-        ('Персональная информация', {
-            'fields': ('full_name', 'role', 'photo', 'phone', 'telegram_username', 'skills')
+        (None, {
+            'fields': ('user', 'full_name', 'role', 'phone', 'telegram_username', 'skills')
         }),
         ('Статус', {
-            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+            'fields': ('is_active',)
         }),
         ('Важные даты', {
-            'fields': ('last_login', 'date_joined', 'created_at', 'updated_at'),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'password1', 'password2', 'full_name', 'role', 'phone'),
+            'fields': ('user', 'full_name', 'role', 'phone', 'telegram_username', 'is_active'),
         }),
     )
-    readonly_fields = ['created_at', 'updated_at']
 
 
 @admin.register(Client)
