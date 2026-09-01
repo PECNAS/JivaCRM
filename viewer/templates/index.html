@@ -28,7 +28,7 @@
 </section>
 
 <section class="dashboard-grid">
-    <div class="card card--primary">
+    <a href="{% url 'schedule' %}" class="card card--primary card--clickable">
         <div class="card__icon card__icon--calendar"></div>
         <h3 class="card__title">Расписание</h3>
         <p class="card__desc">Ближайшие выступления и репетиции</p>
@@ -37,10 +37,10 @@
             <li>Шоу «Космос» — 19:00 (Манжерок)</li>
             <li>Пролог для «Сцены» — завтра 11:00</li>
         </ul>
-        <a href="#" class="card__link">Подробнее →</a>
-    </div>
+        <span class="card__link">Подробнее →</span>
+    </a>
 
-    <div class="card card--secondary">
+    <a href="{% url 'employees' %}" class="card card--secondary card--clickable">
         <div class="card__icon card__icon--users"></div>
         <h3 class="card__title">Сотрудники</h3>
         <p class="card__desc">Основной состав</p>
@@ -49,10 +49,10 @@
             <li>Игорь П. — артист</li>
             <li>Мария К. — хореограф</li>
         </ul>
-        <a href="#" class="card__link">Все сотрудники →</a>
-    </div>
+        <span class="card__link">Все сотрудники →</span>
+    </a>
 
-    <div class="card card--tertiary">
+    <a href="{% url 'orders' %}" class="card card--tertiary card--clickable">
         <div class="card__icon card__icon--clipboard"></div>
         <h3 class="card__title">Заказы</h3>
         <p class="card__desc">Активные проекты</p>
@@ -61,10 +61,10 @@
             <span>на согласовании: 2</span>
             <span>завершено: 1</span>
         </div>
-        <a href="#" class="card__link">Все заказы →</a>
-    </div>
+        <span class="card__link">Все заказы →</span>
+    </a>
 
-    <div class="card card--clients">
+    <a href="{% url 'clients' %}" class="card card--clients card--clickable">
         <div class="card__icon card__icon--clients"></div>
         <h3 class="card__title">Клиенты</h3>
         <p class="card__desc">Постоянные и новые</p>
@@ -73,10 +73,10 @@
             <li>Агентство «Событие» — 5 заказов</li>
             <li>Корпорация «Вектор» — 2 заказа</li>
         </ul>
-        <a href="{% url 'clients' %}" class="card__link">Все клиенты →</a>
-    </div>
+        <span class="card__link">Все клиенты →</span>
+    </a>
 
-    <div class="card card--accent">
+    <a href="#" class="card card--accent card--clickable">
         <div class="card__icon card__icon--chart"></div>
         <h3 class="card__title">Аналитика</h3>
         <p class="card__desc">Выручка и эффективность</p>
@@ -84,8 +84,8 @@
             <span>+18% к прошлому месяцу</span>
             <span>1 284 500 ₽</span>
         </div>
-        <a href="#" class="card__link">Отчёты →</a>
-    </div>
+        <span class="card__link">Отчёты →</span>
+    </a>
 </section>
 
 <section class="quick-actions">

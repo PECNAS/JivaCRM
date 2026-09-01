@@ -9,337 +9,331 @@
 
 {% block content %}
 <section class="orders-header">
-    <div class="orders-header__top">
-        <h1 class="orders-title">Заказы</h1>
-        <button class="btn btn-primary" id="addOrderBtn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="16"/>
-                <line x1="8" y1="12" x2="16" y2="12"/>
-            </svg>
-            Создать заказ
-        </button>
-    </div>
-    <div class="orders-filters">
-        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по адресу, клиенту или менеджеру" value="{{ search_query }}">
-        <select class="filter-select" id="statusFilter">
-            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Все статусы</option>
-            <option value="request" {% if status_filter == 'request' %}selected{% endif %}>Запрос</option>
-            <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Подтверждено</option>
-            <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>В работе</option>
-            <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Выполнено</option>
-            <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Оплачено</option>
-        </select>
-    </div>
+	<div class="orders-header__top">
+		<h1 class="orders-title">Заказы</h1>
+		<button class="btn btn-primary" id="addOrderBtn">
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="12" cy="12" r="10"/>
+				<line x1="12" y1="8" x2="12" y2="16"/>
+				<line x1="8" y1="12" x2="16" y2="12"/>
+			</svg>
+			Создать заказ
+		</button>
+	</div>
+	<div class="orders-filters">
+		<input type="text" class="search-input" id="searchInput" placeholder="Поиск по адресу, клиенту или менеджеру" value="{{ search_query }}">
+		<select class="filter-select" id="statusFilter">
+			<option value="all" {% if status_filter == 'all' %}selected{% endif %}>Все статусы</option>
+			<option value="request" {% if status_filter == 'request' %}selected{% endif %}>Запрос</option>
+			<option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Подтвержденный</option>
+			<option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Выполненный</option>
+		</select>
+	</div>
 </section>
 
 <section class="orders-table-wrapper">
-    <table class="orders-table">
-        <thead>
-            <tr>
-                <th>Адрес</th>
-                <th>Дата</th>
-                <th>Клиент</th>
-                <th>Статус</th>
-                <th>Стоимость</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody id="ordersTableBody">
-        </tbody>
-    </table>
+	<table class="orders-table">
+		<thead>
+			<tr>
+				<th>Адрес</th>
+				<th>Дата</th>
+				<th>Клиент</th>
+				<th>Статус</th>
+				<th>Стоимость</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody id="ordersTableBody">
+		</tbody>
+	</table>
 </section>
 
 <div class="modal-overlay" id="orderModal">
-    <div class="modal modal--order">
-        <div class="modal__header">
-            <h2 class="modal__title" id="modalOrderTitle">Заказ</h2>
-            <button class="modal__close" id="modalCloseBtn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal__body">
-            <div class="order-details" id="orderDetailsView">
-                <div class="details-grid">
-                    <div class="detail-item"><span class="detail-label">Адрес:</span><span class="detail-value" id="viewAddress">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Дата:</span><span class="detail-value" id="viewDate">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Клиент:</span><span class="detail-value" id="viewClient">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Стоимость:</span><span class="detail-value" id="viewCost">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Статус:</span><span class="detail-value" id="viewStatus">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Время чека/установки:</span><span class="detail-value" id="viewSetupTime">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Гримёрка:</span><span class="detail-value" id="viewDressingRoom">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Еда:</span><span class="detail-value" id="viewMeal">—</span></div>
-                    <div class="detail-item detail-item--full"><span class="detail-label">Концепция мероприятия:</span><span class="detail-value" id="viewConcept">—</span></div>
-                    <div class="detail-item detail-item--full"><span class="detail-label">Техничка:</span><span class="detail-value" id="viewTech">—</span></div>
-                    <div class="detail-item detail-item--full"><span class="detail-label">Комментарий к техничке:</span><span class="detail-value" id="viewTechComment">—</span></div>
-                    <div class="detail-item detail-item--full"><span class="detail-label">Особенности площадки:</span><span class="detail-value" id="viewVenueFeatures">—</span></div>
-                    <div class="detail-item detail-item--full"><span class="detail-label">Особенности по реквизиту:</span><span class="detail-value" id="viewPropsFeatures">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Способ оплаты:</span><span class="detail-value" id="viewPaymentMethod">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Менеджер:</span><span class="detail-value" id="viewManager">—</span></div>
-                    <div class="detail-item"><span class="detail-label">Сториз ответственный:</span><span class="detail-value" id="viewStoryManager">—</span></div>
-                </div>
-                <div class="order-actions">
-                    <button class="btn btn-outline btn-icon" id="viewInScheduleBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                        В расписании
-                    </button>
-                    <button class="btn btn-primary btn-icon" id="editOrderBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 20h9"/>
-                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                        </svg>
-                        Редактировать
-                    </button>
-                </div>
-            </div>
-            <div class="order-details" id="orderDetailsEdit" style="display:none;">
-                <form id="editOrderForm" class="edit-order-form">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label" for="editClient">Клиент *</label>
-                            <select class="form-select" id="editClient" required></select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editDate">Дата *</label>
-                            <input type="date" class="form-input" id="editDate" required>
-                        </div>
-                        <div class="form-group detail-item--full">
-                            <label class="form-label" for="editAddress">Адрес *</label>
-                            <input type="text" class="form-input" id="editAddress" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editContactPhone">Контактное лицо - телефон</label>
-                            <input type="tel" class="form-input" id="editContactPhone">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editContactTelegram">Контактное лицо - телеграм</label>
-                            <input type="text" class="form-input" id="editContactTelegram">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editSetupTime">Время чека/установки</label>
-                            <input type="text" class="form-input" id="editSetupTime" placeholder="18:00">
-                        </div>
-                        <div class="form-group detail-item--full">
-                            <label class="form-label" for="editDressingRoomComment">Комментарии к гримерке</label>
-                            <textarea class="form-textarea" id="editDressingRoomComment" rows="2"></textarea>
-                        </div>
-                        <div class="form-group detail-item--full">
-                            <label class="form-label" for="editMealComment">Комментарии к еде</label>
-                            <textarea class="form-textarea" id="editMealComment" rows="2"></textarea>
-                        </div>
-                        <div class="form-group detail-item--full">
-                            <label class="form-label" for="editConcept">Концепция</label>
-                            <textarea class="form-textarea" id="editConcept" rows="3"></textarea>
-                        </div>
-                        <div class="form-group detail-item--full">
-                            <label class="form-label">Техничка</label>
-                            <div class="checkbox-group">
-                                <label class="checkbox-label"><input type="checkbox" id="editTechLamps"> Лампы</label>
-                                <label class="checkbox-label"><input type="checkbox" id="editTechLaser"> Лазер</label>
-                                <label class="checkbox-label"><input type="checkbox" id="editTechHazer"> Хейзер</label>
-                                <label class="checkbox-label"><input type="checkbox" id="editTechGrid"> Сетка</label>
-                                <label class="checkbox-label"><input type="checkbox" id="editTechProjection"> Проекция</label>
-                            </div>
-                        </div>
-                        <div class="form-group detail-item--full">
-                            <label class="form-label" for="editTechComment">Комментарий к техничке</label>
-                            <textarea class="form-textarea" id="editTechComment" rows="2"></textarea>
-                        </div>
-                        <div class="form-group detail-item--full">
-                            <label class="form-label" for="editVenueComment">Комментарии к площадке</label>
-                            <textarea class="form-textarea" id="editVenueComment" rows="2"></textarea>
-                        </div>
-                        <div class="form-group detail-item--full">
-                            <label class="form-label" for="editPropsComment">Комментарии к реквизиту</label>
-                            <textarea class="form-textarea" id="editPropsComment" rows="2"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editManager">Менеджер *</label>
-                            <select class="form-select" id="editManager" required></select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editCost">Стоимость</label>
-                            <input type="text" class="form-input" id="editCost" placeholder="100 000 ₽">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editPaymentMethod">Способ оплаты</label>
-                            <select class="form-select" id="editPaymentMethod">
-                                <option value="">Не указано</option>
-                                <option value="self">Самозанятость</option>
-                                <option value="ip">ИП</option>
-                                <option value="cash">Наличные</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editStatus">Статус *</label>
-                            <select class="form-select" id="editStatus" required>
-                                <option value="request">Запрос</option>
-                                <option value="confirmed">Подтверждено</option>
-                                <option value="in_progress">В работе</option>
-                                <option value="completed">Выполнено</option>
-                                <option value="paid">Оплачено</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editDuration">Длительность (дней)</label>
-                            <input type="number" class="form-input" id="editDuration" min="1" value="1">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="editStoryManager">Сториз ответственный</label>
-                            <select class="form-select" id="editStoryManager">
-                                <option value="">Не назначен</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
-                        <button type="submit" class="btn btn-primary btn-icon">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                <polyline points="17 21 17 13 7 13 7 21"/>
-                                <polyline points="7 3 7 8 15 8"/>
-                            </svg>
-                            Сохранить
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+	<div class="modal modal--order">
+		<div class="modal__header">
+			<h2 class="modal__title" id="modalOrderTitle">Заказ</h2>
+			<button class="modal__close" id="modalCloseBtn">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="18" y1="6" x2="6" y2="18"/>
+					<line x1="6" y1="6" x2="18" y2="18"/>
+				</svg>
+			</button>
+		</div>
+		<div class="modal__body">
+			<div class="order-details" id="orderDetailsView">
+				<div class="details-grid">
+					<div class="detail-item"><span class="detail-label">Адрес:</span><span class="detail-value" id="viewAddress">—</span></div>
+					<div class="detail-item"><span class="detail-label">Дата:</span><span class="detail-value" id="viewDate">—</span></div>
+					<div class="detail-item"><span class="detail-label">Клиент:</span><span class="detail-value" id="viewClient">—</span></div>
+					<div class="detail-item"><span class="detail-label">Стоимость:</span><span class="detail-value" id="viewCost">—</span></div>
+					<div class="detail-item"><span class="detail-label">Статус:</span><span class="detail-value" id="viewStatus">—</span></div>
+					<div class="detail-item"><span class="detail-label">Время чека/установки:</span><span class="detail-value" id="viewSetupTime">—</span></div>
+					<div class="detail-item"><span class="detail-label">Гримёрка:</span><span class="detail-value" id="viewDressingRoom">—</span></div>
+					<div class="detail-item"><span class="detail-label">Еда:</span><span class="detail-value" id="viewMeal">—</span></div>
+					<div class="detail-item detail-item--full"><span class="detail-label">Концепция мероприятия:</span><span class="detail-value" id="viewConcept">—</span></div>
+					<div class="detail-item detail-item--full"><span class="detail-label">Техничка:</span><span class="detail-value" id="viewTech">—</span></div>
+					<div class="detail-item detail-item--full"><span class="detail-label">Комментарий к техничке:</span><span class="detail-value" id="viewTechComment">—</span></div>
+					<div class="detail-item detail-item--full"><span class="detail-label">Особенности площадки:</span><span class="detail-value" id="viewVenueFeatures">—</span></div>
+					<div class="detail-item detail-item--full"><span class="detail-label">Особенности по реквизиту:</span><span class="detail-value" id="viewPropsFeatures">—</span></div>
+					<div class="detail-item"><span class="detail-label">Способ оплаты:</span><span class="detail-value" id="viewPaymentMethod">—</span></div>
+					<div class="detail-item"><span class="detail-label">Менеджер:</span><span class="detail-value" id="viewManager">—</span></div>
+					<div class="detail-item"><span class="detail-label">Сториз ответственный:</span><span class="detail-value" id="viewStoryManager">—</span></div>
+				</div>
+				<div class="order-actions">
+					<button class="btn btn-outline btn-icon" id="viewInScheduleBtn">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+							<line x1="16" y1="2" x2="16" y2="6"/>
+							<line x1="8" y1="2" x2="8" y2="6"/>
+							<line x1="3" y1="10" x2="21" y2="10"/>
+						</svg>
+						В расписании
+					</button>
+					<button class="btn btn-primary btn-icon" id="editOrderBtn">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M12 20h9"/>
+							<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+						</svg>
+						Редактировать
+					</button>
+				</div>
+			</div>
+			<div class="order-details" id="orderDetailsEdit" style="display:none;">
+				<form id="editOrderForm" class="edit-order-form">
+					<div class="form-grid">
+						<div class="form-group">
+							<label class="form-label" for="editClient">Клиент *</label>
+							<select class="form-select" id="editClient" required></select>
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editDate">Дата *</label>
+							<input type="date" class="form-input" id="editDate" required>
+						</div>
+						<div class="form-group detail-item--full">
+							<label class="form-label" for="editAddress">Адрес *</label>
+							<input type="text" class="form-input" id="editAddress" required>
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editContactPhone">Контактное лицо - телефон</label>
+							<input type="tel" class="form-input" id="editContactPhone">
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editContactTelegram">Контактное лицо - телеграм</label>
+							<input type="text" class="form-input" id="editContactTelegram">
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editSetupTime">Время чека/установки</label>
+							<input type="text" class="form-input" id="editSetupTime" placeholder="18:00">
+						</div>
+						<div class="form-group detail-item--full">
+							<label class="form-label" for="editDressingRoomComment">Комментарии к гримерке</label>
+							<textarea class="form-textarea" id="editDressingRoomComment" rows="2"></textarea>
+						</div>
+						<div class="form-group detail-item--full">
+							<label class="form-label" for="editMealComment">Комментарии к еде</label>
+							<textarea class="form-textarea" id="editMealComment" rows="2"></textarea>
+						</div>
+						<div class="form-group detail-item--full">
+							<label class="form-label" for="editConcept">Концепция</label>
+							<textarea class="form-textarea" id="editConcept" rows="3"></textarea>
+						</div>
+						<div class="form-group detail-item--full">
+							<label class="form-label">Техничка</label>
+							<div class="checkbox-group">
+								<label class="checkbox-label"><input type="checkbox" id="editTechLamps"> Лампы</label>
+								<label class="checkbox-label"><input type="checkbox" id="editTechLaser"> Лазер</label>
+								<label class="checkbox-label"><input type="checkbox" id="editTechHazer"> Хейзер</label>
+								<label class="checkbox-label"><input type="checkbox" id="editTechGrid"> Сетка</label>
+								<label class="checkbox-label"><input type="checkbox" id="editTechProjection"> Проекция</label>
+							</div>
+						</div>
+						<div class="form-group detail-item--full">
+							<label class="form-label" for="editTechComment">Комментарий к техничке</label>
+							<textarea class="form-textarea" id="editTechComment" rows="2"></textarea>
+						</div>
+						<div class="form-group detail-item--full">
+							<label class="form-label" for="editVenueComment">Комментарии к площадке</label>
+							<textarea class="form-textarea" id="editVenueComment" rows="2"></textarea>
+						</div>
+						<div class="form-group detail-item--full">
+							<label class="form-label" for="editPropsComment">Комментарии к реквизиту</label>
+							<textarea class="form-textarea" id="editPropsComment" rows="2"></textarea>
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editManager">Менеджер *</label>
+							<select class="form-select" id="editManager" required></select>
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editCost">Стоимость</label>
+							<input type="text" class="form-input" id="editCost" placeholder="100 000 ₽">
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editPaymentMethod">Способ оплаты</label>
+							<select class="form-select" id="editPaymentMethod">
+								<option value="">Не указано</option>
+								<option value="self">Самозанятость</option>
+								<option value="ip">ИП</option>
+								<option value="cash">Наличные</option>
+							</select>
+						</div>
+						<div class="form-group">
+						    <label class="form-label" for="addStatus">Статус *</label>
+						    <select class="form-select" id="addStatus" required>
+						        <option value="request">Запрос</option>
+						        <option value="confirmed">Подтвержденный</option>
+						        <option value="completed">Выполненный</option>
+						    </select>
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editDuration">Длительность (дней)</label>
+							<input type="number" class="form-input" id="editDuration" min="1" value="1">
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="editStoryManager">Сториз ответственный</label>
+							<select class="form-select" id="editStoryManager">
+								<option value="">Не назначен</option>
+							</select>
+						</div>
+					</div>
+					<div class="form-actions">
+						<button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
+						<button type="submit" class="btn btn-primary btn-icon">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+								<polyline points="17 21 17 13 7 13 7 21"/>
+								<polyline points="7 3 7 8 15 8"/>
+							</svg>
+							Сохранить
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
 </div>
 
 <div class="modal-overlay" id="addOrderModal">
-    <div class="modal modal--order">
-        <div class="modal__header">
-            <h2 class="modal__title">Создание заказа</h2>
-            <button class="modal__close" id="addModalCloseBtn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal__body">
-            <form id="addOrderForm" class="edit-order-form">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="addClient">Клиент *</label>
-                        <select class="form-select" id="addClient" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addDate">Дата *</label>
-                        <input type="date" class="form-input" id="addDate" required>
-                    </div>
-                    <div class="form-group detail-item--full">
-                        <label class="form-label" for="addAddress">Адрес *</label>
-                        <input type="text" class="form-input" id="addAddress" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addContactPhone">Контактное лицо - телефон</label>
-                        <input type="tel" class="form-input" id="addContactPhone">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addContactTelegram">Контактное лицо - телеграм</label>
-                        <input type="text" class="form-input" id="addContactTelegram">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addSetupTime">Время чека/установки</label>
-                        <input type="text" class="form-input" id="addSetupTime" placeholder="18:00">
-                    </div>
-                    <div class="form-group detail-item--full">
-                        <label class="form-label" for="addDressingRoomComment">Комментарии к гримерке</label>
-                        <textarea class="form-textarea" id="addDressingRoomComment" rows="2"></textarea>
-                    </div>
-                    <div class="form-group detail-item--full">
-                        <label class="form-label" for="addMealComment">Комментарии к еде</label>
-                        <textarea class="form-textarea" id="addMealComment" rows="2"></textarea>
-                    </div>
-                    <div class="form-group detail-item--full">
-                        <label class="form-label" for="addConcept">Концепция</label>
-                        <textarea class="form-textarea" id="addConcept" rows="3"></textarea>
-                    </div>
-                    <div class="form-group detail-item--full">
-                        <label class="form-label">Техничка</label>
-                        <div class="checkbox-group">
-                            <label class="checkbox-label"><input type="checkbox" id="addTechLamps"> Лампы</label>
-                            <label class="checkbox-label"><input type="checkbox" id="addTechLaser"> Лазер</label>
-                            <label class="checkbox-label"><input type="checkbox" id="addTechHazer"> Хейзер</label>
-                            <label class="checkbox-label"><input type="checkbox" id="addTechGrid"> Сетка</label>
-                            <label class="checkbox-label"><input type="checkbox" id="addTechProjection"> Проекция</label>
-                        </div>
-                    </div>
-                    <div class="form-group detail-item--full">
-                        <label class="form-label" for="addTechComment">Комментарий к техничке</label>
-                        <textarea class="form-textarea" id="addTechComment" rows="2"></textarea>
-                    </div>
-                    <div class="form-group detail-item--full">
-                        <label class="form-label" for="addVenueComment">Комментарии к площадке</label>
-                        <textarea class="form-textarea" id="addVenueComment" rows="2"></textarea>
-                    </div>
-                    <div class="form-group detail-item--full">
-                        <label class="form-label" for="addPropsComment">Комментарии к реквизиту</label>
-                        <textarea class="form-textarea" id="addPropsComment" rows="2"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addManager">Менеджер *</label>
-                        <select class="form-select" id="addManager" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addCost">Стоимость</label>
-                        <input type="text" class="form-input" id="addCost" placeholder="100 000 ₽">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addPaymentMethod">Способ оплаты</label>
-                        <select class="form-select" id="addPaymentMethod">
-                            <option value="">Не указано</option>
-                            <option value="self">Самозанятость</option>
-                            <option value="ip">ИП</option>
-                            <option value="cash">Наличные</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addStatus">Статус *</label>
-                        <select class="form-select" id="addStatus" required>
-                            <option value="request">Запрос</option>
-                            <option value="confirmed">Подтверждено</option>
-                            <option value="in_progress">В работе</option>
-                            <option value="completed">Выполнено</option>
-                            <option value="paid">Оплачено</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addDuration">Длительность (дней)</label>
-                        <input type="number" class="form-input" id="addDuration" min="1" value="1">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="addStoryManager">Сториз ответственный</label>
-                        <select class="form-select" id="addStoryManager">
-                            <option value="">Не назначен</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" id="addModalCancelBtn">Отмена</button>
-                    <button type="submit" class="btn btn-primary btn-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="16"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                        </svg>
-                        Создать
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+	<div class="modal modal--order">
+		<div class="modal__header">
+			<h2 class="modal__title">Создание заказа</h2>
+			<button class="modal__close" id="addModalCloseBtn">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="18" y1="6" x2="6" y2="18"/>
+					<line x1="6" y1="6" x2="18" y2="18"/>
+				</svg>
+			</button>
+		</div>
+		<div class="modal__body">
+			<form id="addOrderForm" class="edit-order-form">
+				<div class="form-grid">
+					<div class="form-group">
+						<label class="form-label" for="addClient">Клиент *</label>
+						<select class="form-select" id="addClient" required></select>
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addDate">Дата *</label>
+						<input type="date" class="form-input" id="addDate" required>
+					</div>
+					<div class="form-group detail-item--full">
+						<label class="form-label" for="addAddress">Адрес *</label>
+						<input type="text" class="form-input" id="addAddress" required>
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addContactPhone">Контактное лицо - телефон</label>
+						<input type="tel" class="form-input" id="addContactPhone">
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addContactTelegram">Контактное лицо - телеграм</label>
+						<input type="text" class="form-input" id="addContactTelegram">
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addSetupTime">Время чека/установки</label>
+						<input type="text" class="form-input" id="addSetupTime" placeholder="18:00">
+					</div>
+					<div class="form-group detail-item--full">
+						<label class="form-label" for="addDressingRoomComment">Комментарии к гримерке</label>
+						<textarea class="form-textarea" id="addDressingRoomComment" rows="2"></textarea>
+					</div>
+					<div class="form-group detail-item--full">
+						<label class="form-label" for="addMealComment">Комментарии к еде</label>
+						<textarea class="form-textarea" id="addMealComment" rows="2"></textarea>
+					</div>
+					<div class="form-group detail-item--full">
+						<label class="form-label" for="addConcept">Концепция</label>
+						<textarea class="form-textarea" id="addConcept" rows="3"></textarea>
+					</div>
+					<div class="form-group detail-item--full">
+						<label class="form-label">Техничка</label>
+						<div class="checkbox-group">
+							<label class="checkbox-label"><input type="checkbox" id="addTechLamps"> Лампы</label>
+							<label class="checkbox-label"><input type="checkbox" id="addTechLaser"> Лазер</label>
+							<label class="checkbox-label"><input type="checkbox" id="addTechHazer"> Хейзер</label>
+							<label class="checkbox-label"><input type="checkbox" id="addTechGrid"> Сетка</label>
+							<label class="checkbox-label"><input type="checkbox" id="addTechProjection"> Проекция</label>
+						</div>
+					</div>
+					<div class="form-group detail-item--full">
+						<label class="form-label" for="addTechComment">Комментарий к техничке</label>
+						<textarea class="form-textarea" id="addTechComment" rows="2"></textarea>
+					</div>
+					<div class="form-group detail-item--full">
+						<label class="form-label" for="addVenueComment">Комментарии к площадке</label>
+						<textarea class="form-textarea" id="addVenueComment" rows="2"></textarea>
+					</div>
+					<div class="form-group detail-item--full">
+						<label class="form-label" for="addPropsComment">Комментарии к реквизиту</label>
+						<textarea class="form-textarea" id="addPropsComment" rows="2"></textarea>
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addManager">Менеджер *</label>
+						<select class="form-select" id="addManager" required></select>
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addCost">Стоимость</label>
+						<input type="text" class="form-input" id="addCost" placeholder="100 000 ₽">
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addPaymentMethod">Способ оплаты</label>
+						<select class="form-select" id="addPaymentMethod">
+							<option value="">Не указано</option>
+							<option value="self">Самозанятость</option>
+							<option value="ip">ИП</option>
+							<option value="cash">Наличные</option>
+						</select>
+					</div>
+					<div class="form-group">
+					    <label class="form-label" for="addStatus">Статус *</label>
+					    <select class="form-select" id="addStatus" required>
+					        <option value="request">Запрос</option>
+					        <option value="confirmed">Подтвержденный</option>
+					        <option value="completed">Выполненный</option>
+					    </select>
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addDuration">Длительность (дней)</label>
+						<input type="number" class="form-input" id="addDuration" min="1" value="1">
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="addStoryManager">Сториз ответственный</label>
+						<select class="form-select" id="addStoryManager">
+							<option value="">Не назначен</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-actions">
+					<button type="button" class="btn btn-outline" id="addModalCancelBtn">Отмена</button>
+					<button type="submit" class="btn btn-primary btn-icon">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="12" cy="12" r="10"/>
+							<line x1="12" y1="8" x2="12" y2="16"/>
+							<line x1="8" y1="12" x2="16" y2="12"/>
+						</svg>
+						Создать
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>

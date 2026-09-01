@@ -8,17 +8,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
-    <link rel="icon" href="{% static 'images/icon.jpg'">
+    <link rel="icon" href="{% static 'images/logo.png' %}">
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     {% block css %}{% endblock %}
 </head>
 <body>
+    {% if request.resolver_match.url_name != 'login' %}
     <header class="navbar">
         <div class="container navbar__container">
-            <div class="navbar__brand">
+            <a href="{% url 'index' %}" class="navbar__brand">
                 <span class="brand__icon"></span>
                 <span class="brand__name">JIVA·CRM</span>
-            </div>
+            </a>
             <nav class="navbar__menu" id="mainMenu">
                 <ul class="menu__list">
                     <li class="menu__item">
@@ -42,7 +43,7 @@
                         </a>
                     </li>
                     <li class="menu__item">
-                        <a href="{% url 'employees' %}" class="menu__link">
+                        <a href="{% url 'employees' %}" class="menu__link {% if request.resolver_match.url_name == 'employees' %}active{% endif %}">
                             Сотрудники
                         </a>
                     </li>
@@ -64,6 +65,7 @@
             </div>
         </div>
     </header>
+    {% endif %}
 
     <main>
         <div class="container">
@@ -73,7 +75,8 @@
 
     <footer class="footer">
         <div class="container footer__container">
-            <p class="footer__copy">© 2026 JIVA · CRM v0.3</p>
+            <p class="footer__copy">© 2026 JIVA · CRM v0.1</p>
+            <p class="footer__meta">UI/UX — простота и ясность</p>
         </div>
     </footer>
 

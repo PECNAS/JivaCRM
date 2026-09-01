@@ -357,3 +357,32 @@
     font-size: 1.3rem;
   }
 }
+
+/* Добавьте в конец файла index.css */
+
+.card--clickable {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.2s, box-shadow 0.2s;
+}
+
+.card--clickable:hover {
+    transform: translateY(-4px);
+    border-color: #f0a86855;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.card--clickable .card__link {
+    color: #f0a868;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+    border-bottom: 1px solid transparent;
+    display: inline-block;
+}
+
+.card--clickable:hover .card__link {
+    color: #ffbe7a;
+    border-bottom-color: #f0a868;
+}

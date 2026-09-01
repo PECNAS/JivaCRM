@@ -121,9 +121,9 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('request', 'Запрос'),
         ('confirmed', 'Подтверждено'),
-        ('in_progress', 'В работе'),
+        # ('in_progress', 'В работе'),
         ('completed', 'Выполнено'),
-        ('paid', 'Оплачено'),
+        # ('paid', 'Оплачено'),
     ]
 
     PAYMENT_CHOICES = [
