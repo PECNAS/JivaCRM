@@ -3,13 +3,25 @@ from django.views import View
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
+from ..models import Employee
 
 
 class IndexView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             return redirect("login")
-        return render(request, "index.html")
+        
+        try:
+            employee = request.user.employee_profile
+        except:
+            messages.error(request, 'Профиль сотрудника не найден')
+            return redirect('logout')
+        
+        # Получаем статистику в зависимости от роли
+        context = {
+            'employee': employee,
+        }
+        return render(request, "index.html", context)
 
     def post(self, request):
         return HttpResponse("POST request successfully!")

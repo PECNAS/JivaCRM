@@ -3,6 +3,7 @@ from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Q
 from django.core.paginator import Paginator
+from django.contrib import messages
 from ..models import Client, Agency, Order, Employee, Role
 
 
@@ -10,6 +11,14 @@ class ClientsView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             return redirect("login")
+        
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_clients():
+                messages.error(request, 'У вас недостаточно прав для просмотра клиентов')
+                return redirect('index')
+        except:
+            return redirect('logout')
         
         clients = Client.objects.annotate(
             orders_count=Count('orders')
@@ -47,6 +56,13 @@ class ClientsView(View):
             return JsonResponse({'error': 'Не авторизован'}, status=401)
         
         try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_clients():
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+        
+        try:
             full_name = request.POST.get('full_name', '').strip()
             phone = request.POST.get('phone', '').strip()
             client_type = request.POST.get('client_type', 'organizer')
@@ -73,13 +89,12 @@ class ClientsView(View):
                 agency = get_object_or_404(Agency, id=agency_id)
             
             try:
-                employee = Employee.objects.get(user=request.user)
+                employee_obj = Employee.objects.get(user=request.user)
             except Employee.DoesNotExist:
-                default_role, _ = Role.objects.get_or_create(name='Менеджер')
-                employee = Employee.objects.create(
+                employee_obj = Employee.objects.create(
                     user=request.user,
                     full_name=request.user.get_full_name() or request.user.username,
-                    role=default_role,
+                    role='manager',
                     is_active=True
                 )
             
@@ -92,7 +107,7 @@ class ClientsView(View):
                 email=email,
                 city=city,
                 rating=rating,
-                created_by=employee
+                created_by=employee_obj
             )
             
             return JsonResponse({
@@ -120,6 +135,13 @@ class ClientDetailView(View):
     def get(self, request, client_id):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
+        
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_clients():
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
         
         try:
             client = Client.objects.annotate(
@@ -167,6 +189,13 @@ class ClientUpdateView(View):
     def post(self, request, client_id):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
+        
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_clients():
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
         
         try:
             client = get_object_or_404(Client, id=client_id)
@@ -233,6 +262,13 @@ class ClientListView(View):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
         
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_clients():
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+        
         clients = Client.objects.annotate(
             orders_count=Count('orders')
         ).select_related('agency').order_by('full_name')
@@ -275,6 +311,13 @@ class AgencyCreateView(View):
     def post(self, request):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
+        
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_clients():
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
         
         try:
             name = request.POST.get('name', '').strip()

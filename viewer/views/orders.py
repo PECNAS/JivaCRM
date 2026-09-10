@@ -3,6 +3,7 @@ from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.contrib import messages
 from ..models import Order, Client, Employee
 
 
@@ -10,6 +11,14 @@ class OrdersView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             return redirect("login")
+        
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer']:
+                messages.error(request, 'У вас недостаточно прав для просмотра заказов')
+                return redirect('index')
+        except:
+            return redirect('logout')
         
         orders = Order.objects.select_related('client', 'manager__user', 'story_manager__user').order_by('-date', '-created_at')
         
@@ -40,6 +49,13 @@ class OrdersView(View):
     def post(self, request):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
+        
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_orders():
+                return JsonResponse({'error': 'У вас недостаточно прав для создания заказов'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
         
         try:
             client_id = request.POST.get('client_id')
@@ -127,6 +143,13 @@ class OrderDetailView(View):
             return JsonResponse({'error': 'Не авторизован'}, status=401)
         
         try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer']:
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+        
+        try:
             order = Order.objects.select_related('client', 'manager__user', 'story_manager__user').get(id=order_id)
             
             return JsonResponse({
@@ -168,6 +191,13 @@ class OrderUpdateView(View):
     def post(self, request, order_id):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
+        
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_orders():
+                return JsonResponse({'error': 'У вас недостаточно прав для редактирования заказов'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
         
         try:
             order = get_object_or_404(Order, id=order_id)
@@ -261,6 +291,13 @@ class OrderListView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
+        
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer']:
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
         
         orders = Order.objects.select_related('client', 'manager__user').order_by('-date', '-created_at')
         

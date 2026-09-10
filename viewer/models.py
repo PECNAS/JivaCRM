@@ -40,9 +40,17 @@ class Skill(models.Model):
 
 
 class Employee(models.Model):
+    USER_ROLES = [
+        ('senior_admin', 'Старший администратор'),
+        ('admin', 'Администратор'),
+        ('manager', 'Менеджер'),
+        ('trainer', 'Тренер'),
+        ('artist', 'Артист'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='employee_profile')
     full_name = models.CharField('ФИО', max_length=200)
-    role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name='employees', verbose_name='Должность')
+    role = models.CharField('Роль', max_length=20, choices=USER_ROLES, default='artist')
     telegram_username = models.CharField('Юзернейм в телеграм', max_length=100, blank=True)
     phone = models.CharField('Номер телефона', max_length=20, blank=True)
     skills = models.ManyToManyField(Skill, related_name='employees', verbose_name='Навыки', blank=True)
@@ -82,6 +90,32 @@ class Employee(models.Model):
     def last_login(self):
         return self.user.last_login
 
+    def has_role(self, role_names):
+        if isinstance(role_names, str):
+            role_names = [role_names]
+        return self.role in role_names
+
+    def can_view_admin(self):
+        return self.role in ['senior_admin', 'admin']
+
+    def can_manage_employees(self):
+        return self.role in ['senior_admin', 'admin']
+
+    def can_manage_clients(self):
+        return self.role in ['senior_admin', 'admin', 'manager']
+
+    def can_manage_orders(self):
+        return self.role in ['senior_admin', 'admin', 'manager']
+
+    def can_view_schedule(self):
+        return self.role in ['senior_admin', 'admin', 'manager', 'trainer', 'artist']
+
+    def can_create_trainings(self):
+        return self.role in ['senior_admin', 'admin', 'trainer']
+
+    def can_manage_services(self):
+        return self.role in ['senior_admin', 'admin', 'manager']
+
 
 class Client(models.Model):
     CLIENT_TYPE_CHOICES = [
@@ -117,13 +151,49 @@ class Client(models.Model):
         return self.full_name
 
 
+class Service(models.Model):
+    SERVICE_TYPES = [
+        ('category', 'Каталог'),
+        ('service', 'Услуга'),
+    ]
+
+    name = models.CharField('Название', max_length=200)
+    type = models.CharField('Тип', max_length=10, choices=SERVICE_TYPES, default='category')
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', verbose_name='Родительский каталог')
+    description = models.TextField('Описание', blank=True)
+    price = models.DecimalField('Цена', max_digits=10, decimal_places=2, null=True, blank=True)
+    duration = models.CharField('Длительность', max_length=50, blank=True)
+    order = models.PositiveIntegerField('Порядок', default=0)
+    is_active = models.BooleanField('Активен', default=True)
+    created_by = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='created_services', verbose_name='Создан сотрудником')
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Услуга'
+        verbose_name_plural = 'Услуги'
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+    def get_ancestors(self):
+        ancestors = []
+        current = self.parent
+        while current:
+            ancestors.append(current)
+            current = current.parent
+        return reversed(ancestors)
+
+    def get_full_path(self):
+        return ' / '.join([a.name for a in self.get_ancestors()] + [self.name])
+
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('request', 'Запрос'),
-        ('confirmed', 'Подтверждено'),
-        # ('in_progress', 'В работе'),
-        ('completed', 'Выполнено'),
-        # ('paid', 'Оплачено'),
+        ('confirmed', 'Подтвержденный'),
+        ('completed', 'Выполненный'),
     ]
 
     PAYMENT_CHOICES = [

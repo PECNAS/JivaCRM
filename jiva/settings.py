@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from pathlib import Path
 import os
 import mimetypes
+from dotenv import load_dotenv
+
+load_dotenv()
 
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/javscript", ".js", True)
@@ -55,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'viewer.middleware.RoleAccessMiddleware',
 ]
 
 ROOT_URLCONF = 'jiva.urls'

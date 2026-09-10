@@ -1,86 +1,91 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
-    <title>JIVA CRM · {% block title %}Главная{% endblock %}</title>
-    {% load static %}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
-    <link rel="icon" href="{% static 'images/logo.png' %}">
-    <link rel="stylesheet" href="{% static 'css/base.css' %}">
-    {% block css %}{% endblock %}
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+	<title>JIVA CRM · {% block title %}Главная{% endblock %}</title>
+	{% load static %}
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+	<link rel="icon" href="{% static 'images/logo.png' %}">
+	<link rel="stylesheet" href="{% static 'css/base.css' %}">
+	{% block css %}{% endblock %}
 </head>
 <body>
-    {% if request.resolver_match.url_name != 'login' %}
-    <header class="navbar">
-        <div class="container navbar__container">
-            <a href="{% url 'index' %}" class="navbar__brand">
-                <span class="brand__icon"></span>
-                <span class="brand__name">JIVA·CRM</span>
-            </a>
-            <nav class="navbar__menu" id="mainMenu">
-                <ul class="menu__list">
-                    <li class="menu__item">
-                        <a href="{% url 'index' %}" class="menu__link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
-                            Главная
-                        </a>
-                    </li>
-                    <li class="menu__item">
-                        <a href="{% url 'schedule' %}" class="menu__link {% if request.resolver_match.url_name == 'schedule' %}active{% endif %}">
-                            Расписание
-                        </a>
-                    </li>
-                    <li class="menu__item">
-                        <a href="{% url 'orders' %}" class="menu__link {% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
-                            Заказы
-                        </a>
-                    </li>
-                    <li class="menu__item">
-                        <a href="{% url 'clients' %}" class="menu__link {% if request.resolver_match.url_name == 'clients' %}active{% endif %}">
-                            Клиенты
-                        </a>
-                    </li>
-                    <li class="menu__item">
-                        <a href="{% url 'employees' %}" class="menu__link {% if request.resolver_match.url_name == 'employees' %}active{% endif %}">
-                            Сотрудники
-                        </a>
-                    </li>
-                    <li class="menu__item">
-                        <a href="#" class="menu__link"
-                        >Отчёты
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-            <div class="navbar__actions">
-                <span class="user-badge">{{ user.full_name|default:user.username }}</span>
-                <a href="{% url 'logout' %}" class="logout-btn">Выйти</a>
-                <button class="menu-toggle" id="menuToggle" aria-label="Открыть меню">
-                    <span class="toggle-line"></span>
-                    <span class="toggle-line"></span>
-                    <span class="toggle-line"></span>
-                </button>
-            </div>
-        </div>
-    </header>
-    {% endif %}
+	{% if request.resolver_match.url_name != 'login' %}
+	<header class="navbar">
+		<div class="container navbar__container">
+			<a href="{% url 'index' %}" class="navbar__brand">
+				<span class="brand__icon"></span>
+				<span class="brand__name">JIVA·CRM</span>
+			</a>
+			<nav class="navbar__menu" id="mainMenu">
+				<ul class="menu__list">
+					<li class="menu__item">
+					    <a href="{% url 'index' %}" class="menu__link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+					        Главная
+					    </a>
+					</li>
+					<li class="menu__item">
+					    <a href="{% url 'schedule' %}" class="menu__link {% if request.resolver_match.url_name == 'schedule' %}active{% endif %}">
+					        Расписание
+					    </a>
+					</li>
+					<li class="menu__item">
+					    <a href="{% url 'orders' %}" class="menu__link {% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
+					        Заказы
+					    </a>
+					</li>
+					<li class="menu__item">
+					    <a href="{% url 'clients' %}" class="menu__link {% if request.resolver_match.url_name == 'clients' %}active{% endif %}">
+					        Клиенты
+					    </a>
+					</li>
+					<li class="menu__item">
+					    <a href="{% url 'employees' %}" class="menu__link {% if request.resolver_match.url_name == 'employees' %}active{% endif %}">
+					        Сотрудники
+					    </a>
+					</li>
+					<li class="menu__item">
+					    <a href="{% url 'services' %}" class="menu__link {% if request.resolver_match.url_name == 'services' %}active{% endif %}">
+					        Услуги
+					    </a>
+					</li>
+					<li class="menu__item">
+						<a href="#" class="menu__link"
+						>Отчёты
+						</a>
+					</li>
+				</ul>
+			</nav>
+			<div class="navbar__actions">
+				<span class="user-badge">{{ user.full_name|default:user.username }}</span>
+				<a href="{% url 'logout' %}" class="logout-btn">Выйти</a>
+				<button class="menu-toggle" id="menuToggle" aria-label="Открыть меню">
+					<span class="toggle-line"></span>
+					<span class="toggle-line"></span>
+					<span class="toggle-line"></span>
+				</button>
+			</div>
+		</div>
+	</header>
+	{% endif %}
 
-    <main>
-        <div class="container">
-            {% block content %}{% endblock %}
-        </div>
-    </main>
+	<main>
+		<div class="container">
+			{% block content %}{% endblock %}
+		</div>
+	</main>
 
-    <footer class="footer">
-        <div class="container footer__container">
-            <p class="footer__copy">© 2026 JIVA · CRM v0.1</p>
-            <p class="footer__meta">UI/UX — простота и ясность</p>
-        </div>
-    </footer>
+	<footer class="footer">
+		<div class="container footer__container">
+			<p class="footer__copy">© 2026 JIVA · CRM v0.1</p>
+			<p class="footer__meta">UI/UX — простота и ясность</p>
+		</div>
+	</footer>
 
-    <script src="{% static 'js/base.js' %}"></script>
-    {% block js %}{% endblock %}
+	<script src="{% static 'js/base.js' %}"></script>
+	{% block js %}{% endblock %}
 </body>
 </html>
