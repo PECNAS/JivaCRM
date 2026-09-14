@@ -5,7 +5,6 @@
 
 {% block css %}
 <link rel="stylesheet" href="{% static 'css/services.css' %}">
-{{ block.super }}
 {% endblock %}
 
 {% block content %}
@@ -23,21 +22,20 @@
             </button>
         </div>
         <div class="tree-body" id="treeContainer">
-            <ul class="tree-root" id="treeRoot">
-                <!-- Дерево будет строиться через JavaScript -->
-            </ul>
+            <ul class="tree-root" id="treeRoot"></ul>
         </div>
     </div>
     <div class="services-content">
         <div class="content-header">
             <h3 id="contentTitle">Выберите элемент</h3>
             <div class="content-actions">
-                <button class="btn btn-sm btn-outline" id="editServiceBtn" style="display:none;">
+                <button class="btn btn-sm btn-outline" id="saveServiceBtn" style="display:none;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 20h9"/>
-                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
                     </svg>
-                    Редактировать
+                    Сохранить услугу
                 </button>
                 <button class="btn btn-sm btn-danger" id="deleteServiceBtn" style="display:none;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -56,7 +54,6 @@
     </div>
 </div>
 
-<!-- Контекстное меню -->
 <div class="context-menu" id="contextMenu" style="display:none;">
     <div class="context-menu-item" data-action="add-category">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -75,13 +72,13 @@
         Создать услугу
     </div>
     <div class="context-menu-divider"></div>
-    <!-- <div class="context-menu-item" data-action="rename">
+    <div class="context-menu-item" data-action="rename">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 20h9"/>
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
         </svg>
         Переименовать
-    </div> -->
+    </div>
     <div class="context-menu-divider"></div>
     <div class="context-menu-item context-menu-danger" data-action="delete">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -92,57 +89,8 @@
     </div>
 </div>
 
-<!-- Модальное окно редактирования -->
-<div class="modal-overlay" id="editServiceModal">
-    <div class="modal modal--service">
-        <div class="modal__header">
-            <h2 class="modal__title" id="editModalTitle">Редактирование</h2>
-            <button class="modal__close" id="editModalCloseBtn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal__body">
-            <form id="editServiceForm" class="edit-service-form">
-                <div class="form-group">
-                    <label class="form-label" for="editServiceName">Название *</label>
-                    <input type="text" class="form-input" id="editServiceName" required>
-                </div>
-                <!-- Поля для услуги (скрыты по умолчанию) -->
-                <div id="serviceFields" style="display:none;">
-                    <div class="form-group">
-                        <label class="form-label" for="editServiceDescription">Описание</label>
-                        <textarea class="form-textarea" id="editServiceDescription" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editServicePrice">Цена</label>
-                        <input type="number" class="form-input" id="editServicePrice" step="0.01" placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editServiceDuration">Длительность</label>
-                        <input type="text" class="form-input" id="editServiceDuration" placeholder="Например: 1 час, 30 мин">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editServiceActive">Активен</label>
-                        <input type="checkbox" class="form-checkbox" id="editServiceActive" checked>
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" id="editModalCancelBtn">Отмена</button>
-                    <button type="submit" class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                            <polyline points="17 21 17 13 7 13 7 21"/>
-                            <polyline points="7 3 7 8 15 8"/>
-                        </svg>
-                        Сохранить
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+<div class="loading-overlay" id="loadingOverlay" style="display:none;">
+    <div class="loading-spinner"></div>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>

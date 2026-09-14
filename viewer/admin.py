@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Agency, Role, Skill, Employee, Client, Order, ArtistSchedule
+from .models import (
+    Agency, Role, Skill, Employee, Client, Order,
+    OrderEstimate, OrderEmployee, Service, ArtistSchedule,
+    City, CityGroup,
+)
 
 
 @admin.register(Agency)
@@ -20,6 +24,20 @@ class SkillAdmin(admin.ModelAdmin):
     search_fields = ['name']
 
 
+@admin.register(CityGroup)
+class CityGroupAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'salary_bonus']
+    search_fields = ['name']
+
+
+@admin.register(City)
+class CityAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'group']
+    list_filter = ['group']
+    search_fields = ['name']
+    fields = ['name', 'group', 'transport_costs']
+
+
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ['id', 'full_name', 'user', 'role', 'phone', 'is_active']
@@ -27,24 +45,6 @@ class EmployeeAdmin(admin.ModelAdmin):
     search_fields = ['full_name', 'user__username', 'phone', 'telegram_username']
     raw_id_fields = ['user']
     readonly_fields = ['created_at', 'updated_at']
-    fieldsets = (
-        (None, {
-            'fields': ('user', 'full_name', 'role', 'phone', 'telegram_username', 'skills')
-        }),
-        ('Статус', {
-            'fields': ('is_active',)
-        }),
-        ('Важные даты', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': ('user', 'full_name', 'role', 'phone', 'telegram_username', 'is_active'),
-        }),
-    )
 
 
 @admin.register(Client)
@@ -55,36 +55,43 @@ class ClientAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
 
 
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'type', 'parent', 'payment_method', 'is_active']
+    list_filter = ['type', 'is_active', 'payment_method']
+    search_fields = ['name', 'description']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+class OrderEstimateInline(admin.TabularInline):
+    model = OrderEstimate
+    extra = 0
+
+
+class OrderEmployeeInline(admin.TabularInline):
+    model = OrderEmployee
+    extra = 0
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['id', 'client', 'address', 'date', 'status', 'cost', 'manager']
-    list_filter = ['status', 'date', 'manager', 'client']
-    search_fields = ['address', 'client__full_name', 'manager__full_name']
+    list_display = ['id', 'name', 'client', 'city', 'date', 'status', 'cost', 'manager']
+    list_filter = ['status', 'date', 'manager', 'client', 'city']
+    search_fields = ['name', 'address', 'client__full_name', 'manager__full_name']
     readonly_fields = ['created_at', 'updated_at']
-    fieldsets = (
-        ('Основная информация', {
-            'fields': ('client', 'date', 'address', 'status', 'duration')
-        }),
-        ('Контакты', {
-            'fields': ('contact_phone', 'contact_telegram')
-        }),
-        ('Детали мероприятия', {
-            'fields': ('setup_time', 'dressing_room_comment', 'meal_comment', 'concept')
-        }),
-        ('Технические параметры', {
-            'fields': ('tech_lamps', 'tech_laser', 'tech_hazer', 'tech_grid', 'tech_projection', 'tech_comment')
-        }),
-        ('Комментарии', {
-            'fields': ('venue_comment', 'props_comment')
-        }),
-        ('Финансы и управление', {
-            'fields': ('cost', 'payment_method', 'manager')
-        }),
-        ('Системные поля', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
+    inlines = [OrderEstimateInline, OrderEmployeeInline]
+
+
+@admin.register(OrderEstimate)
+class OrderEstimateAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'service_name', 'coefficient', 'price', 'total']
+    search_fields = ['service_name', 'order__name']
+
+
+@admin.register(OrderEmployee)
+class OrderEmployeeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'employee_name', 'employee_role', 'payment']
+    search_fields = ['employee_name', 'order__name']
 
 
 @admin.register(ArtistSchedule)

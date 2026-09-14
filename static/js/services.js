@@ -1,30 +1,20 @@
 (function() {
-    let selectedNode = null;
+    let selectedNodeId = null;
+    let selectedNodeType = null;
     let contextNode = null;
-    let editingServiceId = null;
-    let currentServiceType = null;
-    let currentParentId = null;
+    let currentServiceData = null;
+    let currentActiveTab = 'info';
+    let debounceTimer = null;
+    let isSaving = false;
 
     const treeContainer = document.getElementById('treeRoot');
     const contentBody = document.getElementById('contentBody');
     const contentTitle = document.getElementById('contentTitle');
-    const editServiceBtn = document.getElementById('editServiceBtn');
+    const saveServiceBtn = document.getElementById('saveServiceBtn');
     const deleteServiceBtn = document.getElementById('deleteServiceBtn');
     const addRootCategoryBtn = document.getElementById('addRootCategoryBtn');
-
     const contextMenu = document.getElementById('contextMenu');
-    const editModal = document.getElementById('editServiceModal');
-    const editModalCloseBtn = document.getElementById('editModalCloseBtn');
-    const editModalCancelBtn = document.getElementById('editModalCancelBtn');
-    const editForm = document.getElementById('editServiceForm');
-    const editServiceName = document.getElementById('editServiceName');
-    const editServiceDescription = document.getElementById('editServiceDescription');
-    const editServicePrice = document.getElementById('editServicePrice');
-    const editServiceDuration = document.getElementById('editServiceDuration');
-    const editServiceActive = document.getElementById('editServiceActive');
-    const serviceFields = document.getElementById('serviceFields');
-
-    let serviceData = {};
+    const loadingOverlay = document.getElementById('loadingOverlay');
 
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
@@ -33,131 +23,119 @@
 
     function showToast(message) {
         const container = document.getElementById('toastContainer');
-        if (!container) return;
         const toast = document.createElement('div');
         toast.className = 'toast';
         toast.textContent = message;
         container.appendChild(toast);
-
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(10px)';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.remove();
-                }
-            }, 300);
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 300);
         }, 2000);
+    }
+
+    function escapeHtml(text) {
+        if (!text && text !== 0) return '';
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+    }
+
+    function formatPrice(value) {
+        const num = parseFloat(value) || 0;
+        return num.toFixed(2).replace('.', ',') + ' ₽';
+    }
+
+    function showLoading() {
+        loadingOverlay.style.display = 'flex';
+    }
+
+    function hideLoading() {
+        loadingOverlay.style.display = 'none';
+    }
+
+    function getScrollableContainers() {
+        const containers = [];
+        const treeBody = document.querySelector('.tree-body');
+        if (treeBody) containers.push({ el: treeBody, scroll: treeBody.scrollTop });
+        const activeTab = contentBody.querySelector('.service-tab-content.active');
+        if (activeTab) containers.push({ el: activeTab, scroll: activeTab.scrollTop });
+        const contentBodyEl = contentBody;
+        if (contentBodyEl) containers.push({ el: contentBodyEl, scroll: contentBodyEl.scrollTop });
+        return containers;
+    }
+
+    function restoreScroll(containers) {
+        containers.forEach(item => {
+            if (item.el) item.el.scrollTop = item.scroll;
+        });
     }
 
     function fetchTree() {
         fetch('/services/tree/')
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
-                if (data.error) {
-                    showToast(data.error);
-                    return;
-                }
-                serviceData = data;
+                if (data.error) { showToast(data.error); return; }
                 renderTree(data.tree);
             })
-            .catch(error => {
-                showToast('Ошибка загрузки дерева услуг');
-                console.error(error);
-            });
+            .catch(err => { showToast('Ошибка загрузки дерева'); console.error(err); });
     }
 
     function renderTree(treeData) {
         if (!treeData || treeData.length === 0) {
-            treeContainer.innerHTML = `
-                <div class="empty-state" style="padding: 1rem; text-align: center;">
-                    <p style="color: #7a7267; font-size: 0.85rem;">Нет услуг</p>
-                </div>
-            `;
+            treeContainer.innerHTML = '<div class="empty-state" style="padding:1rem;text-align:center;"><p style="color:#7a7267;font-size:0.85rem;">Нет услуг</p></div>';
             return;
         }
-
         treeContainer.innerHTML = buildTreeHtml(treeData);
         attachTreeEvents();
     }
 
-    function buildTreeHtml(nodes, isChild = false) {
+    function buildTreeHtml(nodes) {
         let html = '';
-        if (!isChild) {
-            html = '<ul class="tree-root">';
-        } else {
-            html = '<ul class="tree-children">';
-        }
-
         nodes.forEach(node => {
             const hasChildren = node.children && node.children.length > 0;
             const isCategory = node.type === 'category';
             const iconName = isCategory ? 'category' : 'service';
             const label = isCategory ? 'каталог' : 'услуга';
 
-            html += `<li data-id="${node.id}" data-type="${node.type}" data-parent-id="${node.parent_id || ''}">`;
+            html += `<li data-id="${node.id}" data-type="${node.type}">`;
             html += `<div class="tree-item" data-id="${node.id}">`;
-            
-            if (hasChildren) {
-                html += `<span class="toggle-icon expanded">▶</span>`;
-            } else {
-                html += `<span class="toggle-icon" style="opacity:0;">▶</span>`;
-            }
-            
+            html += hasChildren
+                ? `<span class="toggle-icon expanded">▶</span>`
+                : `<span class="toggle-icon" style="opacity:0;">▶</span>`;
             html += `<svg class="item-icon ${iconName}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`;
-            if (isCategory) {
-                html += `<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>`;
-            } else {
-                html += `<circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/>`;
-            }
+            html += isCategory
+                ? `<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>`
+                : `<circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/>`;
             html += `</svg>`;
-            
             html += `<span class="item-name">${escapeHtml(node.name)}</span>`;
             html += `<span class="item-badge">${label}</span>`;
             html += `</div>`;
-
-            if (hasChildren) {
-                html += buildTreeHtml(node.children, true);
-            }
-
+            if (hasChildren) html += buildTreeHtml(node.children);
             html += `</li>`;
         });
-
-        html += '</ul>';
-        return html;
-    }
-
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return `<ul class="tree-root">${html}</ul>`;
     }
 
     function attachTreeEvents() {
-        const treeItems = document.querySelectorAll('.tree-item');
-        treeItems.forEach(item => {
+        document.querySelectorAll('.tree-item').forEach(item => {
             item.addEventListener('click', function(e) {
                 e.stopPropagation();
-                const id = parseInt(this.dataset.id);
-                selectNode(id, this);
+                selectNode(parseInt(this.dataset.id), this);
             });
-
             item.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                const id = parseInt(this.dataset.id);
-                contextNode = id;
-                showContextMenu(e.clientX, e.clientY, id);
+                contextNode = parseInt(this.dataset.id);
+                showContextMenu(e.clientX, e.clientY);
             });
         });
 
-        const toggleIcons = document.querySelectorAll('.toggle-icon');
-        toggleIcons.forEach(icon => {
+        document.querySelectorAll('.toggle-icon').forEach(icon => {
             icon.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const li = this.closest('li');
-                const children = li.querySelector('.tree-children');
+                const children = li.querySelector('ul');
                 if (children) {
                     children.classList.toggle('collapsed');
                     this.classList.toggle('expanded');
@@ -165,7 +143,6 @@
             });
         });
 
-        // Закрываем контекстное меню при клике вне
         document.addEventListener('click', function(e) {
             if (contextMenu && !contextMenu.contains(e.target)) {
                 contextMenu.style.display = 'none';
@@ -173,353 +150,534 @@
         });
     }
 
-    function selectNode(id, element) {
-        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('selected'));
-        if (element) {
-            element.classList.add('selected');
-        }
-
-        selectedNode = id;
-        editingServiceId = id;
-        fetch(`/services/${id}/`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showToast(data.error);
-                    return;
-                }
-                currentServiceType = data.type;
-                currentParentId = data.parent_id || null;
-                displayNodeDetails(data);
-            })
-            .catch(error => {
-                showToast('Ошибка загрузки данных');
-                console.error(error);
-            });
+    function showContextMenu(x, y) {
+        contextMenu.style.display = 'block';
+        contextMenu.style.left = x + 'px';
+        contextMenu.style.top = y + 'px';
     }
 
-    function displayNodeDetails(data) {
+    function selectNode(id, element) {
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('selected'));
+        if (element) element.classList.add('selected');
+
+        selectedNodeId = id;
+        showLoading();
+        const scrollPositions = getScrollableContainers();
+
+        fetch(`/services/${id}/`)
+            .then(r => r.json())
+            .then(data => {
+                hideLoading();
+                if (data.error) { showToast(data.error); return; }
+                currentServiceData = data;
+                selectedNodeType = data.type;
+                renderServiceCard(data);
+                restoreScroll(scrollPositions);
+            })
+            .catch(err => { hideLoading(); showToast('Ошибка загрузки'); console.error(err); });
+    }
+
+    function renderServiceCard(data) {
         contentTitle.textContent = data.name;
-        
-        let pathHtml = '';
-        if (data.parent_name) {
-            pathHtml = `<div class="path">${escapeHtml(data.parent_name)} → ${escapeHtml(data.name)}</div>`;
+        saveServiceBtn.style.display = 'inline-flex';
+        deleteServiceBtn.style.display = 'inline-flex';
+
+        if (data.type === 'category') {
+            renderCategoryCard(data);
+        } else {
+            renderServiceTabs(data);
         }
+    }
 
-        const isCategory = data.type === 'category';
-        const statusClass = data.data.is_active ? 'active' : 'inactive';
-        const statusText = data.data.is_active ? 'Активен' : 'Неактивен';
-
-        let detailsHtml = `
-            ${pathHtml}
-            <div class="service-detail">
-                <div class="detail-row">
-                    <span class="detail-label">Тип</span>
-                    <span class="detail-value">${isCategory ? 'Каталог' : 'Услуга'}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Название</span>
-                    <span class="detail-value">${escapeHtml(data.name)}</span>
-                </div>
-        `;
-
-        if (!isCategory) {
-            detailsHtml += `
-                <div class="detail-row">
-                    <span class="detail-label">Описание</span>
-                    <span class="detail-value">${escapeHtml(data.data.description || '—')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Цена</span>
-                    <span class="detail-value">${data.data.price ? data.data.price + ' ₽' : '—'}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Длительность</span>
-                    <span class="detail-value">${escapeHtml(data.data.duration || '—')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Статус</span>
-                    <span class="detail-value ${statusClass}">${statusText}</span>
-                </div>
-            `;
-        }
-
-        detailsHtml += `
-                <div class="detail-row">
-                    <span class="detail-label">Создан</span>
-                    <span class="detail-value">${data.created_at}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Обновлен</span>
-                    <span class="detail-value">${data.updated_at}</span>
+    function renderCategoryCard(data) {
+        contentBody.innerHTML = `
+            <div class="service-tab-content active" style="display:block;">
+                <div class="field-row">
+                    <div class="field-label">Название</div>
+                    <div class="field-value" data-field="name" data-type="text">${escapeHtml(data.name)}</div>
                 </div>
             </div>
         `;
-
-        contentBody.innerHTML = detailsHtml;
-        editingServiceId = data.id;
-        currentServiceType = data.type;
-        currentParentId = data.parent_id || null;
-
-        editServiceBtn.style.display = 'inline-flex';
-        deleteServiceBtn.style.display = 'inline-flex';
+        attachFieldEvents();
     }
 
-    function showContextMenu(x, y, id) {
-        if (contextMenu) {
-            contextMenu.style.display = 'block';
-            contextMenu.style.left = x + 'px';
-            contextMenu.style.top = y + 'px';
-            contextNode = id;
+    function renderServiceTabs(data) {
+        contentBody.innerHTML = `
+            <div class="service-tabs">
+                <button class="service-tab-btn ${currentActiveTab === 'info' ? 'active' : ''}" data-tab="info">Информация</button>
+                <button class="service-tab-btn ${currentActiveTab === 'artists' ? 'active' : ''}" data-tab="artists">Артисты</button>
+                <button class="service-tab-btn ${currentActiveTab === 'technicians' ? 'active' : ''}" data-tab="technicians">Техника</button>
+                <button class="service-tab-btn ${currentActiveTab === 'transport' ? 'active' : ''}" data-tab="transport">Транспорт</button>
+                <button class="service-tab-btn ${currentActiveTab === 'calc' ? 'active' : ''}" data-tab="calc">Расчёт</button>
+            </div>
+            <div class="service-tab-content ${currentActiveTab === 'info' ? 'active' : ''}" data-content="info"></div>
+            <div class="service-tab-content ${currentActiveTab === 'artists' ? 'active' : ''}" data-content="artists"></div>
+            <div class="service-tab-content ${currentActiveTab === 'technicians' ? 'active' : ''}" data-content="technicians"></div>
+            <div class="service-tab-content ${currentActiveTab === 'transport' ? 'active' : ''}" data-content="transport"></div>
+            <div class="service-tab-content service-tab-content--calc ${currentActiveTab === 'calc' ? 'active' : ''}" data-content="calc"></div>
+        `;
+
+        contentBody.querySelectorAll('.service-tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                currentActiveTab = this.dataset.tab;
+                contentBody.querySelectorAll('.service-tab-btn').forEach(b => b.classList.remove('active'));
+                contentBody.querySelectorAll('.service-tab-content').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                const target = contentBody.querySelector(`[data-content="${currentActiveTab}"]`);
+                if (target) target.classList.add('active');
+            });
+        });
+
+        renderInfoTab(data);
+        renderArtistsTab(data);
+        renderTechniciansTab(data);
+        renderTransportTab(data);
+        renderCalcTab(data);
+
+        attachFieldEvents();
+    }
+
+    function renderInfoTab(data) {
+        const tab = contentBody.querySelector('[data-content="info"]');
+        tab.innerHTML = `
+            <div class="field-row">
+                <div class="field-label">Название</div>
+                <div class="field-value" data-field="name" data-type="text">${escapeHtml(data.name)}</div>
+            </div>
+            <div class="field-row field-row--multiline">
+                <div class="field-label">Описание</div>
+                <div class="field-value ${data.description ? '' : 'field-value--empty'}" data-field="description" data-type="textarea">${escapeHtml(data.description || 'Добавить описание')}</div>
+            </div>
+            <div class="field-row">
+                <div class="field-label">Длительность</div>
+                <div class="field-value ${data.duration ? '' : 'field-value--empty'}" data-field="duration" data-type="text">${escapeHtml(data.duration || 'Указать длительность')}</div>
+            </div>
+            <div class="field-row">
+                <div class="field-label">Медиаконтент</div>
+                <div class="field-value ${data.media_url ? '' : 'field-value--empty'}" data-field="media_url" data-type="text">${data.media_url ? `<a href="${escapeHtml(data.media_url)}" target="_blank" rel="noopener">${escapeHtml(data.media_url)}</a>` : 'Добавить ссылку'}</div>
+            </div>
+        `;
+    }
+
+    function renderArtistsTab(data) {
+        const tab = contentBody.querySelector('[data-content="artists"]');
+        tab.innerHTML = `
+            <div class="field-row">
+                <div class="field-label">Минимум артистов</div>
+                <div class="field-value" data-field="artist_min" data-type="number">${data.artist_min}</div>
+            </div>
+            <div class="field-row">
+                <div class="field-label">Максимум артистов</div>
+                <div class="field-value" data-field="artist_max" data-type="number">${data.artist_max}</div>
+            </div>
+            <div class="field-row">
+                <div class="field-label">Ставка за артиста</div>
+                <div class="field-value" data-field="artist_rate" data-type="number">${formatPrice(data.artist_rate)}</div>
+            </div>
+        `;
+    }
+
+    function renderTechniciansTab(data) {
+        const tab = contentBody.querySelector('[data-content="technicians"]');
+        tab.innerHTML = `
+            <div class="field-row">
+                <div class="field-label">Минимум техников</div>
+                <div class="field-value" data-field="technician_min" data-type="number">${data.technician_min}</div>
+            </div>
+            <div class="field-row">
+                <div class="field-label">Максимум техников</div>
+                <div class="field-value" data-field="technician_max" data-type="number">${data.technician_max}</div>
+            </div>
+            <div class="field-row">
+                <div class="field-label">Ставка за техника</div>
+                <div class="field-value" data-field="technician_rate" data-type="number">${formatPrice(data.technician_rate)}</div>
+            </div>
+        `;
+    }
+
+    function renderTransportTab(data) {
+        const tab = contentBody.querySelector('[data-content="transport"]');
+        tab.innerHTML = `
+            <div class="field-row">
+                <div class="field-label">Минимум водителей</div>
+                <div class="field-value" data-field="driver_min" data-type="number">${data.driver_min}</div>
+            </div>
+            <div class="field-row">
+                <div class="field-label">Максимум водителей</div>
+                <div class="field-value" data-field="driver_max" data-type="number">${data.driver_max}</div>
+            </div>
+            <div class="field-row">
+                <div class="field-label">Ставка за водителя</div>
+                <div class="field-value" data-field="driver_rate" data-type="number">${formatPrice(data.driver_rate)}</div>
+            </div>
+        `;
+    }
+
+    function renderCalcTab(data) {
+        const tab = contentBody.querySelector('[data-content="calc"]');
+        tab.innerHTML = `
+            <table class="calc-table">
+                <thead>
+                    <tr>
+                        <th>Позиция</th>
+                        <th style="text-align:right;">Стоимость</th>
+                    </tr>
+                </thead>
+                <tbody id="calcTableBody"></tbody>
+            </table>
+            <div class="calc-hint">Кликните на значение, чтобы изменить его вручную</div>
+        `;
+        updateCalcTable();
+    }
+
+    function updateCalcTable() {
+        if (!currentServiceData || selectedNodeType !== 'service') return;
+        const tbody = contentBody.querySelector('#calcTableBody');
+        if (!tbody) return;
+
+        fetch(`/services/${selectedNodeId}/calculate/`)
+            .then(r => r.json())
+            .then(res => {
+                if (res.error) { showToast(res.error); return; }
+                const c = res.calculation;
+                const override = currentServiceData.overridden_total;
+
+                const totalToShow = override !== null && override !== undefined
+                    ? override
+                    : c.total;
+
+                tbody.innerHTML = `
+                    <tr class="calc-editable">
+                        <td class="calc-label">Артисты (${currentServiceData.artist_min} × ${formatPrice(currentServiceData.artist_rate + c.salary_bonus)})</td>
+                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.artist_sum)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Техники (${currentServiceData.technician_min} × ${formatPrice(currentServiceData.technician_rate + c.salary_bonus)})</td>
+                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.technician_sum)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Водители (${currentServiceData.driver_min} × ${formatPrice(currentServiceData.driver_rate + c.salary_bonus)})</td>
+                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.driver_sum)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Дорожные расходы (${c.total_people} чел., ${c.city_name})</td>
+                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.transport)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Амортизация</td>
+                        <td style="text-align:right;"><span class="calc-value" data-field="amortization">${formatPrice(currentServiceData.amortization)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Логист</td>
+                        <td style="text-align:right;"><span class="calc-value" data-field="logist">${formatPrice(currentServiceData.logist)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Лазер</td>
+                        <td style="text-align:right;"><span class="calc-value" data-field="laser">${formatPrice(currentServiceData.laser)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">ЗП менеджера</td>
+                        <td style="text-align:right;"><span class="calc-value" data-field="manager_salary">${formatPrice(currentServiceData.manager_salary)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Запас на непредвиденные</td>
+                        <td style="text-align:right;"><span class="calc-value" data-field="unforeseen">${formatPrice(currentServiceData.unforeseen)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Доп. моржа</td>
+                        <td style="text-align:right;"><span class="calc-value" data-field="extra_margin">${formatPrice(currentServiceData.extra_margin)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Способ оплаты</td>
+                        <td style="text-align:right;"><span class="calc-value" data-field="payment_method">${getPaymentLabel(currentServiceData.payment_method)}</span></td>
+                    </tr>
+                    <tr class="calc-editable">
+                        <td class="calc-label">Подытог</td>
+                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.subtotal)}</span></td>
+                    </tr>
+                    <tr class="calc-editable ${override !== null && override !== undefined ? 'calc-overridden' : ''}">
+                        <td class="calc-label">Итоговая стоимость ${override !== null && override !== undefined ? '(переопределена)' : ''}</td>
+                        <td style="text-align:right;"><span class="calc-value" data-field="overridden_total">${formatPrice(totalToShow)}</span></td>
+                    </tr>
+                `;
+                attachCalcEvents();
+            })
+            .catch(err => { showToast('Ошибка расчёта'); console.error(err); });
+    }
+
+    function getPaymentLabel(pm) {
+        if (pm === 'self') return 'Самозанятость';
+        if (pm === 'ip') return 'ИП';
+        return 'Наличные';
+    }
+
+    function attachCalcEvents() {
+        const tbody = contentBody.querySelector('#calcTableBody');
+        if (!tbody) return;
+        tbody.querySelectorAll('.calc-value[data-field]').forEach(el => {
+            el.addEventListener('click', function() {
+                const field = this.dataset.field;
+                const currentText = this.textContent.trim();
+                const currentValue = parseFloat(currentText.replace(/[^\d.,-]/g, '').replace(',', '.')) || 0;
+
+                if (field === 'payment_method') {
+                    const select = document.createElement('select');
+                    select.className = 'calc-input';
+                    select.innerHTML = `
+                        <option value="cash" ${currentServiceData.payment_method === 'cash' ? 'selected' : ''}>Наличные</option>
+                        <option value="self" ${currentServiceData.payment_method === 'self' ? 'selected' : ''}>Самозанятость</option>
+                        <option value="ip" ${currentServiceData.payment_method === 'ip' ? 'selected' : ''}>ИП</option>
+                    `;
+                    this.replaceWith(select);
+                    select.focus();
+                    const save = () => saveField(field, select.value, 'calc');
+                    select.addEventListener('blur', save);
+                    select.addEventListener('change', save);
+                    return;
+                }
+
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.step = '0.01';
+                input.className = 'calc-input';
+                input.value = currentValue;
+                this.replaceWith(input);
+                input.focus();
+                input.select();
+
+                const save = () => {
+                    saveField(field, input.value, 'calc');
+                };
+                input.addEventListener('blur', save);
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+                    if (e.key === 'Escape') { input.value = currentValue; input.blur(); }
+                });
+            });
+        });
+    }
+
+    function attachFieldEvents() {
+        contentBody.querySelectorAll('.field-value[data-field]').forEach(el => {
+            el.addEventListener('click', function() {
+                if (this.querySelector('input, textarea, select')) return;
+                startEditing(this);
+            });
+        });
+    }
+
+    function startEditing(el) {
+        const field = el.dataset.field;
+        const type = el.dataset.type;
+        const rawValue = currentServiceData[field] !== undefined ? currentServiceData[field] : '';
+
+        let input;
+        if (type === 'textarea') {
+            input = document.createElement('textarea');
+            input.className = 'field-input field-input--textarea';
+            input.value = rawValue;
+        } else if (type === 'number') {
+            input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'field-input field-input--number';
+            input.value = parseFloat(rawValue) || 0;
+            if (field.endsWith('_rate') || ['amortization', 'logist', 'laser', 'manager_salary', 'unforeseen', 'extra_margin'].includes(field)) {
+                input.step = '0.01';
+            } else {
+                input.step = '1';
+            }
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'field-input';
+            input.value = rawValue;
         }
-    }
 
-    function createNode(parentId, type) {
-        const url = '/services/create/';
-        const data = {
-            parent_id: parentId || '',
-            type: type
+        el.textContent = '';
+        el.appendChild(input);
+        input.focus();
+        if (input.select) input.select();
+
+        let cancelled = false;
+
+        const finish = () => {
+            if (cancelled) return;
+            saveField(field, input.value, 'field');
         };
 
-        fetch(url, {
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && type !== 'textarea') { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { cancelled = true; renderServiceCard(currentServiceData); }
+        });
+    }
+
+    function saveField(field, value, mode) {
+        if (isSaving) return;
+        isSaving = true;
+
+        if (field === 'artist_min' || field === 'artist_max' || field === 'technician_min' || field === 'technician_max' || field === 'driver_min' || field === 'driver_max') {
+            value = parseInt(value) || 0;
+        } else if (['artist_rate', 'technician_rate', 'driver_rate', 'amortization', 'logist', 'laser', 'manager_salary', 'unforeseen', 'extra_margin', 'overridden_total'].includes(field)) {
+            value = parseFloat(value) || 0;
+        }
+
+        if (field === 'artist_max' && value < (currentServiceData.artist_min || 0)) {
+            showToast('Максимум не может быть меньше минимума');
+            renderServiceCard(currentServiceData);
+            isSaving = false;
+            return;
+        }
+        if (field === 'technician_max' && value < (currentServiceData.technician_min || 0)) {
+            showToast('Максимум не может быть меньше минимума');
+            renderServiceCard(currentServiceData);
+            isSaving = false;
+            return;
+        }
+        if (field === 'driver_max' && value < (currentServiceData.driver_min || 0)) {
+            showToast('Максимум не может быть меньше минимума');
+            renderServiceCard(currentServiceData);
+            isSaving = false;
+            return;
+        }
+        if (field === 'artist_min' && value > (currentServiceData.artist_max || 0)) {
+            showToast('Минимум не может быть больше максимума');
+            renderServiceCard(currentServiceData);
+            isSaving = false;
+            return;
+        }
+        if (field === 'technician_min' && value > (currentServiceData.technician_max || 0)) {
+            showToast('Минимум не может быть больше максимума');
+            renderServiceCard(currentServiceData);
+            isSaving = false;
+            return;
+        }
+        if (field === 'driver_min' && value > (currentServiceData.driver_max || 0)) {
+            showToast('Минимум не может быть больше максимума');
+            renderServiceCard(currentServiceData);
+            isSaving = false;
+            return;
+        }
+
+        showLoading();
+        const scrollPositions = getScrollableContainers();
+
+        fetch(`/services/${selectedNodeId}/update/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': getCSRFToken()
             },
-            body: new URLSearchParams(data)
+            body: new URLSearchParams({ [field]: value })
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            if (data.error) {
-                showToast(data.error);
-                return;
-            }
+            hideLoading();
+            isSaving = false;
+            if (data.error) { showToast(data.error); renderServiceCard(currentServiceData); restoreScroll(scrollPositions); return; }
+            currentServiceData = data.service;
+            fetchTree();
+            renderServiceCard(currentServiceData);
+            restoreScroll(scrollPositions);
+        })
+        .catch(err => {
+            hideLoading();
+            isSaving = false;
+            showToast('Ошибка сохранения');
+            console.error(err);
+        });
+    }
+
+    function createNode(parentId, type) {
+        showLoading();
+        fetch('/services/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: new URLSearchParams({ parent_id: parentId || '', type: type })
+        })
+        .then(r => r.json())
+        .then(data => {
+            hideLoading();
+            if (data.error) { showToast(data.error); return; }
             if (data.success) {
                 showToast(`Создан ${type === 'category' ? 'каталог' : 'услуга'}`);
-                if (contextMenu) contextMenu.style.display = 'none';
+                contextMenu.style.display = 'none';
                 fetchTree();
-                if (parentId) {
-                    setTimeout(() => {
-                        const parentElement = document.querySelector(`.tree-item[data-id="${parentId}"]`);
-                        if (parentElement) {
-                            selectNode(parentId, parentElement);
-                        }
-                    }, 300);
-                }
+                setTimeout(() => {
+                    const el = document.querySelector(`.tree-item[data-id="${data.service.id}"]`);
+                    if (el) selectNode(data.service.id, el);
+                }, 300);
             }
         })
-        .catch(error => {
-            showToast('Ошибка создания');
-            console.error(error);
-        });
+        .catch(err => { hideLoading(); showToast('Ошибка создания'); console.error(err); });
     }
 
     function deleteNode(id) {
-        if (!confirm('Вы уверены, что хотите удалить этот элемент?')) return;
-
+        if (!confirm('Удалить элемент?')) return;
+        showLoading();
         fetch(`/services/${id}/delete/`, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': getCSRFToken()
-            }
+            headers: { 'X-CSRFToken': getCSRFToken() }
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            if (data.error) {
-                showToast(data.error);
-                return;
-            }
+            hideLoading();
+            if (data.error) { showToast(data.error); return; }
             if (data.success) {
-                showToast('Элемент удален');
-                contentBody.innerHTML = `<div class="empty-state"><p>Выберите каталог или услугу для просмотра</p></div>`;
+                showToast('Элемент удалён');
+                contentBody.innerHTML = '<div class="empty-state"><p>Выберите каталог или услугу для просмотра</p></div>';
                 contentTitle.textContent = 'Выберите элемент';
-                editServiceBtn.style.display = 'none';
+                saveServiceBtn.style.display = 'none';
                 deleteServiceBtn.style.display = 'none';
-                selectedNode = null;
-                editingServiceId = null;
-                currentParentId = null;
+                selectedNodeId = null;
+                currentServiceData = null;
                 fetchTree();
             }
         })
-        .catch(error => {
-            showToast('Ошибка удаления');
-            console.error(error);
-        });
+        .catch(err => { hideLoading(); showToast('Ошибка удаления'); console.error(err); });
     }
 
-    function openEditModal(data) {
-        const isCategory = data.type === 'category';
-        
-        if (serviceFields) {
-            serviceFields.style.display = isCategory ? 'none' : 'block';
-        }
-        
-        editServiceName.value = data.name;
-        currentParentId = data.parent_id || null;
-        
-        if (!isCategory) {
-            editServiceDescription.value = data.data.description || '';
-            editServicePrice.value = data.data.price || '';
-            editServiceDuration.value = data.data.duration || '';
-            editServiceActive.checked = data.data.is_active;
-        }
-        
-        document.getElementById('editModalTitle').textContent = isCategory ? 'Редактирование каталога' : 'Редактирование услуги';
-        editModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeEditModal() {
-        editModal.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-
-    // Обработчики контекстного меню
     document.querySelectorAll('.context-menu-item').forEach(item => {
-        item.addEventListener('click', function(e) {
+        item.addEventListener('click', function() {
             const action = this.dataset.action;
             if (contextNode === null) return;
-
-            if (action === 'add-category') {
-                createNode(contextNode, 'category');
-            } else if (action === 'add-service') {
-                createNode(contextNode, 'service');
-            } else if (action === 'rename') {
-                fetch(`/services/${contextNode}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.error) {
-                            openEditModal(data);
-                        }
-                    });
-            } else if (action === 'delete') {
-                deleteNode(contextNode);
-            }
-            if (contextMenu) contextMenu.style.display = 'none';
+            if (action === 'add-category') createNode(contextNode, 'category');
+            else if (action === 'add-service') createNode(contextNode, 'service');
+            else if (action === 'rename') {
+                const el = document.querySelector(`.tree-item[data-id="${contextNode}"]`);
+                if (el) selectNode(contextNode, el);
+            } else if (action === 'delete') deleteNode(contextNode);
+            contextMenu.style.display = 'none';
         });
     });
 
-    // Кнопка "Добавить каталог" в корень
     if (addRootCategoryBtn) {
-        addRootCategoryBtn.addEventListener('click', function() {
-            createNode(null, 'category');
+        addRootCategoryBtn.addEventListener('click', () => createNode(null, 'category'));
+    }
+
+    if (saveServiceBtn) {
+        saveServiceBtn.addEventListener('click', function() {
+            if (!selectedNodeId) return;
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showToast('Услуга сохранена');
+            }, 300);
         });
     }
 
-    // Кнопка "Редактировать"
-    if (editServiceBtn) {
-        editServiceBtn.addEventListener('click', function() {
-            if (selectedNode) {
-                fetch(`/services/${selectedNode}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.error) {
-                            openEditModal(data);
-                        }
-                    });
-            }
-        });
-    }
-
-    // Кнопка "Удалить"
     if (deleteServiceBtn) {
         deleteServiceBtn.addEventListener('click', function() {
-            if (selectedNode) {
-                deleteNode(selectedNode);
-            }
+            if (selectedNodeId) deleteNode(selectedNodeId);
         });
     }
 
-    // Модальное окно редактирования
-    if (editModalCloseBtn) {
-        editModalCloseBtn.addEventListener('click', closeEditModal);
-    }
-    if (editModalCancelBtn) {
-        editModalCancelBtn.addEventListener('click', closeEditModal);
-    }
-    if (editModal) {
-        editModal.addEventListener('click', function(e) {
-            if (e.target === this) closeEditModal();
-        });
-    }
-
-    if (editForm) {
-        editForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            if (!editingServiceId) {
-                showToast('Ошибка: не выбран элемент для редактирования');
-                return;
-            }
-            
-            const isCategory = currentServiceType === 'category';
-            const data = {
-                name: editServiceName.value.trim(),
-                parent_id: currentParentId || '',
-                is_active: 'true'
-            };
-
-            if (!isCategory) {
-                data.description = editServiceDescription.value.trim();
-                data.price = editServicePrice.value;
-                data.duration = editServiceDuration.value.trim();
-                data.is_active = editServiceActive.checked ? 'true' : 'false';
-            }
-
-            if (!data.name) {
-                showToast('Пожалуйста, введите название');
-                return;
-            }
-
-            fetch(`/services/${editingServiceId}/update/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: new URLSearchParams(data)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.error) {
-                    showToast(data.error);
-                    return;
-                }
-                if (data.success) {
-                    showToast('Данные успешно обновлены');
-                    closeEditModal();
-                    fetchTree();
-                    if (selectedNode) {
-                        setTimeout(() => {
-                            const selectedElement = document.querySelector(`.tree-item[data-id="${selectedNode}"]`);
-                            if (selectedElement) {
-                                selectNode(selectedNode, selectedElement);
-                            }
-                        }, 300);
-                    }
-                }
-            })
-            .catch(error => {
-                showToast('Ошибка обновления: ' + error.message);
-                console.error(error);
-            });
-        });
-    }
-
-    // Закрытие по Escape
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            if (editModal && editModal.classList.contains('active')) closeEditModal();
-            if (contextMenu) contextMenu.style.display = 'none';
-        }
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') contextMenu.style.display = 'none';
     });
 
-    // Инициализация
     fetchTree();
 })();

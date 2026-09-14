@@ -39,6 +39,53 @@ class Skill(models.Model):
         return self.name
 
 
+class CityGroup(models.Model):
+    name = models.CharField('Название группы', max_length=200, unique=True)
+    salary_bonus = models.DecimalField('Надбавка к ставке', max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        verbose_name = 'Группа городов'
+        verbose_name_plural = 'Группы городов'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class City(models.Model):
+    name = models.CharField('Название города', max_length=200, unique=True)
+    group = models.ForeignKey(CityGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='cities', verbose_name='Группа')
+    transport_costs = models.JSONField('Транспортные расходы', default=dict, blank=True)
+
+    class Meta:
+        verbose_name = 'Город'
+        verbose_name_plural = 'Города'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def get_transport_cost(self, people_count):
+        if not self.transport_costs or people_count <= 0:
+            return 0
+        try:
+            ranges = sorted([(int(k), v) for k, v in self.transport_costs.items() if str(k).isdigit()])
+        except (ValueError, TypeError):
+            return 0
+        for max_people, cost in ranges:
+            if people_count <= max_people:
+                try:
+                    return float(cost)
+                except (ValueError, TypeError):
+                    return 0
+        if ranges:
+            try:
+                return float(ranges[-1][1])
+            except (ValueError, TypeError):
+                return 0
+        return 0
+
+
 class Employee(models.Model):
     USER_ROLES = [
         ('senior_admin', 'Старший администратор'),
@@ -90,14 +137,6 @@ class Employee(models.Model):
     def last_login(self):
         return self.user.last_login
 
-    def has_role(self, role_names):
-        if isinstance(role_names, str):
-            role_names = [role_names]
-        return self.role in role_names
-
-    def can_view_admin(self):
-        return self.role in ['senior_admin', 'admin']
-
     def can_manage_employees(self):
         return self.role in ['senior_admin', 'admin']
 
@@ -115,6 +154,9 @@ class Employee(models.Model):
 
     def can_manage_services(self):
         return self.role in ['senior_admin', 'admin', 'manager']
+
+    def can_manage_cities(self):
+        return self.role in ['senior_admin', 'admin']
 
 
 class Client(models.Model):
@@ -157,12 +199,43 @@ class Service(models.Model):
         ('service', 'Услуга'),
     ]
 
+    PAYMENT_METHODS = [
+        ('cash', 'Наличные'),
+        ('self', 'Самозанятость'),
+        ('ip', 'ИП'),
+    ]
+
     name = models.CharField('Название', max_length=200)
     type = models.CharField('Тип', max_length=10, choices=SERVICE_TYPES, default='category')
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', verbose_name='Родительский каталог')
+
     description = models.TextField('Описание', blank=True)
-    price = models.DecimalField('Цена', max_digits=10, decimal_places=2, null=True, blank=True)
-    duration = models.CharField('Длительность', max_length=50, blank=True)
+    duration = models.CharField('Длительность', max_length=100, blank=True)
+    media_url = models.URLField('Ссылка на медиаконтент', max_length=500, blank=True)
+
+    artist_min = models.PositiveIntegerField('Артисты (мин)', default=0)
+    artist_max = models.PositiveIntegerField('Артисты (макс)', default=0)
+    artist_rate = models.DecimalField('Ставка артиста', max_digits=10, decimal_places=2, default=0)
+
+    technician_min = models.PositiveIntegerField('Техники (мин)', default=0)
+    technician_max = models.PositiveIntegerField('Техники (макс)', default=0)
+    technician_rate = models.DecimalField('Ставка техника', max_digits=10, decimal_places=2, default=0)
+
+    driver_min = models.PositiveIntegerField('Водители (мин)', default=0)
+    driver_max = models.PositiveIntegerField('Водители (макс)', default=0)
+    driver_rate = models.DecimalField('Ставка водителя', max_digits=10, decimal_places=2, default=0)
+
+    amortization = models.DecimalField('Амортизация', max_digits=10, decimal_places=2, default=0)
+    logist = models.DecimalField('Логист', max_digits=10, decimal_places=2, default=0)
+    laser = models.DecimalField('Лазер', max_digits=10, decimal_places=2, default=0)
+    manager_salary = models.DecimalField('ЗП менеджера', max_digits=10, decimal_places=2, default=0)
+    unforeseen = models.DecimalField('Запас на непредвиденные', max_digits=10, decimal_places=2, default=0)
+    extra_margin = models.DecimalField('Доп. моржа', max_digits=10, decimal_places=2, default=0)
+
+    payment_method = models.CharField('Способ оплаты', max_length=10, choices=PAYMENT_METHODS, default='cash')
+
+    overridden_total = models.DecimalField('Переопределённая стоимость', max_digits=12, decimal_places=2, null=True, blank=True)
+
     order = models.PositiveIntegerField('Порядок', default=0)
     is_active = models.BooleanField('Активен', default=True)
     created_by = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='created_services', verbose_name='Создан сотрудником')
@@ -183,10 +256,86 @@ class Service(models.Model):
         while current:
             ancestors.append(current)
             current = current.parent
-        return reversed(ancestors)
+        return list(reversed(ancestors))
 
     def get_full_path(self):
         return ' / '.join([a.name for a in self.get_ancestors()] + [self.name])
+
+    def calculate_for_city(self, city, people_count=None):
+        if self.type != 'service':
+            return None
+
+        if city is None:
+            city = City.objects.filter(name__iexact='Казань').first()
+
+        salary_bonus = 0
+        if city and city.group:
+            salary_bonus = float(city.group.salary_bonus)
+
+        artist_min = self.artist_min
+        technician_min = self.technician_min
+        driver_min = self.driver_min
+
+        if people_count is not None:
+            total_min = artist_min + technician_min + driver_min
+            if people_count > total_min:
+                extra = people_count - total_min
+                if artist_min > 0:
+                    artist_min += extra
+                elif technician_min > 0:
+                    technician_min += extra
+                elif driver_min > 0:
+                    driver_min += extra
+
+        artist_sum = artist_min * (float(self.artist_rate) + salary_bonus)
+        technician_sum = technician_min * (float(self.technician_rate) + salary_bonus)
+        driver_sum = driver_min * (float(self.driver_rate) + salary_bonus)
+
+        total_people = artist_min + technician_min + driver_min
+        transport = 0
+        if city:
+            transport = city.get_transport_cost(total_people)
+
+        amortization = float(self.amortization)
+        logist = float(self.logist)
+        laser = float(self.laser)
+        manager_salary = float(self.manager_salary)
+        unforeseen = float(self.unforeseen)
+        extra_margin = float(self.extra_margin)
+
+        subtotal = (
+            artist_sum + technician_sum + driver_sum + transport +
+            amortization + logist + laser + manager_salary + unforeseen + extra_margin
+        )
+
+        coefficient = 1.0
+        if self.payment_method == 'self':
+            coefficient = 1 / 0.94
+        elif self.payment_method == 'ip':
+            coefficient = 1 / 0.9
+
+        total = subtotal * coefficient
+
+        return {
+            'city_id': city.id if city else None,
+            'city_name': city.name if city else None,
+            'salary_bonus': salary_bonus,
+            'artist_sum': artist_sum,
+            'technician_sum': technician_sum,
+            'driver_sum': driver_sum,
+            'transport': transport,
+            'total_people': total_people,
+            'amortization': amortization,
+            'logist': logist,
+            'laser': laser,
+            'manager_salary': manager_salary,
+            'unforeseen': unforeseen,
+            'extra_margin': extra_margin,
+            'payment_method': self.payment_method,
+            'coefficient': coefficient,
+            'subtotal': subtotal,
+            'total': total,
+        }
 
 
 class Order(models.Model):
@@ -202,9 +351,11 @@ class Order(models.Model):
         ('cash', 'Наличные'),
     ]
 
+    name = models.CharField('Название заказа', max_length=300, blank=True, default='')
     client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name='orders', verbose_name='Клиент')
+    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name='Город')
     date = models.DateField('Дата проведения')
-    address = models.CharField('Адрес', max_length=300)
+    address = models.CharField('Адрес', max_length=300, blank=True, default='')
     contact_phone = models.CharField('Контактное лицо - номер телефона', max_length=20, blank=True)
     contact_telegram = models.CharField('Контактное лицо - телеграм', max_length=100, blank=True)
     setup_time = models.CharField('Время чека', max_length=20, blank=True)
@@ -219,7 +370,8 @@ class Order(models.Model):
     tech_comment = models.TextField('Комментарий к техничке', blank=True)
     venue_comment = models.TextField('Комментарии к площадке', blank=True)
     props_comment = models.TextField('Комментарии к реквизиту', blank=True)
-    manager = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='managed_orders', verbose_name='Менеджер')
+    manager = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='managed_orders', verbose_name='Менеджер', null=True, blank=True)
+    story_manager = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='story_orders', verbose_name='Сториз ответственный')
     cost = models.CharField('Стоимость', max_length=50, blank=True, default='—')
     payment_method = models.CharField('Способ оплаты', max_length=10, choices=PAYMENT_CHOICES, blank=True)
     status = models.CharField('Статус', max_length=20, choices=STATUS_CHOICES, default='request')
@@ -233,7 +385,7 @@ class Order(models.Model):
         ordering = ['-date', '-created_at']
 
     def __str__(self):
-        return f'Заказ #{self.id} - {self.client.full_name}'
+        return f'Заказ #{self.id} - {self.name or self.client.full_name}'
 
     def get_tech_list(self):
         tech = []
@@ -248,6 +400,50 @@ class Order(models.Model):
         if self.tech_projection:
             tech.append('Проекция')
         return tech
+
+
+class OrderEstimate(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='estimate_items', verbose_name='Заказ')
+    service = models.ForeignKey(Service, on_delete=models.PROTECT, related_name='estimate_items', verbose_name='Услуга', null=True, blank=True)
+    service_name = models.CharField('Название услуги', max_length=200)
+    people_count = models.PositiveIntegerField('Количество человек', default=0)
+    coefficient = models.DecimalField('Коэффициент', max_digits=10, decimal_places=2, default=1)
+    price = models.DecimalField('Стоимость', max_digits=12, decimal_places=2, default=0)
+    comment = models.TextField('Комментарий', blank=True)
+    is_overridden = models.BooleanField('Переопределена вручную', default=False)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Смета заказа'
+        verbose_name_plural = 'Сметы заказов'
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.service_name} - {self.price}'
+
+    @property
+    def total(self):
+        return float(self.price) * float(self.coefficient)
+
+
+class OrderEmployee(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='employee_items', verbose_name='Заказ')
+    employee = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='order_items', verbose_name='Сотрудник')
+    employee_name = models.CharField('ФИО сотрудника', max_length=200)
+    employee_role = models.CharField('Роль', max_length=100, blank=True)
+    payment = models.DecimalField('Оплата', max_digits=10, decimal_places=2, default=0)
+    comment = models.TextField('Комментарий', blank=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Сотрудник заказа'
+        verbose_name_plural = 'Сотрудники заказов'
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.employee_name} - {self.payment}'
 
 
 class ArtistSchedule(models.Model):
