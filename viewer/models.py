@@ -138,7 +138,7 @@ class Employee(models.Model):
         return self.user.last_login
 
     def can_manage_employees(self):
-        return self.role in ['senior_admin', 'admin']
+        return self.role in ['senior_admin', 'admin', 'manager']
 
     def can_manage_clients(self):
         return self.role in ['senior_admin', 'admin', 'manager']
