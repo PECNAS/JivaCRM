@@ -15,9 +15,8 @@
                 <button class="status-filter-btn active" data-status="all">Все</button>
                 <button class="status-filter-btn" data-status="request">Запрос</button>
                 <button class="status-filter-btn" data-status="confirmed">Подтверждено</button>
-                <button class="status-filter-btn" data-status="in_progress">В работе</button>
                 <button class="status-filter-btn" data-status="completed">Выполнено</button>
-                <button class="status-filter-btn" data-status="paid">Оплачено</button>
+                <button class="status-filter-btn" data-status="training">Тренировки</button>
             </div>
         </div>
         <div class="schedule-controls__right">
@@ -36,17 +35,16 @@
 
     <div class="schedule-header">
         <button class="schedule-nav" id="prevPeriod">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <h2 class="schedule-title" id="scheduleTitle">Август 2026</h2>
+        <h2 class="schedule-title" id="scheduleTitle">Месяц</h2>
         <button class="schedule-nav" id="nextPeriod">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
     </div>
 
     <div class="schedule-grid-wrapper">
-        <div class="schedule-grid" id="scheduleGrid">
-        </div>
+        <div class="schedule-grid" id="scheduleGrid"></div>
     </div>
 </section>
 
@@ -54,7 +52,12 @@
     <div class="modal modal--order">
         <div class="modal__header">
             <h2 class="modal__title" id="modalOrderTitle">Заказ</h2>
-            <button class="modal__close" id="modalCloseBtn">&times;</button>
+            <button class="modal__close" id="modalCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
         </div>
         <div class="modal__body">
             <div class="order-details">

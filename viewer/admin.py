@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Agency, Role, Skill, Employee, Client, Order,
     OrderEstimate, OrderEmployee, Service, ArtistSchedule,
-    City, CityGroup,
+    City, CityGroup, ArtistCard,
 )
 
 
@@ -45,6 +45,27 @@ class EmployeeAdmin(admin.ModelAdmin):
     search_fields = ['full_name', 'user__username', 'phone', 'telegram_username']
     raw_id_fields = ['user']
     readonly_fields = ['created_at', 'updated_at']
+    fieldsets = (
+        ('Основное', {
+            'fields': ('user', 'full_name', 'role', 'phone', 'telegram_username', 'skills', 'is_active')
+        }),
+        ('Паспортные данные', {
+            'fields': ('passport_series', 'passport_number', 'passport_issued_by',
+                       'passport_issued_date', 'passport_department_code',
+                       'passport_registration', 'passport_inn', 'passport_snils')
+        }),
+        ('Системные', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(ArtistCard)
+class ArtistCardAdmin(admin.ModelAdmin):
+    list_display = ['id', 'employee', 'weight', 'height', 'shoe_size']
+    search_fields = ['employee__full_name']
+    filter_horizontal = ['known_shows']
 
 
 @admin.register(Client)

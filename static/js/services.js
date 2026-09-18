@@ -46,13 +46,8 @@
         return num.toFixed(2).replace('.', ',') + ' ₽';
     }
 
-    function showLoading() {
-        loadingOverlay.style.display = 'flex';
-    }
-
-    function hideLoading() {
-        loadingOverlay.style.display = 'none';
-    }
+    function showLoading() { loadingOverlay.style.display = 'flex'; }
+    function hideLoading() { loadingOverlay.style.display = 'none'; }
 
     function getScrollableContainers() {
         const containers = [];
@@ -101,7 +96,7 @@
             html += `<li data-id="${node.id}" data-type="${node.type}">`;
             html += `<div class="tree-item" data-id="${node.id}">`;
             html += hasChildren
-                ? `<span class="toggle-icon expanded">▶</span>`
+                ? `<span class="toggle-icon expanded" data-toggle="1">▶</span>`
                 : `<span class="toggle-icon" style="opacity:0;">▶</span>`;
             html += `<svg class="item-icon ${iconName}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`;
             html += isCategory
@@ -111,15 +106,18 @@
             html += `<span class="item-name">${escapeHtml(node.name)}</span>`;
             html += `<span class="item-badge">${label}</span>`;
             html += `</div>`;
-            if (hasChildren) html += buildTreeHtml(node.children);
+            if (hasChildren) {
+                html += `<ul class="tree-children">${buildTreeHtml(node.children)}</ul>`;
+            }
             html += `</li>`;
         });
-        return `<ul class="tree-root">${html}</ul>`;
+        return html;
     }
 
     function attachTreeEvents() {
         document.querySelectorAll('.tree-item').forEach(item => {
             item.addEventListener('click', function(e) {
+                if (e.target.classList.contains('toggle-icon')) return;
                 e.stopPropagation();
                 selectNode(parseInt(this.dataset.id), this);
             });
@@ -131,14 +129,16 @@
             });
         });
 
-        document.querySelectorAll('.toggle-icon').forEach(icon => {
+        document.querySelectorAll('.toggle-icon[data-toggle="1"]').forEach(icon => {
             icon.addEventListener('click', function(e) {
                 e.stopPropagation();
+                e.preventDefault();
                 const li = this.closest('li');
-                const children = li.querySelector('ul');
+                if (!li) return;
+                const children = li.querySelector(':scope > .tree-children');
                 if (children) {
-                    children.classList.toggle('collapsed');
-                    this.classList.toggle('expanded');
+                    const isCollapsed = children.classList.toggle('collapsed');
+                    this.classList.toggle('expanded', !isCollapsed);
                 }
             });
         });
@@ -342,9 +342,7 @@
                 const c = res.calculation;
                 const override = currentServiceData.overridden_total;
 
-                const totalToShow = override !== null && override !== undefined
-                    ? override
-                    : c.total;
+                const totalToShow = override !== null && override !== undefined ? override : c.total;
 
                 tbody.innerHTML = `
                     <tr class="calc-editable">
@@ -445,9 +443,7 @@
                 input.focus();
                 input.select();
 
-                const save = () => {
-                    saveField(field, input.value, 'calc');
-                };
+                const save = () => saveField(field, input.value, 'calc');
                 input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => {
                     if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
@@ -485,6 +481,7 @@
                 input.step = '0.01';
             } else {
                 input.step = '1';
+                input.min = '0';
             }
         } else {
             input = document.createElement('input');
@@ -512,51 +509,47 @@
         });
     }
 
+    function getCascadeUpdates(field, value) {
+        const updates = {};
+        const data = currentServiceData;
+        const pairs = [
+            { min: 'artist_min', max: 'artist_max' },
+            { min: 'technician_min', max: 'technician_max' },
+            { min: 'driver_min', max: 'driver_max' },
+        ];
+
+        for (const pair of pairs) {
+            if (field === pair.min) {
+                const currentMax = parseInt(data[pair.max]) || 0;
+                if (value > currentMax) {
+                    updates[pair.max] = value;
+                }
+            } else if (field === pair.max) {
+                const currentMin = parseInt(data[pair.min]) || 0;
+                if (value < currentMin) {
+                    updates[pair.min] = value;
+                }
+            }
+        }
+
+        return updates;
+    }
+
     function saveField(field, value, mode) {
         if (isSaving) return;
         isSaving = true;
 
         if (field === 'artist_min' || field === 'artist_max' || field === 'technician_min' || field === 'technician_max' || field === 'driver_min' || field === 'driver_max') {
-            value = parseInt(value) || 0;
+            value = Math.max(0, parseInt(value) || 0);
         } else if (['artist_rate', 'technician_rate', 'driver_rate', 'amortization', 'logist', 'laser', 'manager_salary', 'unforeseen', 'extra_margin', 'overridden_total'].includes(field)) {
             value = parseFloat(value) || 0;
         }
 
-        if (field === 'artist_max' && value < (currentServiceData.artist_min || 0)) {
-            showToast('Максимум не может быть меньше минимума');
-            renderServiceCard(currentServiceData);
-            isSaving = false;
-            return;
-        }
-        if (field === 'technician_max' && value < (currentServiceData.technician_min || 0)) {
-            showToast('Максимум не может быть меньше минимума');
-            renderServiceCard(currentServiceData);
-            isSaving = false;
-            return;
-        }
-        if (field === 'driver_max' && value < (currentServiceData.driver_min || 0)) {
-            showToast('Максимум не может быть меньше минимума');
-            renderServiceCard(currentServiceData);
-            isSaving = false;
-            return;
-        }
-        if (field === 'artist_min' && value > (currentServiceData.artist_max || 0)) {
-            showToast('Минимум не может быть больше максимума');
-            renderServiceCard(currentServiceData);
-            isSaving = false;
-            return;
-        }
-        if (field === 'technician_min' && value > (currentServiceData.technician_max || 0)) {
-            showToast('Минимум не может быть больше максимума');
-            renderServiceCard(currentServiceData);
-            isSaving = false;
-            return;
-        }
-        if (field === 'driver_min' && value > (currentServiceData.driver_max || 0)) {
-            showToast('Минимум не может быть больше максимума');
-            renderServiceCard(currentServiceData);
-            isSaving = false;
-            return;
+        const cascade = getCascadeUpdates(field, value);
+
+        const payload = { [field]: value };
+        for (const key in cascade) {
+            payload[key] = cascade[key];
         }
 
         showLoading();
@@ -568,13 +561,18 @@
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': getCSRFToken()
             },
-            body: new URLSearchParams({ [field]: value })
+            body: new URLSearchParams(payload)
         })
         .then(r => r.json())
         .then(data => {
             hideLoading();
             isSaving = false;
-            if (data.error) { showToast(data.error); renderServiceCard(currentServiceData); restoreScroll(scrollPositions); return; }
+            if (data.error) {
+                showToast(data.error);
+                renderServiceCard(currentServiceData);
+                restoreScroll(scrollPositions);
+                return;
+            }
             currentServiceData = data.service;
             fetchTree();
             renderServiceCard(currentServiceData);

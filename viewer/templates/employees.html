@@ -11,7 +11,6 @@
 <section class="employees-header">
     <div class="employees-header__top">
         <h1 class="employees-title">Сотрудники</h1>
-        {% if employee.can_manage_employees %}
         <button class="btn btn-primary" id="addEmployeeBtn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/>
@@ -20,7 +19,6 @@
             </svg>
             Добавить сотрудника
         </button>
-        {% endif %}
     </div>
     <div class="employees-filters">
         <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, логину или телефону" value="{{ search_query }}">
@@ -87,42 +85,98 @@
         </div>
         <div class="modal__body">
             <div id="viewMode">
-                <div class="employee-details">
-                    <div class="detail-row">
-                        <span class="detail-label">ФИО:</span>
-                        <span class="detail-value" id="viewFullName">—</span>
+                <div class="modal__tabs">
+                    <button class="modal-tab-btn active" data-tab="main">Основное</button>
+                    <button class="modal-tab-btn" data-tab="passport">Паспортные данные</button>
+                    <button class="modal-tab-btn" data-tab="artist" id="artistCardTab" style="display:none;">Карточка артиста</button>
+                </div>
+                <div class="modal-tab-content active" data-content="main">
+                    <div class="employee-details">
+                        <div class="detail-row">
+                            <span class="detail-label">ФИО:</span>
+                            <span class="detail-value" id="viewFullName">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Логин:</span>
+                            <span class="detail-value" id="viewUsername">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Роль:</span>
+                            <span class="detail-value" id="viewRole">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Телефон:</span>
+                            <span class="detail-value" id="viewPhone">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Телеграм:</span>
+                            <span class="detail-value" id="viewTelegram">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Статус:</span>
+                            <span class="detail-value" id="viewStatus">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Дата регистрации:</span>
+                            <span class="detail-value" id="viewDateJoined">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Последний вход:</span>
+                            <span class="detail-value" id="viewLastLogin">—</span>
+                        </div>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Логин:</span>
-                        <span class="detail-value" id="viewUsername">—</span>
+                </div>
+                <div class="modal-tab-content" data-content="passport">
+                    <div class="employee-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Серия:</span>
+                            <span class="detail-value" id="viewPassportSeries">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Номер:</span>
+                            <span class="detail-value" id="viewPassportNumber">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Кем выдан:</span>
+                            <span class="detail-value" id="viewPassportIssuedBy">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Дата выдачи:</span>
+                            <span class="detail-value" id="viewPassportIssuedDate">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Код подразделения:</span>
+                            <span class="detail-value" id="viewPassportDepartmentCode">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Адрес регистрации:</span>
+                            <span class="detail-value" id="viewPassportRegistration">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">ИНН:</span>
+                            <span class="detail-value" id="viewPassportInn">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">СНИЛС:</span>
+                            <span class="detail-value" id="viewPassportSnils">—</span>
+                        </div>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Роль:</span>
-                        <span class="detail-value" id="viewRole">—</span>
+                </div>
+                <div class="modal-tab-content" data-content="artist">
+                    <div class="artist-card-view" id="artistCardView">
+                        <p class="artist-card-empty">Карточка артиста не заполнена</p>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Телефон:</span>
-                        <span class="detail-value" id="viewPhone">—</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Телеграм:</span>
-                        <span class="detail-value" id="viewTelegram">—</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Статус:</span>
-                        <span class="detail-value" id="viewStatus">—</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Дата регистрации:</span>
-                        <span class="detail-value" id="viewDateJoined">—</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Последний вход:</span>
-                        <span class="detail-value" id="viewLastLogin">—</span>
+                    <div class="modal-actions">
+                        <button class="btn btn-outline" id="editArtistCardBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 20h9"/>
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                            </svg>
+                            Редактировать карточку артиста
+                        </button>
                     </div>
                 </div>
                 <div class="modal-actions">
-                    {% if employee.can_manage_employees %}
                     <button class="btn btn-primary" id="editEmployeeBtn">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 20h9"/>
@@ -137,44 +191,83 @@
                         </svg>
                         Удалить
                     </button>
-                    {% endif %}
                 </div>
             </div>
             <div id="editMode" style="display:none;">
                 <form id="editEmployeeForm" class="edit-employee-form">
-                    <div class="form-group">
-                        <label class="form-label" for="editUsername">Логин *</label>
-                        <input type="text" class="form-input" id="editUsername" required>
+                    <div class="form-section">
+                        <h4 class="form-section__title">Основные данные</h4>
+                        <div class="form-group">
+                            <label class="form-label" for="editUsername">Логин *</label>
+                            <input type="text" class="form-input" id="editUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editPassword">Пароль (оставьте пустым для сохранения текущего)</label>
+                            <input type="password" class="form-input" id="editPassword" placeholder="Введите новый пароль">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editFullName">ФИО *</label>
+                            <input type="text" class="form-input" id="editFullName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editRole">Роль *</label>
+                            <select class="form-select" id="editRole" required>
+                                <option value="senior_admin">Старший администратор</option>
+                                <option value="admin">Администратор</option>
+                                <option value="manager">Менеджер</option>
+                                <option value="trainer">Тренер</option>
+                                <option value="artist">Артист</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editPhone">Телефон</label>
+                            <input type="tel" class="form-input" id="editPhone" placeholder="+7 (999) 123-45-67">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editTelegram">Телеграм</label>
+                            <input type="text" class="form-input" id="editTelegram">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editIsActive">Активен</label>
+                            <input type="checkbox" class="form-checkbox" id="editIsActive" checked>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editPassword">Пароль (оставьте пустым для сохранения текущего)</label>
-                        <input type="password" class="form-input" id="editPassword" placeholder="Введите новый пароль">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editFullName">ФИО *</label>
-                        <input type="text" class="form-input" id="editFullName" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editRole">Роль *</label>
-                        <select class="form-select" id="editRole" required>
-                            <option value="senior_admin">Старший администратор</option>
-                            <option value="admin">Администратор</option>
-                            <option value="manager">Менеджер</option>
-                            <option value="trainer">Тренер</option>
-                            <option value="artist">Артист</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editPhone">Телефон</label>
-                        <input type="tel" class="form-input" id="editPhone">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editTelegram">Телеграм</label>
-                        <input type="text" class="form-input" id="editTelegram">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editIsActive">Активен</label>
-                        <input type="checkbox" class="form-checkbox" id="editIsActive" checked>
+                    <div class="form-section">
+                        <h4 class="form-section__title">Паспортные данные</h4>
+                        <div class="form-grid form-grid--2">
+                            <div class="form-group">
+                                <label class="form-label" for="editPassportSeries">Серия</label>
+                                <input type="text" class="form-input" id="editPassportSeries">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editPassportNumber">Номер</label>
+                                <input type="text" class="form-input" id="editPassportNumber">
+                            </div>
+                            <div class="form-group detail-item--full">
+                                <label class="form-label" for="editPassportIssuedBy">Кем выдан</label>
+                                <input type="text" class="form-input" id="editPassportIssuedBy">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editPassportIssuedDate">Дата выдачи</label>
+                                <input type="date" class="form-input" id="editPassportIssuedDate">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editPassportDepartmentCode">Код подразделения</label>
+                                <input type="text" class="form-input" id="editPassportDepartmentCode">
+                            </div>
+                            <div class="form-group detail-item--full">
+                                <label class="form-label" for="editPassportRegistration">Адрес регистрации</label>
+                                <input type="text" class="form-input" id="editPassportRegistration">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editPassportInn">ИНН</label>
+                                <input type="text" class="form-input" id="editPassportInn">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editPassportSnils">СНИЛС</label>
+                                <input type="text" class="form-input" id="editPassportSnils">
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
@@ -206,39 +299,79 @@
         </div>
         <div class="modal__body">
             <form id="addEmployeeForm" class="add-employee-form">
-                <div class="form-group">
-                    <label class="form-label" for="addUsername">Логин *</label>
-                    <input type="text" class="form-input" id="addUsername" required>
+                <div class="form-section">
+                    <h4 class="form-section__title">Основные данные</h4>
+                    <div class="form-group">
+                        <label class="form-label" for="addUsername">Логин *</label>
+                        <input type="text" class="form-input" id="addUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="addPassword">Пароль *</label>
+                        <input type="password" class="form-input" id="addPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="addFullName">ФИО *</label>
+                        <input type="text" class="form-input" id="addFullName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="addRole">Роль *</label>
+                        <select class="form-select" id="addRole" required>
+                            <option value="senior_admin">Старший администратор</option>
+                            <option value="admin">Администратор</option>
+                            <option value="manager">Менеджер</option>
+                            <option value="trainer">Тренер</option>
+                            <option value="artist" selected>Артист</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="addPhone">Телефон</label>
+                        <input type="tel" class="form-input" id="addPhone" placeholder="+7 (999) 123-45-67">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="addTelegram">Телеграм</label>
+                        <input type="text" class="form-input" id="addTelegram">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="addIsActive">Активен</label>
+                        <input type="checkbox" class="form-checkbox" id="addIsActive" checked>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="addPassword">Пароль *</label>
-                    <input type="password" class="form-input" id="addPassword" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addFullName">ФИО *</label>
-                    <input type="text" class="form-input" id="addFullName" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addRole">Роль *</label>
-                    <select class="form-select" id="addRole" required>
-                        <option value="senior_admin">Старший администратор</option>
-                        <option value="admin">Администратор</option>
-                        <option value="manager">Менеджер</option>
-                        <option value="trainer">Тренер</option>
-                        <option value="artist">Артист</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addPhone">Телефон</label>
-                    <input type="tel" class="form-input" id="addPhone">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addTelegram">Телеграм</label>
-                    <input type="text" class="form-input" id="addTelegram">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addIsActive">Активен</label>
-                    <input type="checkbox" class="form-checkbox" id="addIsActive" checked>
+                <div class="form-section">
+                    <h4 class="form-section__title">Паспортные данные</h4>
+                    <div class="form-grid form-grid--2">
+                        <div class="form-group">
+                            <label class="form-label" for="addPassportSeries">Серия</label>
+                            <input type="text" class="form-input" id="addPassportSeries">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="addPassportNumber">Номер</label>
+                            <input type="text" class="form-input" id="addPassportNumber">
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="addPassportIssuedBy">Кем выдан</label>
+                            <input type="text" class="form-input" id="addPassportIssuedBy">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="addPassportIssuedDate">Дата выдачи</label>
+                            <input type="date" class="form-input" id="addPassportIssuedDate">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="addPassportDepartmentCode">Код подразделения</label>
+                            <input type="text" class="form-input" id="addPassportDepartmentCode">
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="addPassportRegistration">Адрес регистрации</label>
+                            <input type="text" class="form-input" id="addPassportRegistration">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="addPassportInn">ИНН</label>
+                            <input type="text" class="form-input" id="addPassportInn">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="addPassportSnils">СНИЛС</label>
+                            <input type="text" class="form-input" id="addPassportSnils">
+                        </div>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" id="addModalCancelBtn">Отмена</button>
@@ -255,6 +388,63 @@
         </div>
     </div>
 </div>
+
+<div class="modal-overlay" id="artistCardModal">
+    <div class="modal modal--artist-card">
+        <div class="modal__header">
+            <h2 class="modal__title" id="artistCardModalTitle">Карточка артиста</h2>
+            <button class="modal__close" id="artistCardModalCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="artistCardForm" class="artist-card-form">
+                <div class="form-grid form-grid--3">
+                    <div class="form-group">
+                        <label class="form-label" for="artistWeight">Вес</label>
+                        <input type="text" class="form-input" id="artistWeight" placeholder="Например: 65 кг">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="artistHeight">Рост</label>
+                        <input type="text" class="form-input" id="artistHeight" placeholder="Например: 175 см">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="artistShoeSize">Размер обуви</label>
+                        <input type="text" class="form-input" id="artistShoeSize" placeholder="Например: 42">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="artistSkillsText">Навыки</label>
+                    <textarea class="form-textarea" id="artistSkillsText" rows="3" placeholder="Опишите навыки артиста"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="artistComment">Комментарий</label>
+                    <textarea class="form-textarea" id="artistComment" rows="3" placeholder="Дополнительные комментарии"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Знание шоу</label>
+                    <div class="shows-multi-select" id="showsMultiSelect"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="artistCardCancelBtn">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="notification-container" id="notificationContainer"></div>
 
 <div class="toast-container" id="toastContainer"></div>
 {% endblock %}

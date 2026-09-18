@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Мой профиль{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/profile.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="profile-header">
+    <h1 class="profile-title">Мой профиль</h1>
+    <p class="profile-subtitle">Личная информация, расписание и транспортные билеты</p>
+</section>
+
+<section class="profile-tabs">
+    <button class="profile-tab-btn active" data-tab="info">Мои данные</button>
+    <button class="profile-tab-btn" data-tab="schedule">Предстоящие шоу</button>
+    <button class="profile-tab-btn" data-tab="tickets">Транспортные билеты</button>
+</section>
+
+<section class="profile-content">
+    <div class="profile-tab-content active" id="tab-info">
+        <div class="profile-loading">Загрузка...</div>
+    </div>
+    <div class="profile-tab-content" id="tab-schedule">
+        <div class="profile-loading">Загрузка...</div>
+    </div>
+    <div class="profile-tab-content" id="tab-tickets">
+        <div class="profile-loading">Загрузка...</div>
+    </div>
+</section>
+
+<div class="toast-container" id="toastContainer"></div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/profile.js' %}"></script>
+{% endblock %}

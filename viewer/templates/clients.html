@@ -37,7 +37,6 @@
             <tr>
                 <th>ФИО</th>
                 <th>Телефон</th>
-                <th>Тип</th>
                 <th>Агентство</th>
                 <th>Рейтинг</th>
                 <th>Запросов</th>
@@ -50,7 +49,6 @@
             <tr data-client-id="{{ client.id }}">
                 <td>{{ client.full_name }}</td>
                 <td>{{ client.phone }}</td>
-                <td>{{ client.get_client_type_display }}</td>
                 <td>{{ client.agency.name|default:"—" }}</td>
                 <td>
                     <span class="rating-badge rating-badge--{{ client.rating }}">
@@ -65,7 +63,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="8" style="text-align:center; padding: 2rem; color: #7a7267;">
+                <td colspan="7" style="text-align:center; padding: 2rem; color: #7a7267;">
                     Клиенты не найдены
                 </td>
             </tr>
@@ -135,6 +133,13 @@
                         </svg>
                         Редактировать
                     </button>
+                    <button class="btn btn-danger" id="deleteClientBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        Удалить
+                    </button>
                 </div>
             </div>
             <div id="editMode" style="display:none;">
@@ -145,7 +150,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="editPhone">Телефон *</label>
-                        <input type="tel" class="form-input" id="editPhone" required>
+                        <input type="tel" class="form-input" id="editPhone" placeholder="+7 (999) 123-45-67" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="editClientType">Тип клиента *</label>
@@ -292,7 +297,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для создания агентства -->
 <div class="modal-overlay" id="addAgencyModal">
     <div class="modal modal--add">
         <div class="modal__header">

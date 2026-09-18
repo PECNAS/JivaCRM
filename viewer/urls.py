@@ -1,13 +1,15 @@
 from django.urls import path
 from .views import (
     IndexView, LoginView, LogoutView,
-    ClientsView, ClientDetailView, ClientUpdateView, ClientListView, AgencyCreateView,
+    ClientsView, ClientDetailView, ClientUpdateView, ClientDeleteView, ClientListView, AgencyCreateView,
     EmployeesView, EmployeeDetailView, EmployeeUpdateView, EmployeeDeleteView, EmployeeListView,
+    ArtistCardDetailView, ArtistCardUpdateView, ServicesForArtistCardView,
     OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView,
     ScheduleView,
     ServicesView, ServiceTreeView, ServiceCreateView, ServiceDetailView,
     ServiceUpdateView, ServiceDeleteView, ServiceCalculationView, CityListView,
     ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView,
+    ProfileView, ProfileDetailView, ProfileScheduleView, ProfileTicketsView,
 )
 
 urlpatterns = [
@@ -15,18 +17,27 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
 
+    path('profile/', ProfileView.as_view(), name='profile'),
+    path('profile/detail/', ProfileDetailView.as_view(), name='profile_detail'),
+    path('profile/schedule/', ProfileScheduleView.as_view(), name='profile_schedule'),
+    path('profile/tickets/', ProfileTicketsView.as_view(), name='profile_tickets'),
+
     path('agencies/', AgencyCreateView.as_view(), name='agency_create'),
 
     path('clients/', ClientsView.as_view(), name='clients'),
     path('clients/list/', ClientListView.as_view(), name='client_list'),
     path('clients/<int:client_id>/', ClientDetailView.as_view(), name='client_detail'),
     path('clients/<int:client_id>/update/', ClientUpdateView.as_view(), name='client_update'),
+    path('clients/<int:client_id>/delete/', ClientDeleteView.as_view(), name='client_delete'),
 
     path('employees/', EmployeesView.as_view(), name='employees'),
     path('employees/list/', EmployeeListView.as_view(), name='employee_list'),
     path('employees/<int:employee_id>/', EmployeeDetailView.as_view(), name='employee_detail'),
     path('employees/<int:employee_id>/update/', EmployeeUpdateView.as_view(), name='employee_update'),
     path('employees/<int:employee_id>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),
+    path('employees/<int:employee_id>/artist-card/', ArtistCardDetailView.as_view(), name='artist_card_detail'),
+    path('employees/<int:employee_id>/artist-card/update/', ArtistCardUpdateView.as_view(), name='artist_card_update'),
+    path('artist-card/services/', ServicesForArtistCardView.as_view(), name='artist_card_services'),
 
     path('orders/', OrdersView.as_view(), name='orders'),
     path('orders/list/', OrderListView.as_view(), name='order_list'),

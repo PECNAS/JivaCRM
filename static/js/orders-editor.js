@@ -10,7 +10,6 @@
     let filteredServices = [];
     let costOverride = false;
     let manualCost = '';
-    let servicesTotalOverride = false;
 
     const editorModal = document.getElementById('orderEditorModal');
     const editorOrderTitle = document.getElementById('editorOrderTitle');
@@ -175,7 +174,7 @@
         updateCostField();
     }
 
-    function loadClientsForSelect() {
+    function loadClientsForSelect(selectedId) {
         fetch('/clients/list/')
             .then(r => r.json())
             .then(data => {
@@ -184,7 +183,12 @@
                         `<option value="${c.id}">${escapeHtml(c.full_name)}${c.agency ? ' (' + escapeHtml(c.agency) + ')' : ''}</option>`
                     ).join('');
                     editOrderClient.innerHTML = '<option value="">Выберите клиента</option>' + options;
-                    if (currentOrderData) editOrderClient.value = currentOrderData.client_id || '';
+
+                    if (selectedId !== undefined && selectedId !== null) {
+                        editOrderClient.value = selectedId;
+                    } else if (currentOrderData) {
+                        editOrderClient.value = currentOrderData.client_id || '';
+                    }
                 }
             })
             .catch(err => console.error('Ошибка загрузки клиентов:', err));
@@ -716,7 +720,8 @@
     window.OrderEditor = {
         open: open,
         close: close,
-        loadEmployees: loadEmployeesForSelects
+        loadEmployees: loadEmployeesForSelects,
+        loadClients: loadClientsForSelect
     };
 
     document.addEventListener('DOMContentLoaded', function() {

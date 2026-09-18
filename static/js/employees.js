@@ -1,5 +1,7 @@
 (function() {
     let currentEmployeeId = null;
+    let currentArtistCard = null;
+    let allServices = [];
     let isEditMode = false;
 
     const tableBody = document.getElementById('employeesTableBody');
@@ -18,16 +20,105 @@
     const deleteEmployeeBtn = document.getElementById('deleteEmployeeBtn');
     const viewMode = document.getElementById('viewMode');
     const editMode = document.getElementById('editMode');
+    const notificationContainer = document.getElementById('notificationContainer');
+
+    const artistCardModal = document.getElementById('artistCardModal');
+    const artistCardModalCloseBtn = document.getElementById('artistCardModalCloseBtn');
+    const artistCardCancelBtn = document.getElementById('artistCardCancelBtn');
+    const artistCardForm = document.getElementById('artistCardForm');
+    const editArtistCardBtn = document.getElementById('editArtistCardBtn');
+    const artistCardView = document.getElementById('artistCardView');
+    const showsMultiSelect = document.getElementById('showsMultiSelect');
 
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
         return cookieValue ? cookieValue[2] : '';
     }
 
+    function showToast(message) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(10px)';
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 300);
+        }, 2000);
+    }
+
+    function escapeHtml(text) {
+        if (!text && text !== 0) return '';
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+    }
+
+    function phoneMask(input) {
+        let value = input.value.replace(/\D/g, '');
+
+        if (value.length > 0 && value[0] !== '7' && value[0] !== '8') {
+            value = '7' + value;
+        }
+
+        if (value.length > 0 && value[0] === '8') {
+            value = '7' + value.slice(1);
+        }
+
+        let formatted = '';
+        if (value.length > 0) {
+            formatted = '+7';
+            let remaining = value.slice(1);
+
+            if (remaining.length > 0) {
+                formatted += ' (' + remaining.slice(0, 3);
+                if (remaining.length > 3) {
+                    formatted += ') ' + remaining.slice(3, 6);
+                    if (remaining.length > 6) {
+                        formatted += '-' + remaining.slice(6, 8);
+                        if (remaining.length > 8) {
+                            formatted += '-' + remaining.slice(8, 10);
+                        }
+                    }
+                }
+            }
+        }
+
+        input.value = formatted;
+        return input.value;
+    }
+
+    function attachPhoneMask(input) {
+        if (!input) return;
+        input.addEventListener('input', function() { phoneMask(this); });
+        input.addEventListener('focus', function() {
+            if (this.value === '') this.value = '+7';
+        });
+        input.addEventListener('blur', function() {
+            if (this.value === '+7') this.value = '';
+        });
+    }
+
+    attachPhoneMask(document.getElementById('addPhone'));
+    attachPhoneMask(document.getElementById('editPhone'));
+
+    function switchTab(tabName) {
+        const tabBtns = document.querySelectorAll('.modal-tab-btn');
+        const tabContents = document.querySelectorAll('.modal-tab-content');
+        tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+        tabContents.forEach(c => c.classList.toggle('active', c.dataset.content === tabName));
+    }
+
+    document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            switchTab(this.dataset.tab);
+        });
+    });
+
     function renderEmployees() {
         const search = searchInput.value.trim();
         const role = roleFilter.value;
-        
         fetch(`/employees/?search=${encodeURIComponent(search)}&role=${role}`)
             .then(response => response.text())
             .then(html => {
@@ -41,7 +132,6 @@
             })
             .catch(error => {
                 console.error('Ошибка загрузки сотрудников:', error);
-                showToast('Ошибка загрузки сотрудников');
             });
     }
 
@@ -56,7 +146,7 @@
 
         tableBody.querySelectorAll('tr[data-employee-id]').forEach(row => {
             row.addEventListener('click', function() {
-                const id = parseInt(this.getAttribute('data-employee-id'));
+                const id = parseInt(row.getAttribute('data-employee-id'));
                 openEmployeeModal(id);
             });
         });
@@ -66,7 +156,7 @@
         currentEmployeeId = employeeId;
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
-        
+
         fetch(`/employees/${employeeId}/`)
             .then(response => response.json())
             .then(data => {
@@ -78,21 +168,49 @@
                 document.getElementById('modalEmployeeName').textContent = data.full_name;
                 document.getElementById('viewFullName').textContent = data.full_name;
                 document.getElementById('viewUsername').textContent = data.username;
-                document.getElementById('viewRole').textContent = data.role_name;
+                document.getElementById('viewRole').textContent = data.role_display;
                 document.getElementById('viewPhone').textContent = data.phone || '—';
                 document.getElementById('viewTelegram').textContent = data.telegram || '—';
                 document.getElementById('viewStatus').textContent = data.is_active ? 'Активен' : 'Неактивен';
                 document.getElementById('viewDateJoined').textContent = data.date_joined || '—';
                 document.getElementById('viewLastLogin').textContent = data.last_login || '—';
 
+                document.getElementById('viewPassportSeries').textContent = data.passport_series || '—';
+                document.getElementById('viewPassportNumber').textContent = data.passport_number || '—';
+                document.getElementById('viewPassportIssuedBy').textContent = data.passport_issued_by || '—';
+                document.getElementById('viewPassportIssuedDate').textContent = data.passport_issued_date || '—';
+                document.getElementById('viewPassportDepartmentCode').textContent = data.passport_department_code || '—';
+                document.getElementById('viewPassportRegistration').textContent = data.passport_registration || '—';
+                document.getElementById('viewPassportInn').textContent = data.passport_inn || '—';
+                document.getElementById('viewPassportSnils').textContent = data.passport_snils || '—';
+
+                const artistCardTab = document.getElementById('artistCardTab');
+                if (data.is_artist) {
+                    if (artistCardTab) artistCardTab.style.display = 'inline-flex';
+                    currentArtistCard = data.artist_card;
+                    renderArtistCardView(data.artist_card);
+                } else {
+                    if (artistCardTab) artistCardTab.style.display = 'none';
+                    currentArtistCard = null;
+                }
+
                 document.getElementById('editUsername').value = data.username;
                 document.getElementById('editPassword').value = '';
                 document.getElementById('editFullName').value = data.full_name;
-                document.getElementById('editRole').value = data.role_id;
+                document.getElementById('editRole').value = data.role;
                 document.getElementById('editPhone').value = data.phone || '';
                 document.getElementById('editTelegram').value = data.telegram || '';
                 document.getElementById('editIsActive').checked = data.is_active;
+                document.getElementById('editPassportSeries').value = data.passport_series || '';
+                document.getElementById('editPassportNumber').value = data.passport_number || '';
+                document.getElementById('editPassportIssuedBy').value = data.passport_issued_by || '';
+                document.getElementById('editPassportIssuedDate').value = data.passport_issued_date || '';
+                document.getElementById('editPassportDepartmentCode').value = data.passport_department_code || '';
+                document.getElementById('editPassportRegistration').value = data.passport_registration || '';
+                document.getElementById('editPassportInn').value = data.passport_inn || '';
+                document.getElementById('editPassportSnils').value = data.passport_snils || '';
 
+                switchTab('main');
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
             })
@@ -102,10 +220,53 @@
             });
     }
 
+    function renderArtistCardView(card) {
+        if (!artistCardView) return;
+        if (!card || (!card.weight && !card.height && !card.shoe_size && !card.skills_text && !card.comment && (!card.known_shows || card.known_shows.length === 0))) {
+            artistCardView.innerHTML = '<p class="artist-card-empty">Карточка артиста не заполнена</p>';
+            return;
+        }
+
+        let showsHtml = '—';
+        if (card.known_shows && card.known_shows.length > 0) {
+            showsHtml = card.known_shows.map(s => escapeHtml(s.name)).join(', ');
+        }
+
+        artistCardView.innerHTML = `
+            <div class="artist-card-details">
+                <div class="detail-row">
+                    <span class="detail-label">Вес:</span>
+                    <span class="detail-value">${escapeHtml(card.weight || '—')}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Рост:</span>
+                    <span class="detail-value">${escapeHtml(card.height || '—')}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Размер обуви:</span>
+                    <span class="detail-value">${escapeHtml(card.shoe_size || '—')}</span>
+                </div>
+                <div class="detail-row detail-row--full" style="grid-column: 1 / -1;">
+                    <span class="detail-label">Навыки:</span>
+                    <span class="detail-value">${escapeHtml(card.skills_text || '—')}</span>
+                </div>
+                <div class="detail-row detail-row--full" style="grid-column: 1 / -1;">
+                    <span class="detail-label">Комментарий:</span>
+                    <span class="detail-value">${escapeHtml(card.comment || '—')}</span>
+                </div>
+                <div class="detail-row detail-row--full" style="grid-column: 1 / -1;">
+                    <span class="detail-label">Знание шоу:</span>
+                    <span class="detail-value">${showsHtml}</span>
+                </div>
+            </div>
+        `;
+    }
+
     function closeModal() {
         modal.classList.remove('active');
         document.body.style.overflow = '';
         currentEmployeeId = null;
+        currentArtistCard = null;
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
         isEditMode = false;
@@ -123,29 +284,13 @@
         editMode.style.display = 'none';
     }
 
-    function showToast(message) {
-        const container = document.getElementById('toastContainer');
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.textContent = message;
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(10px)';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.remove();
-                }
-            }, 300);
-        }, 2000);
-    }
-
     function openAddModal() {
         addModal.classList.add('active');
         document.body.style.overflow = 'hidden';
         addForm.reset();
         document.getElementById('addIsActive').checked = true;
+        document.getElementById('addRole').value = 'artist';
+        document.getElementById('addPhone').value = '';
     }
 
     function closeAddModal() {
@@ -153,66 +298,84 @@
         document.body.style.overflow = '';
     }
 
-    modalCloseBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeModal);
+    }
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    }
 
-    editEmployeeBtn.addEventListener('click', openEditMode);
-    editCancelBtn.addEventListener('click', cancelEdit);
+    if (editEmployeeBtn) {
+        editEmployeeBtn.addEventListener('click', openEditMode);
+    }
+    if (editCancelBtn) {
+        editCancelBtn.addEventListener('click', cancelEdit);
+    }
 
-    editForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const data = {
-            username: document.getElementById('editUsername').value.trim(),
-            password: document.getElementById('editPassword').value.trim(),
-            full_name: document.getElementById('editFullName').value.trim(),
-            role_id: document.getElementById('editRole').value,
-            phone: document.getElementById('editPhone').value.trim(),
-            telegram: document.getElementById('editTelegram').value.trim(),
-            is_active: document.getElementById('editIsActive').checked ? 'on' : 'off'
-        };
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
 
-        if (!data.username || !data.full_name || !data.role_id) {
-            showToast('Пожалуйста, заполните обязательные поля');
-            return;
-        }
+            const data = {
+                username: document.getElementById('editUsername').value.trim(),
+                password: document.getElementById('editPassword').value.trim(),
+                full_name: document.getElementById('editFullName').value.trim(),
+                role: document.getElementById('editRole').value,
+                phone: document.getElementById('editPhone').value.trim(),
+                telegram: document.getElementById('editTelegram').value.trim(),
+                is_active: document.getElementById('editIsActive').checked ? 'on' : 'off',
+                passport_series: document.getElementById('editPassportSeries').value.trim(),
+                passport_number: document.getElementById('editPassportNumber').value.trim(),
+                passport_issued_by: document.getElementById('editPassportIssuedBy').value.trim(),
+                passport_issued_date: document.getElementById('editPassportIssuedDate').value,
+                passport_department_code: document.getElementById('editPassportDepartmentCode').value.trim(),
+                passport_registration: document.getElementById('editPassportRegistration').value.trim(),
+                passport_inn: document.getElementById('editPassportInn').value.trim(),
+                passport_snils: document.getElementById('editPassportSnils').value.trim(),
+            };
 
-        fetch(`/employees/${currentEmployeeId}/update/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: new URLSearchParams(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                showToast(data.error);
+            if (!data.username || !data.full_name) {
+                showToast('Заполните обязательные поля');
                 return;
             }
-            if (data.success) {
-                showToast('Данные сотрудника успешно обновлены');
-                cancelEdit();
-                renderEmployees();
-                openEmployeeModal(currentEmployeeId);
-            }
-        })
-        .catch(error => {
-            showToast('Ошибка при обновлении сотрудника');
-            console.error(error);
-        });
-    });
 
-    deleteEmployeeBtn.addEventListener('click', function() {
-        if (confirm('Вы уверены, что хотите удалить этого сотрудника?')) {
-            fetch(`/employees/${currentEmployeeId}/delete/`, {
+            fetch(`/employees/${currentEmployeeId}/update/`, {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
                     'X-CSRFToken': getCSRFToken()
+                },
+                body: new URLSearchParams(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error);
+                    return;
                 }
+                if (data.success) {
+                    showToast('Данные сотрудника успешно обновлены');
+                    cancelEdit();
+                    renderEmployees();
+                    openEmployeeModal(currentEmployeeId);
+                }
+            })
+            .catch(error => {
+                showToast('Ошибка при обновлении сотрудника');
+                console.error(error);
+            });
+        });
+    }
+
+    if (deleteEmployeeBtn) {
+        deleteEmployeeBtn.addEventListener('click', function() {
+            if (!confirm('Вы уверены, что хотите удалить этого сотрудника?')) return;
+
+            fetch(`/employees/${currentEmployeeId}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCSRFToken() }
             })
             .then(response => response.json())
             .then(data => {
@@ -230,83 +393,326 @@
                 showToast('Ошибка при удалении сотрудника');
                 console.error(error);
             });
+        });
+    }
+
+    if (addEmployeeBtn) {
+        addEmployeeBtn.addEventListener('click', openAddModal);
+    }
+    if (addModalCloseBtn) {
+        addModalCloseBtn.addEventListener('click', closeAddModal);
+    }
+    if (addModalCancelBtn) {
+        addModalCancelBtn.addEventListener('click', closeAddModal);
+    }
+    if (addModal) {
+        addModal.addEventListener('click', function(e) {
+            if (e.target === this) closeAddModal();
+        });
+    }
+
+    if (addForm) {
+        addForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const data = {
+                username: document.getElementById('addUsername').value.trim(),
+                password: document.getElementById('addPassword').value.trim(),
+                full_name: document.getElementById('addFullName').value.trim(),
+                role: document.getElementById('addRole').value,
+                phone: document.getElementById('addPhone').value.trim(),
+                telegram: document.getElementById('addTelegram').value.trim(),
+                is_active: document.getElementById('addIsActive').checked ? 'on' : 'off',
+                passport_series: document.getElementById('addPassportSeries').value.trim(),
+                passport_number: document.getElementById('addPassportNumber').value.trim(),
+                passport_issued_by: document.getElementById('addPassportIssuedBy').value.trim(),
+                passport_issued_date: document.getElementById('addPassportIssuedDate').value,
+                passport_department_code: document.getElementById('addPassportDepartmentCode').value.trim(),
+                passport_registration: document.getElementById('addPassportRegistration').value.trim(),
+                passport_inn: document.getElementById('addPassportInn').value.trim(),
+                passport_snils: document.getElementById('addPassportSnils').value.trim(),
+            };
+
+            if (!data.username || !data.password || !data.full_name) {
+                showToast('Заполните обязательные поля');
+                return;
+            }
+
+            fetch('/employees/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: new URLSearchParams(data)
+            })
+            .then(response => response.json())
+            .then(res => {
+                if (res.error) {
+                    showToast(res.error);
+                    return;
+                }
+                if (res.success) {
+                    closeAddModal();
+                    renderEmployees();
+                    if (res.employee.is_artist) {
+                        showArtistCardNotification(res.employee.id, res.employee.full_name);
+                    } else {
+                        showToast(`Сотрудник "${res.employee.full_name}" успешно создан`);
+                    }
+                }
+            })
+            .catch(error => {
+                showToast('Ошибка при добавлении сотрудника');
+                console.error(error);
+            });
+        });
+    }
+
+    function showArtistCardNotification(employeeId, employeeName) {
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerHTML = `
+            <div class="notification__content">
+                <div class="notification__text">
+                    Сотрудник "<strong>${escapeHtml(employeeName)}</strong>" успешно создан.<br>
+                    Хотите отредактировать карточку артиста сейчас?
+                </div>
+                <div class="notification__actions">
+                    <button class="notification__btn" data-action="edit-artist-card">
+                        Редактировать
+                    </button>
+                    <button class="notification__btn notification__btn--outline" data-action="dismiss">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+            <div class="notification__progress"></div>
+        `;
+
+        const progressBar = notification.querySelector('.notification__progress');
+        const duration = 5000;
+        const startTime = Date.now();
+
+        function updateProgress() {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, 1 - elapsed / duration);
+            progressBar.style.transform = `scaleX(${remaining})`;
+            if (remaining > 0) {
+                requestAnimationFrame(updateProgress);
+            }
         }
-    });
 
-    addEmployeeBtn.addEventListener('click', openAddModal);
-    addModalCloseBtn.addEventListener('click', closeAddModal);
-    addModalCancelBtn.addEventListener('click', closeAddModal);
-    addModal.addEventListener('click', function(e) {
-        if (e.target === this) closeAddModal();
-    });
+        requestAnimationFrame(updateProgress);
 
-    addForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const data = {
-            username: document.getElementById('addUsername').value.trim(),
-            password: document.getElementById('addPassword').value.trim(),
-            full_name: document.getElementById('addFullName').value.trim(),
-            role_id: document.getElementById('addRole').value,
-            phone: document.getElementById('addPhone').value.trim(),
-            telegram: document.getElementById('addTelegram').value.trim(),
-            is_active: document.getElementById('addIsActive').checked ? 'on' : 'off'
-        };
+        const timeoutId = setTimeout(() => {
+            removeNotification(notification);
+        }, duration);
 
-        if (!data.username || !data.password || !data.full_name || !data.role_id) {
-            showToast('Пожалуйста, заполните обязательные поля');
+        notification.querySelector('[data-action="edit-artist-card"]').addEventListener('click', function() {
+            clearTimeout(timeoutId);
+            removeNotification(notification);
+            openEmployeeModal(employeeId);
+            setTimeout(() => {
+                if (currentEmployeeId === employeeId) {
+                    openArtistCardModal(employeeId);
+                }
+            }, 500);
+        });
+
+        notification.querySelector('[data-action="dismiss"]').addEventListener('click', function() {
+            clearTimeout(timeoutId);
+            removeNotification(notification);
+        });
+
+        notificationContainer.appendChild(notification);
+    }
+
+    function removeNotification(notification) {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(30px)';
+        notification.style.transition = 'all 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) notification.remove();
+        }, 300);
+    }
+
+    function loadServices() {
+        fetch('/artist-card/services/')
+            .then(r => r.json())
+            .then(data => {
+                if (data.services) {
+                    allServices = data.services;
+                }
+            })
+            .catch(err => console.error('Ошибка загрузки услуг:', err));
+    }
+
+    function renderShowsCheckboxes(selectedIds) {
+        if (!showsMultiSelect) return;
+        if (allServices.length === 0) {
+            showsMultiSelect.innerHTML = '<span style="color: #7a7267; font-size: 0.85rem; padding: 0.5rem;">Нет доступных услуг</span>';
             return;
         }
 
-        fetch('/employees/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: new URLSearchParams(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                showToast(data.error);
-                return;
-            }
-            if (data.success) {
-                showToast(`Сотрудник "${data.employee.full_name}" успешно добавлен`);
-                closeAddModal();
-                renderEmployees();
-            }
-        })
-        .catch(error => {
-            showToast('Ошибка при добавлении сотрудника');
-            console.error(error);
-        });
-    });
+        const selectedSet = new Set(selectedIds || []);
 
-    function filterEmployees() {
-        const search = searchInput.value.trim();
-        const role = roleFilter.value;
-        const params = new URLSearchParams();
-        if (search) params.append('search', search);
-        if (role && role !== 'all') params.append('role', role);
-        window.location.href = `/employees/?${params.toString()}`;
+        showsMultiSelect.innerHTML = allServices.map(s => {
+            const isChecked = selectedSet.has(s.id);
+            return `
+                <label class="show-checkbox-label ${isChecked ? 'checked' : ''}">
+                    <input type="checkbox" value="${s.id}" ${isChecked ? 'checked' : ''}>
+                    ${escapeHtml(s.name)}
+                </label>
+            `;
+        }).join('');
+
+        showsMultiSelect.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', function() {
+                this.closest('.show-checkbox-label').classList.toggle('checked', this.checked);
+            });
+        });
+    }
+
+    function openArtistCardModal(employeeId) {
+        fetch(`/employees/${employeeId}/artist-card/`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error);
+                    return;
+                }
+                const card = data.artist_card;
+
+                document.getElementById('artistWeight').value = card.weight || '';
+                document.getElementById('artistHeight').value = card.height || '';
+                document.getElementById('artistShoeSize').value = card.shoe_size || '';
+                document.getElementById('artistSkillsText').value = card.skills_text || '';
+                document.getElementById('artistComment').value = card.comment || '';
+
+                const selectedIds = (card.known_shows || []).map(s => s.id);
+                renderShowsCheckboxes(selectedIds);
+
+                artistCardModal.classList.add('active');
+            })
+            .catch(err => {
+                showToast('Ошибка загрузки карточки артиста');
+                console.error(err);
+            });
+    }
+
+    function closeArtistCardModal() {
+        if (artistCardModal) {
+            artistCardModal.classList.remove('active');
+        }
+    }
+
+    if (editArtistCardBtn) {
+        editArtistCardBtn.addEventListener('click', function() {
+            if (currentEmployeeId) {
+                openArtistCardModal(currentEmployeeId);
+            }
+        });
+    }
+
+    if (artistCardModalCloseBtn) {
+        artistCardModalCloseBtn.addEventListener('click', closeArtistCardModal);
+    }
+    if (artistCardCancelBtn) {
+        artistCardCancelBtn.addEventListener('click', closeArtistCardModal);
+    }
+    if (artistCardModal) {
+        artistCardModal.addEventListener('click', function(e) {
+            if (e.target === this) closeArtistCardModal();
+        });
+    }
+
+    if (artistCardForm) {
+        artistCardForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!currentEmployeeId) return;
+
+            const selectedShows = [];
+            showsMultiSelect.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                selectedShows.push(cb.value);
+            });
+
+            const data = {
+                weight: document.getElementById('artistWeight').value.trim(),
+                height: document.getElementById('artistHeight').value.trim(),
+                shoe_size: document.getElementById('artistShoeSize').value.trim(),
+                skills_text: document.getElementById('artistSkillsText').value.trim(),
+                comment: document.getElementById('artistComment').value.trim(),
+                known_shows: selectedShows.join(','),
+            };
+
+            fetch(`/employees/${currentEmployeeId}/artist-card/update/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: new URLSearchParams(data)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.error) {
+                    showToast(res.error);
+                    return;
+                }
+                if (res.success) {
+                    showToast('Карточка артиста сохранена');
+                    currentArtistCard = res.artist_card;
+                    renderArtistCardView(res.artist_card);
+                    closeArtistCardModal();
+                }
+            })
+            .catch(err => {
+                showToast('Ошибка сохранения карточки');
+                console.error(err);
+            });
+        });
     }
 
     let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(filterEmployees, 500);
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const search = searchInput.value.trim();
+                const role = roleFilter.value;
+                const params = new URLSearchParams();
+                if (search) params.append('search', search);
+                if (role && role !== 'all') params.append('role', role);
+                window.location.href = `/employees/?${params.toString()}`;
+            }, 500);
+        });
+    }
 
-    roleFilter.addEventListener('change', filterEmployees);
+    if (roleFilter) {
+        roleFilter.addEventListener('change', function() {
+            const search = searchInput.value.trim();
+            const role = roleFilter.value;
+            const params = new URLSearchParams();
+            if (search) params.append('search', search);
+            if (role && role !== 'all') params.append('role', role);
+            window.location.href = `/employees/?${params.toString()}`;
+        });
+    }
 
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            if (modal.classList.contains('active')) closeModal();
-            if (addModal.classList.contains('active')) closeAddModal();
+            if (artistCardModal && artistCardModal.classList.contains('active')) {
+                closeArtistCardModal();
+            } else if (modal && modal.classList.contains('active')) {
+                closeModal();
+            } else if (addModal && addModal.classList.contains('active')) {
+                closeAddModal();
+            }
         }
     });
 
+    loadServices();
     attachRowEvents();
 })();

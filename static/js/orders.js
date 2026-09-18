@@ -1,5 +1,6 @@
 (function() {
     let currentOrderId = null;
+    let createClientTargetSelect = null;
 
     const tableBody = document.getElementById('ordersTableBody');
     const searchInput = document.getElementById('searchInput');
@@ -16,6 +17,15 @@
     const editorModal = document.getElementById('orderEditorModal');
     const editorModalCloseBtn = document.getElementById('editorModalCloseBtn');
     const editorOrderTitle = document.getElementById('editorOrderTitle');
+
+    const createClientFromCreateBtn = document.getElementById('createClientFromCreateBtn');
+    const createClientModal = document.getElementById('createClientModal');
+    const createClientModalCloseBtn = document.getElementById('createClientModalCloseBtn');
+    const createClientModalCancelBtn = document.getElementById('createClientModalCancelBtn');
+    const createClientForm = document.getElementById('createClientForm');
+    const newClientFullName = document.getElementById('newClientFullName');
+    const newClientPhone = document.getElementById('newClientPhone');
+    const newClientCity = document.getElementById('newClientCity');
 
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
@@ -117,22 +127,25 @@
         return labels[status] || status;
     }
 
-    function loadClients(callback) {
+    function loadClients(selectedId) {
         fetch('/clients/list/')
             .then(response => response.json())
             .then(data => {
                 if (data.clients) {
-                    const options = data.clients.map(c => 
+                    const options = data.clients.map(c =>
                         `<option value="${c.id}">${escapeHtml(c.full_name)}${c.agency ? ' (' + escapeHtml(c.agency) + ')' : ''}</option>`
                     ).join('');
+
                     createOrderClient.innerHTML = '<option value="">Выберите клиента</option>' + options;
-                    
+
                     const editClientSelect = document.getElementById('editOrderClient');
                     if (editClientSelect) {
                         editClientSelect.innerHTML = '<option value="">Выберите клиента</option>' + options;
                     }
-                    
-                    if (callback) callback(data.clients);
+
+                    if (selectedId !== undefined && selectedId !== null) {
+                        createOrderClient.value = selectedId;
+                    }
                 }
             })
             .catch(error => console.error('Ошибка загрузки клиентов:', error));
@@ -141,7 +154,7 @@
     function renderOrders() {
         const search = searchInput.value.trim();
         const status = statusFilter.value;
-        
+
         fetch(`/orders/list/?search=${encodeURIComponent(search)}&status=${status}`)
             .then(response => response.json())
             .then(data => {
@@ -153,6 +166,7 @@
                                 <td>${escapeHtml(order.name || '—')}</td>
                                 <td>${order.date}</td>
                                 <td>${escapeHtml(order.client)}</td>
+                                <td>${escapeHtml(order.city_name || '—')}</td>
                                 <td><span class="status-badge ${statusClass}">${getStatusLabel(order.status)}</span></td>
                                 <td>${order.cost || '—'}</td>
                                 <td><button class="view-link" data-id="${order.id}">Открыть</button></td>
@@ -177,7 +191,7 @@
                 } else {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="6" style="text-align:center; padding: 2rem; color: #7a7267;">
+                            <td colspan="7" style="text-align:center; padding: 2rem; color: #7a7267;">
                                 Заказы не найдены
                             </td>
                         </tr>
@@ -194,7 +208,7 @@
         createModal.classList.add('active');
         document.body.style.overflow = 'hidden';
         createForm.reset();
-        
+
         const today = new Date().toISOString().split('T')[0];
         createOrderDate.value = today;
     }
@@ -208,6 +222,18 @@
         if (window.OrderEditor && typeof window.OrderEditor.open === 'function') {
             window.OrderEditor.open(orderId);
         }
+    }
+
+    function openCreateClientModal(targetSelect) {
+        createClientTargetSelect = targetSelect;
+        createClientModal.classList.add('active');
+        createClientForm.reset();
+        setTimeout(() => newClientFullName.focus(), 100);
+    }
+
+    function closeCreateClientModal() {
+        createClientModal.classList.remove('active');
+        createClientTargetSelect = null;
     }
 
     if (addOrderBtn) {
@@ -228,10 +254,101 @@
         });
     }
 
+    if (createClientFromCreateBtn) {
+        createClientFromCreateBtn.addEventListener('click', function() {
+            openCreateClientModal(createOrderClient);
+        });
+    }
+
+    if (createClientModalCloseBtn) {
+        createClientModalCloseBtn.addEventListener('click', closeCreateClientModal);
+    }
+
+    if (createClientModalCancelBtn) {
+        createClientModalCancelBtn.addEventListener('click', closeCreateClientModal);
+    }
+
+    if (createClientModal) {
+        createClientModal.addEventListener('click', function(e) {
+            if (e.target === this) closeCreateClientModal();
+        });
+    }
+
+    if (createClientForm) {
+        createClientForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const fullName = newClientFullName.value.trim();
+            const phone = newClientPhone.value.trim();
+            const city = newClientCity.value.trim();
+
+            if (!fullName) {
+                showToast('Введите ФИО');
+                return;
+            }
+            if (!phone) {
+                showToast('Введите телефон');
+                return;
+            }
+
+            const phoneDigits = phone.replace(/\D/g, '');
+            if (phoneDigits.length !== 11) {
+                showToast('Номер телефона должен содержать 11 цифр');
+                return;
+            }
+
+            fetch('/clients/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: new URLSearchParams({
+                    full_name: fullName,
+                    phone: phone,
+                    city: city,
+                    rating: 'medium',
+                    client_type: 'organizer'
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error);
+                    return;
+                }
+                if (data.success) {
+                    showToast(`Клиент "${data.client.full_name}" создан`);
+
+                    const newOption = document.createElement('option');
+                    newOption.value = data.client.id;
+                    newOption.textContent = data.client.full_name + (data.client.agency ? ' (' + data.client.agency + ')' : '');
+
+                    if (createClientTargetSelect) {
+                        createClientTargetSelect.appendChild(newOption);
+                        createClientTargetSelect.value = data.client.id;
+                    }
+
+                    const editSelect = document.getElementById('editOrderClient');
+                    if (editSelect && createClientTargetSelect !== editSelect) {
+                        const editOption = newOption.cloneNode(true);
+                        editSelect.appendChild(editOption);
+                    }
+
+                    closeCreateClientModal();
+                }
+            })
+            .catch(err => {
+                showToast('Ошибка создания клиента');
+                console.error(err);
+            });
+        });
+    }
+
     if (createForm) {
         createForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const name = createOrderName.value.trim();
             const clientId = createOrderClient.value;
             const date = createOrderDate.value;
@@ -308,7 +425,9 @@
 
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            if (createModal && createModal.classList.contains('active')) {
+            if (createClientModal && createClientModal.classList.contains('active')) {
+                closeCreateClientModal();
+            } else if (createModal && createModal.classList.contains('active')) {
                 closeCreateModal();
             }
         }

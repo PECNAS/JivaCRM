@@ -1,6 +1,5 @@
 (function() {
     let currentClientId = null;
-    let isEditMode = false;
     let currentAgencySelect = null;
 
     const tableBody = document.getElementById('clientsTableBody');
@@ -22,6 +21,7 @@
     const phoneInput = document.getElementById('addPhone');
     const editPhoneInput = document.getElementById('editPhone');
     const editClientBtn = document.getElementById('editClientBtn');
+    const deleteClientBtn = document.getElementById('deleteClientBtn');
     const editCancelBtn = document.getElementById('editCancelBtn');
     const editForm = document.getElementById('editClientForm');
     const viewMode = document.getElementById('viewMode');
@@ -36,14 +36,11 @@
     const addAddAgencyBtn = document.getElementById('addAddAgencyBtn');
     const editAddAgencyBtn = document.getElementById('editAddAgencyBtn');
 
-    function toggleAgencyField(clientType, agencyGroup, isAdd = true) {
+    function toggleAgencyField(clientType, agencyGroup, isAdd) {
         if (clientType === 'agency') {
             agencyGroup.style.display = 'block';
-            if (isAdd) {
-                addAgencySelect.required = true;
-            } else {
-                editAgencySelect.required = true;
-            }
+            if (isAdd) addAgencySelect.required = true;
+            else editAgencySelect.required = true;
         } else {
             agencyGroup.style.display = 'none';
             if (isAdd) {
@@ -71,14 +68,12 @@
     function openAddAgencyModal(selectElement) {
         currentAgencySelect = selectElement;
         addAgencyModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
         addAgencyForm.reset();
-        addAgencyName.focus();
+        setTimeout(() => addAgencyName.focus(), 100);
     }
 
     function closeAddAgencyModal() {
         addAgencyModal.classList.remove('active');
-        document.body.style.overflow = '';
         currentAgencySelect = null;
     }
 
@@ -117,7 +112,7 @@
     if (addAgencyForm) {
         addAgencyForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const name = addAgencyName.value.trim();
             if (!name) {
                 showToast('Пожалуйста, введите название агентства');
@@ -161,20 +156,20 @@
 
     function phoneMask(input) {
         let value = input.value.replace(/\D/g, '');
-        
+
         if (value.length > 0 && value[0] !== '7' && value[0] !== '8') {
             value = '7' + value;
         }
-        
+
         if (value.length > 0 && value[0] === '8') {
             value = '7' + value.slice(1);
         }
-        
+
         let formatted = '';
         if (value.length > 0) {
             formatted = '+7';
             let remaining = value.slice(1);
-            
+
             if (remaining.length > 0) {
                 formatted += ' (' + remaining.slice(0, 3);
                 if (remaining.length > 3) {
@@ -188,7 +183,7 @@
                 }
             }
         }
-        
+
         input.value = formatted;
         return input.value;
     }
@@ -222,7 +217,7 @@
         currentClientId = clientId;
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
-        
+
         fetch(`/clients/${clientId}/`)
             .then(response => response.json())
             .then(data => {
@@ -246,7 +241,7 @@
                     ordersContainer.innerHTML = data.orders.map(order => `
                         <div class="order-item">
                             <div class="order-info">
-                                <span class="order-name">${order.address}</span>
+                                <span class="order-name">${escapeHtml(order.address)}</span>
                                 <span class="order-meta">${order.date} · ${order.status}</span>
                             </div>
                             <a href="#" class="order-link" data-order-id="${order.id}">Перейти к заказу →</a>
@@ -257,7 +252,7 @@
                         link.addEventListener('click', function(e) {
                             e.preventDefault();
                             const orderId = this.getAttribute('data-order-id');
-                            showToast(`Переход к заказу #${orderId}`);
+                            window.location.href = `/orders/`;
                         });
                     });
                 } else {
@@ -350,9 +345,36 @@
     editClientBtn.addEventListener('click', openEditMode);
     editCancelBtn.addEventListener('click', cancelEdit);
 
+    deleteClientBtn.addEventListener('click', function() {
+        if (!currentClientId) return;
+
+        if (!confirm('Вы уверены, что хотите удалить этого клиента?')) return;
+
+        fetch(`/clients/${currentClientId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error);
+                return;
+            }
+            if (data.success) {
+                showToast('Клиент успешно удалён');
+                closeModal();
+                setTimeout(() => location.reload(), 500);
+            }
+        })
+        .catch(error => {
+            showToast('Ошибка при удалении клиента');
+            console.error(error);
+        });
+    });
+
     editForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         const clientType = document.getElementById('editClientType').value;
         const agencyId = document.getElementById('editAgency').value;
         const fullName = document.getElementById('editFullName').value.trim();
@@ -432,7 +454,7 @@
 
     addForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         const clientType = document.getElementById('addClientType').value;
         const agencyId = document.getElementById('addAgency').value;
         const fullName = document.getElementById('addFullName').value.trim();
@@ -540,9 +562,18 @@
         if (e.key === 'Escape') {
             if (addAgencyModal && addAgencyModal.classList.contains('active')) {
                 closeAddAgencyModal();
+            } else if (modal && modal.classList.contains('active')) {
+                closeModal();
+            } else if (addModal && addModal.classList.contains('active')) {
+                closeAddModal();
             }
-            if (modal && modal.classList.contains('active')) closeModal();
-            if (addModal && addModal.classList.contains('active')) closeAddModal();
         }
     });
+
+    function escapeHtml(text) {
+        if (!text && text !== 0) return '';
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+    }
 })();
