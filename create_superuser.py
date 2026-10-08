@@ -5,72 +5,113 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jiva.settings')
 django.setup()
 
 from django.contrib.auth.models import User
-from viewer.models import Employee, Role
+from viewer.models import Employee, Role, ArtistCard
 
 
-def create_superuser():
-    username = 'PECNAS'
-    email = 'busovrm4@gmail.com'
-    password = 'admin'
-    full_name = 'Главный администратор'
-    
-    # Создаем суперпользователя
-    user, created = User.objects.get_or_create(
-        username=username,
-        defaults={
-            'email': email,
-            'is_superuser': True,
-            'is_staff': True,
-            'is_active': True
-        }
-    )
-    
-    if created:
-        user.set_password(password)
-        user.save()
-        print(f"Суперпользователь {username} создан")
-    else:
-        print(f"Суперпользователь {username} уже существует")
-    
-    # Создаем или получаем роль "Старший администратор"
-    role, role_created = Role.objects.get_or_create(
-        name='Старший администратор',
-        defaults={'name': 'Старший администратор'}
-    )
-    if role_created:
-        print("Роль 'Старший администратор' создана")
-    else:
-        print("Роль 'Старший администратор' уже существует")
-    
-    # Создаем остальные роли
-    roles_to_create = ['Администратор', 'Менеджер', 'Тренер', 'Артист']
-    for role_name in roles_to_create:
-        role_obj, created = Role.objects.get_or_create(name=role_name)
-        if created:
-            print(f"Роль '{role_name}' создана")
-        else:
-            print(f"Роль '{role_name}' уже существует")
-    
-    # Создаем сотрудника, привязанного к пользователю
-    employee, emp_created = Employee.objects.get_or_create(
-        user=user,
-        defaults={
-            'full_name': full_name,
-            'role': 'senior_admin',
-            'is_active': True
-        }
-    )
-    
-    if emp_created:
-        print(f"Сотрудник {full_name} создан с ролью 'Старший администратор'")
-    else:
-        # Обновляем существующего сотрудника
-        employee.full_name = full_name
-        employee.role = 'senior_admin'
-        employee.is_active = True
-        employee.save()
-        print(f"Сотрудник {full_name} обновлен")
+DEFAULT_USERS = [
+    {
+        'username': 'PECNAS',
+        'password': 'admin',
+        'full_name': 'Старший администратор',
+        'role': 'senior_admin',
+        'is_superuser': True,
+        'is_staff': True,
+    },
+    {
+        'username': 'manager',
+        'password': 'manager',
+        'full_name': 'Управляющий',
+        'role': 'manager',
+        'is_superuser': False,
+        'is_staff': True,
+    },
+    {
+        'username': 'sales_manager',
+        'password': 'sales_manager',
+        'full_name': 'Менеджер',
+        'role': 'sales_manager',
+        'is_superuser': False,
+        'is_staff': True,
+    },
+    {
+        'username': 'choreographer',
+        'password': 'choreographer',
+        'full_name': 'Хореограф',
+        'role': 'choreographer',
+        'is_superuser': False,
+        'is_staff': True,
+    },
+    {
+        'username': 'production',
+        'password': 'production',
+        'full_name': 'Выпускающий',
+        'role': 'production',
+        'is_superuser': False,
+        'is_staff': True,
+    },
+    {
+        'username': 'artist',
+        'password': 'artist',
+        'full_name': 'Артист',
+        'role': 'artist',
+        'is_superuser': False,
+        'is_staff': True,
+    },
+    {
+        'username': 'technician',
+        'password': 'technician',
+        'full_name': 'Техник',
+        'role': 'technician',
+        'is_superuser': False,
+        'is_staff': True,
+    },
+]
+
+
+def create_default_users():
+    senior_admin_exists = User.objects.filter(
+        username='PECNAS', is_superuser=True
+    ).exists()
+
+    # if senior_admin_exists:
+    #     print('Старший администратор уже существует. Пропускаем создание.')
+    #     # return
+
+    print('Создание пользователей по умолчанию...')
+
+    for user_data in DEFAULT_USERS:
+        username = user_data['username']
+        password = user_data['password']
+
+        if User.objects.filter(username=username).exists():
+            print(f'  Пользователь "{username}" уже существует. Пропускаем.')
+            continue
+
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            first_name=user_data['full_name'],
+            is_active=True,
+            is_staff=user_data['is_staff'],
+            is_superuser=user_data['is_superuser'],
+        )
+
+        role, _ = Role.objects.get_or_create(name=user_data['full_name'])
+
+        employee = Employee.objects.create(
+            user=user,
+            full_name=user_data['full_name'],
+            role=user_data['role'],
+            is_active=True,
+        )
+
+        if user_data['role'] == 'artist':
+            ArtistCard.objects.get_or_create(employee=employee)
+
+        print(f'  Создан пользователь "{username}" с ролью "{user_data["full_name"]}".')
+
+    print('Готово.')
 
 
 if __name__ == '__main__':
-    create_superuser()
+    create_default_users()

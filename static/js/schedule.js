@@ -1,32 +1,36 @@
 (function() {
-    let currentDate = new Date();
-    let currentView = 'month';
-    let activeStatuses = ['all'];
-    let searchQuery = '';
+    let currentView = 'calendar';
     let currentOrders = [];
-    let highlightedOrderId = null;
+    let calendarDate = new Date();
+    let activeOrderId = null;
 
-    const scheduleGrid = document.getElementById('scheduleGrid');
-    const scheduleTitle = document.getElementById('scheduleTitle');
-    const prevBtn = document.getElementById('prevPeriod');
-    const nextBtn = document.getElementById('nextPeriod');
-    const searchInput = document.getElementById('scheduleSearch');
-    const modal = document.getElementById('orderModal');
-    const modalCloseBtn = document.getElementById('modalCloseBtn');
-    const closeModalBtn = document.getElementById('closeModalBtn');
-    const viewOrderBtn = document.getElementById('viewOrderBtn');
+    const myOrdersOnlyToggle = document.getElementById('myOrdersOnly');
+    const searchInput = document.getElementById('dashboardSearch');
+    const sortSelect = document.getElementById('dashboardSort');
+    const statusSelect = document.getElementById('dashboardStatus');
+    const dashboardList = document.getElementById('dashboardList');
+    const dashboardCalendar = document.getElementById('dashboardCalendar');
+    const calendarGrid = document.getElementById('calendarGrid');
+    const calendarTitle = document.getElementById('calendarTitle');
+    const calendarPrev = document.getElementById('calendarPrev');
+    const calendarNext = document.getElementById('calendarNext');
+    const contextMenu = document.getElementById('scheduleContextMenu');
+
+    const eventModal = document.getElementById('eventModal');
+    const eventModalTitle = document.getElementById('eventModalTitle');
+    const eventModalBody = document.getElementById('eventModalBody');
+    const eventModalCloseBtn = document.getElementById('eventModalCloseBtn');
+    const eventModalDismissBtn = document.getElementById('eventModalDismissBtn');
+    const eventModalDetailsBtn = document.getElementById('eventModalDetailsBtn');
 
     const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-    const monthNamesGenitive = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     const weekdaysShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    const weekdaysFull = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
     function getStatusLabel(status) {
         const labels = {
             request: 'Запрос',
             confirmed: 'Подтверждено',
             completed: 'Выполнено',
-            training: 'Тренировка'
         };
         return labels[status] || status;
     }
@@ -38,480 +42,515 @@
         return div.innerHTML;
     }
 
-    function formatDate(date) {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+    function formatPrice(value) {
+        const num = parseFloat(value) || 0;
+        return num.toFixed(2).replace('.', ',') + ' ₽';
     }
 
-    function parseDate(str) {
-        if (!str) return null;
-        const parts = str.split('-');
-        if (parts.length !== 3) return null;
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+
+    function parseDate(dateStr) {
+        const parts = dateStr.split('-');
         return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
     }
 
-    function dateToStr(date) {
-        return formatDate(date);
+    function getViewedOrders() {
+        try {
+            const raw = localStorage.getItem('jiva_viewed_orders');
+            return raw ? JSON.parse(raw) : {};
+        } catch {
+            return {};
+        }
     }
 
-    function isSameDay(a, b) {
-        return a.getFullYear() === b.getFullYear() &&
-            a.getMonth() === b.getMonth() &&
-            a.getDate() === b.getDate();
+    function markOrderViewed(orderId, updatedAt) {
+        const viewed = getViewedOrders();
+        viewed[orderId] = updatedAt;
+        try {
+            localStorage.setItem('jiva_viewed_orders', JSON.stringify(viewed));
+        } catch {}
     }
 
-    function getFilteredOrders() {
-        let orders = currentOrders;
+    function isOrderChanged(order) {
+        if (!order.updated_at) return false;
+        const viewed = getViewedOrders();
+        const prev = viewed[order.id];
+        if (!prev) return false;
+        return prev !== order.updated_at;
+    }
 
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            orders = orders.filter(o =>
-                (o.client && o.client.toLowerCase().includes(q)) ||
-                (o.address && o.address.toLowerCase().includes(q)) ||
-                (o.name && o.name.toLowerCase().includes(q))
-            );
-        } else if (!activeStatuses.includes('all')) {
-            orders = orders.filter(o => activeStatuses.includes(o.status));
+    function getServicesLabel(order) {
+        if (!order.services || order.services.length === 0) return '';
+        if (order.services.length === 1) return order.services[0];
+        return order.services[0] + ' ...';
+    }
+
+    function getRole() {
+        return document.body.dataset.role || '';
+    }
+
+    function canSeeCost() {
+        const role = getRole();
+        return role === 'senior_admin' || role === 'manager' || role === 'sales_manager';
+    }
+
+    function canOpenOrders() {
+        const role = getRole();
+        return role === 'senior_admin'
+            || role === 'manager'
+            || role === 'sales_manager'
+            || role === 'production'
+            || role === 'choreographer';
+    }
+
+    function renderEventModal(order) {
+        if (!order) return;
+
+        eventModalTitle.textContent = `Мероприятие #${order.id}`;
+
+        const services = order.services && order.services.length
+            ? order.services.map(s => `<li>${escapeHtml(s)}</li>`).join('')
+            : '<li class="event-modal__empty">Услуги не указаны</li>';
+
+        const costRow = canSeeCost() && order.cost && order.cost !== '—'
+            ? `<div class="event-modal__row"><span class="event-modal__label">Стоимость шоу</span><span class="event-modal__value event-modal__value--cost">${escapeHtml(order.cost)}</span></div>`
+            : '';
+
+        const paymentRow = (order.my_payment !== undefined && order.my_payment > 0)
+            ? `<div class="event-modal__row"><span class="event-modal__label">Моя оплата</span><span class="event-modal__value event-modal__value--cost">${formatPrice(order.my_payment)}</span></div>`
+            : '';
+
+        eventModalBody.innerHTML = `
+            <div class="event-modal__section">
+                <div class="event-modal__row">
+                    <span class="event-modal__label">Название</span>
+                    <span class="event-modal__value">${escapeHtml(order.name || 'Без названия')}</span>
+                </div>
+                <div class="event-modal__row">
+                    <span class="event-modal__label">Статус</span>
+                    <span class="event-modal__value">
+                        <span class="order-row__status order-row__status--${order.status}">${getStatusLabel(order.status)}</span>
+                    </span>
+                </div>
+                <div class="event-modal__row">
+                    <span class="event-modal__label">Дата</span>
+                    <span class="event-modal__value">${formatDate(order.date)}</span>
+                </div>
+                <div class="event-modal__row">
+                    <span class="event-modal__label">Заказчик</span>
+                    <span class="event-modal__value">${escapeHtml(order.client || '—')}</span>
+                </div>
+                <div class="event-modal__row">
+                    <span class="event-modal__label">Город</span>
+                    <span class="event-modal__value">${escapeHtml(order.city_name || '—')}</span>
+                </div>
+                <div class="event-modal__row">
+                    <span class="event-modal__label">Адрес</span>
+                    <span class="event-modal__value">${escapeHtml(order.address || '—')}</span>
+                </div>
+                <div class="event-modal__row">
+                    <span class="event-modal__label">Менеджер</span>
+                    <span class="event-modal__value">${escapeHtml(order.manager || '—')}</span>
+                </div>
+                ${costRow}
+                ${paymentRow}
+            </div>
+            <div class="event-modal__section">
+                <div class="event-modal__section-title">Услуги</div>
+                <ul class="event-modal__list">${services}</ul>
+            </div>
+        `;
+
+        if (eventModalDetailsBtn) {
+            eventModalDetailsBtn.style.display = canOpenOrders() ? '' : 'none';
         }
 
-        return orders;
+        activeOrderId = order.id;
+        eventModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 
-    function getOrdersSpanningDate(date) {
-        const dateStr = dateToStr(date);
-        return getFilteredOrders().filter(o => {
-            const oStart = parseDate(o.date);
-            if (!oStart) return false;
-            const oEnd = new Date(oStart);
-            oEnd.setDate(oEnd.getDate() + (o.duration || 1) - 1);
-            const oStartStr = dateToStr(oStart);
-            const oEndStr = dateToStr(oEnd);
-            return dateStr >= oStartStr && dateStr <= oEndStr;
+    function closeEventModal() {
+        eventModal.classList.remove('active');
+        document.body.style.overflow = '';
+        activeOrderId = null;
+    }
+
+    function applyFiltersAndSort(orders) {
+        const search = (searchInput.value || '').toLowerCase().trim();
+        const status = statusSelect.value;
+        const sort = sortSelect.value;
+
+        let result = orders.slice();
+
+        if (search) {
+            result = result.filter(o =>
+                (o.name && o.name.toLowerCase().includes(search)) ||
+                (o.client && o.client.toLowerCase().includes(search)) ||
+                (o.address && o.address.toLowerCase().includes(search))
+            );
+        }
+
+        if (status !== 'all') {
+            result = result.filter(o => o.status === status);
+        }
+
+        result.sort((a, b) => {
+            if (sort === 'date_desc') {
+                return (b.date || '').localeCompare(a.date || '');
+            } else if (sort === 'date_asc') {
+                return (a.date || '').localeCompare(b.date || '');
+            } else if (sort === 'name_asc') {
+                return (a.name || '').localeCompare(b.name || '', 'ru');
+            } else if (sort === 'name_desc') {
+                return (b.name || '').localeCompare(a.name || '', 'ru');
+            } else if (sort === 'client_asc') {
+                return (a.client || '').localeCompare(b.client || '', 'ru');
+            }
+            return 0;
+        });
+
+        return result;
+    }
+
+    function renderList() {
+        const filtered = applyFiltersAndSort(currentOrders);
+
+        if (filtered.length === 0) {
+            dashboardList.innerHTML = '<div class="dashboard-empty">Заказы не найдены</div>';
+            return;
+        }
+
+        let html = `
+            <div class="order-list-header">
+                <span>ID</span>
+                <span>Название</span>
+                <span>Клиент</span>
+                <span>Адрес</span>
+                <span>Дата</span>
+                <span>Стоимость</span>
+                <span>Статус</span>
+            </div>
+        `;
+
+        html += filtered.map(order => {
+            const changedClass = isOrderChanged(order) ? 'order-row--changed' : '';
+            const isArtistView = myOrdersOnlyToggle && myOrdersOnlyToggle.checked;
+
+            const costCell = isArtistView && order.my_payment !== undefined
+                ? formatPrice(order.my_payment)
+                : (order.cost || '—');
+
+            return `
+                <div class="order-row order-row--${order.status} ${changedClass}" data-order-id="${order.id}">
+                    <span class="order-row__cell order-row__id">#${order.id}</span>
+                    <span class="order-row__cell order-row__name">
+                        <span class="order-row__label">Название: </span>
+                        ${escapeHtml(order.name || 'Без названия')}
+                    </span>
+                    <span class="order-row__cell order-row__client">
+                        <span class="order-row__label">Клиент: </span>
+                        ${escapeHtml(order.client || '—')}
+                    </span>
+                    <span class="order-row__cell order-row__address">
+                        <span class="order-row__label">Адрес: </span>
+                        ${escapeHtml(order.address || '—')}
+                    </span>
+                    <span class="order-row__cell order-row__date">
+                        <span class="order-row__label">Дата: </span>
+                        ${formatDate(order.date)}
+                    </span>
+                    <span class="order-row__cell order-row__cost">${costCell}</span>
+                    <span class="order-row__cell">
+                        ${isOrderChanged(order) ? '<span class="order-row__badge">Обновлено</span>' : `<span class="order-row__status order-row__status--${order.status}">${getStatusLabel(order.status)}</span>`}
+                    </span>
+                </div>
+            `;
+        }).join('');
+
+        dashboardList.innerHTML = html;
+
+        dashboardList.querySelectorAll('.order-row').forEach(row => {
+            row.addEventListener('click', function() {
+                const id = parseInt(this.getAttribute('data-order-id'));
+                const order = currentOrders.find(o => o.id === id);
+                if (order) {
+                    markOrderViewed(order.id, order.updated_at);
+                    renderEventModal(order);
+                }
+            });
         });
     }
 
-    function getOrderSpanInfo(order, currentCellDate) {
-        const oStart = parseDate(order.date);
-        if (!oStart) return { position: 'start', isStart: false };
-        const oEnd = new Date(oStart);
-        oEnd.setDate(oEnd.getDate() + (order.duration || 1) - 1);
-
-        const cellStr = dateToStr(currentCellDate);
-        const startStr = dateToStr(oStart);
-        const endStr = dateToStr(oEnd);
-
-        const isStart = cellStr === startStr;
-        const isEnd = cellStr === endStr;
-
-        let position = 'start';
-        if (isStart && isEnd) position = 'single';
-        else if (isStart) position = 'start';
-        else if (isEnd) position = 'end';
-        else position = 'middle';
-
-        return { position, isStart, isEnd };
-    }
-
-    function orderBlockHtml(order, spanInfo) {
-        const statusClass = `order-block--${order.status}`;
-        let spanClass = '';
-        if (spanInfo.position === 'start') spanClass = 'order-block--span-start';
-        else if (spanInfo.position === 'middle') spanClass = 'order-block--span-middle';
-        else if (spanInfo.position === 'end') spanClass = 'order-block--span-end';
-
-        const highlight = (highlightedOrderId && highlightedOrderId === order.id) ? 'order-block--highlight' : '';
-
-        if (spanInfo.position === 'middle' || spanInfo.position === 'end') {
-            return `<div class="order-block ${statusClass} ${spanClass} ${highlight}" data-order-id="${order.id}"></div>`;
-        }
-
-        return `
-            <div class="order-block ${statusClass} ${spanClass} ${highlight}" data-order-id="${order.id}">
-                <div class="order-block__id">#${order.id}</div>
-                <div class="order-block__client">${escapeHtml(order.client || '')}</div>
-                <div class="order-block__address">${escapeHtml(order.address || '')}</div>
-                <div class="order-block__bottom">
-                    <span class="order-block__cost">${escapeHtml(order.cost || '—')}</span>
-                    <span class="order-block__status">${getStatusLabel(order.status)}</span>
-                </div>
-                <div class="order-block__manager">${escapeHtml(order.manager || '')}</div>
-            </div>
-        `;
-    }
-
-    function renderMonth(year, month) {
+    function renderCalendar() {
+        const year = calendarDate.getFullYear();
+        const month = calendarDate.getMonth();
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         let startDay = firstDay.getDay();
         if (startDay === 0) startDay = 7;
         const daysInMonth = lastDay.getDate();
 
-        scheduleTitle.textContent = `${monthNames[month]} ${year}`;
-
-        const startOffset = startDay - 1;
-        const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+        calendarTitle.textContent = `${monthNames[month]} ${year}`;
 
         let html = '';
         weekdaysShort.forEach(day => {
-            html += `<div class="schedule-grid__header">${day}</div>`;
+            html += `<div class="calendar-header">${day}</div>`;
         });
 
+        const startOffset = startDay - 1;
+        const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
         const today = new Date();
+        const filtered = applyFiltersAndSort(currentOrders);
 
         for (let i = 0; i < totalCells; i++) {
             const dayNumber = i - startOffset + 1;
             const isCurrentMonth = dayNumber >= 1 && dayNumber <= daysInMonth;
             const dateObj = new Date(year, month, dayNumber);
-            const isToday = isSameDay(dateObj, today);
+            const isToday = dateObj.getFullYear() === today.getFullYear() &&
+                dateObj.getMonth() === today.getMonth() &&
+                dateObj.getDate() === today.getDate();
 
-            let cellClass = 'schedule-grid__cell';
-            if (!isCurrentMonth) cellClass += ' schedule-grid__cell--empty';
-            if (isToday) cellClass += ' schedule-grid__cell--today';
+            let cellClass = 'calendar-cell';
+            if (!isCurrentMonth) cellClass += ' calendar-cell--empty';
+            if (isToday) cellClass += ' calendar-cell--today';
 
             let eventsHtml = '';
             if (isCurrentMonth) {
-                const orders = getOrdersSpanningDate(dateObj);
-                eventsHtml = '<div class="cell-events">';
-                orders.forEach(order => {
-                    const spanInfo = getOrderSpanInfo(order, dateObj);
-                    eventsHtml += orderBlockHtml(order, spanInfo);
+                const cellDate = new Date(year, month, dayNumber);
+                const events = filtered.filter(o => {
+                    const start = parseDate(o.date);
+                    const end = new Date(start);
+                    end.setDate(end.getDate() + (o.duration || 1) - 1);
+                    return cellDate >= start && cellDate <= end;
                 });
-                eventsHtml += '</div>';
+
+                if (events.length > 0) {
+                    eventsHtml = '<div class="calendar-cell__events">' +
+                        events.map(e => {
+                            const servicesLabel = getServicesLabel(e);
+                            const costHtml = (canSeeCost() && e.cost && e.cost !== '—')
+                                ? `<div class="calendar-event__cost">${escapeHtml(e.cost)}</div>`
+                                : '';
+                            return `
+                                <div class="calendar-event calendar-event--${e.status}" data-order-id="${e.id}">
+                                    <div class="calendar-event__id">#${e.id}</div>
+                                    <div class="calendar-event__name">${escapeHtml(e.name || 'Без названия')}</div>
+                                    <div class="calendar-event__client">${escapeHtml(e.client || '—')}</div>
+                                    ${servicesLabel ? `<div class="calendar-event__service">${escapeHtml(servicesLabel)}</div>` : ''}
+                                    ${costHtml}
+                                </div>
+                            `;
+                        }).join('') +
+                        '</div>';
+                }
             }
 
             const weekdayIndex = i % 7;
             html += `
-                <div class="${cellClass}">
-                    <div class="cell-date">
-                        <span class="cell-date__day">${isCurrentMonth ? dayNumber : ''}</span>
-                        <span class="cell-date__weekday">${isCurrentMonth ? weekdaysShort[weekdayIndex] : ''}</span>
+                <div class="${cellClass}" data-date="${year}-${String(month + 1).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}">
+                    <div class="calendar-cell__date">
+                        <span>${isCurrentMonth ? dayNumber : ''}</span>
+                        <span class="calendar-cell__weekday">${isCurrentMonth ? weekdaysShort[weekdayIndex] : ''}</span>
                     </div>
                     ${eventsHtml}
                 </div>
             `;
         }
 
-        scheduleGrid.style.gridTemplateRows = '';
-        scheduleGrid.innerHTML = html;
-        attachOrderEvents();
-    }
+        calendarGrid.innerHTML = html;
 
-    function renderWeek(year, month, day) {
-        const date = new Date(year, month, day);
-        let dow = date.getDay();
-        if (dow === 0) dow = 7;
-        const startOfWeek = new Date(date);
-        startOfWeek.setDate(date.getDate() - (dow - 1));
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-        scheduleTitle.textContent = `${startOfWeek.getDate()} – ${endOfWeek.getDate()} ${monthNamesGenitive[endOfWeek.getMonth()]} ${endOfWeek.getFullYear()}`;
-
-        let html = '';
-        weekdaysShort.forEach(w => {
-            html += `<div class="schedule-grid__header">${w}</div>`;
-        });
-
-        const today = new Date();
-
-        for (let i = 0; i < 7; i++) {
-            const dateObj = new Date(startOfWeek);
-            dateObj.setDate(startOfWeek.getDate() + i);
-            const isToday = isSameDay(dateObj, today);
-
-            let cellClass = 'schedule-grid__cell';
-            if (isToday) cellClass += ' schedule-grid__cell--today';
-
-            const orders = getOrdersSpanningDate(dateObj);
-            let eventsHtml = '<div class="cell-events">';
-            orders.forEach(order => {
-                const spanInfo = getOrderSpanInfo(order, dateObj);
-                eventsHtml += orderBlockHtml(order, spanInfo);
-            });
-            eventsHtml += '</div>';
-
-            html += `
-                <div class="${cellClass}">
-                    <div class="cell-date">
-                        <span class="cell-date__day">${dateObj.getDate()}</span>
-                        <span class="cell-date__weekday">${weekdaysShort[i]}</span>
-                    </div>
-                    ${eventsHtml}
-                </div>
-            `;
-        }
-
-        scheduleGrid.style.gridTemplateRows = '';
-        scheduleGrid.innerHTML = html;
-        attachOrderEvents();
-    }
-
-    function renderDay(year, month, day) {
-        const dateObj = new Date(year, month, day);
-        let dow = dateObj.getDay();
-        if (dow === 0) dow = 7;
-        const weekdayIndex = dow - 1;
-
-        scheduleTitle.textContent = `${dateObj.getDate()} ${monthNamesGenitive[month]} ${year}, ${weekdaysFull[weekdayIndex]}`;
-
-        let html = '';
-        weekdaysShort.forEach(w => {
-            html += `<div class="schedule-grid__header">${w}</div>`;
-        });
-
-        const today = new Date();
-        const isToday = isSameDay(dateObj, today);
-
-        for (let i = 0; i < 7; i++) {
-            const isActive = i === weekdayIndex;
-            let cellClass = 'schedule-grid__cell';
-            if (!isActive) cellClass += ' schedule-grid__cell--empty';
-            if (isToday && isActive) cellClass += ' schedule-grid__cell--today';
-
-            let eventsHtml = '';
-            if (isActive) {
-                const orders = getOrdersSpanningDate(dateObj);
-                eventsHtml = '<div class="cell-events">';
-                orders.forEach(order => {
-                    const spanInfo = getOrderSpanInfo(order, dateObj);
-                    eventsHtml += orderBlockHtml(order, spanInfo);
-                });
-                eventsHtml += '</div>';
-            }
-
-            html += `
-                <div class="${cellClass}">
-                    <div class="cell-date">
-                        <span class="cell-date__day">${isActive ? dateObj.getDate() : ''}</span>
-                        <span class="cell-date__weekday">${isActive ? weekdaysShort[i] : ''}</span>
-                    </div>
-                    ${eventsHtml}
-                </div>
-            `;
-        }
-
-        scheduleGrid.style.gridTemplateRows = '';
-        scheduleGrid.innerHTML = html;
-        attachOrderEvents();
-    }
-
-    function attachOrderEvents() {
-        scheduleGrid.querySelectorAll('.order-block').forEach(block => {
-            block.addEventListener('click', function(e) {
+        calendarGrid.querySelectorAll('.calendar-event').forEach(ev => {
+            ev.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const id = parseInt(this.getAttribute('data-order-id'));
-                openOrderModal(id);
+                const order = currentOrders.find(o => o.id === id);
+                if (order) {
+                    markOrderViewed(order.id, order.updated_at);
+                    renderEventModal(order);
+                }
+            });
+
+            ev.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showContextMenu(e.clientX, e.clientY, null, this.dataset.orderId);
+            });
+        });
+
+        calendarGrid.querySelectorAll('.calendar-cell').forEach(cell => {
+            cell.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                const dateStr = this.dataset.date;
+                const isEmpty = this.classList.contains('calendar-cell--empty');
+                showContextMenu(e.clientX, e.clientY, isEmpty ? null : dateStr, null);
             });
         });
     }
 
-    function renderSchedule() {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const day = currentDate.getDate();
+    function showContextMenu(x, y, dateStr, orderId) {
+        if (!contextMenu) return;
+        const items = contextMenu.querySelectorAll('.context-menu-item');
+        if (items.length === 0) return;
 
-        if (currentView === 'month') {
-            renderMonth(year, month);
-        } else if (currentView === 'week') {
-            renderWeek(year, month, day);
+        contextMenu.dataset.date = dateStr || '';
+        contextMenu.dataset.orderId = orderId || '';
+
+        contextMenu.style.display = 'block';
+        contextMenu.style.left = '0px';
+        contextMenu.style.top = '0px';
+
+        const menuWidth = contextMenu.offsetWidth;
+        const menuHeight = contextMenu.offsetHeight;
+        const winWidth = window.innerWidth;
+        const winHeight = window.innerHeight;
+
+        let left = x;
+        let top = y;
+
+        if (left + menuWidth > winWidth) left = winWidth - menuWidth - 10;
+        if (top + menuHeight > winHeight) top = winHeight - menuHeight - 10;
+        if (left < 10) left = 10;
+        if (top < 10) top = 10;
+
+        contextMenu.style.left = left + 'px';
+        contextMenu.style.top = top + 'px';
+    }
+
+    function hideContextMenu() {
+        if (contextMenu) contextMenu.style.display = 'none';
+    }
+
+    function render() {
+        if (currentView === 'list') {
+            dashboardList.style.display = 'flex';
+            dashboardCalendar.style.display = 'none';
+            renderList();
         } else {
-            renderDay(year, month, day);
+            dashboardList.style.display = 'none';
+            dashboardCalendar.style.display = 'block';
+            renderCalendar();
         }
-    }
-
-    function navigate(direction) {
-        if (currentView === 'month') {
-            currentDate.setMonth(currentDate.getMonth() + direction);
-        } else if (currentView === 'week') {
-            currentDate.setDate(currentDate.getDate() + direction * 7);
-        } else {
-            currentDate.setDate(currentDate.getDate() + direction);
-        }
-        renderSchedule();
-    }
-
-    function goToToday() {
-        currentDate = new Date();
-        currentView = 'month';
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.view === 'month');
-        });
-        renderSchedule();
-    }
-
-    function scrollToHighlightedOrder() {
-        if (!highlightedOrderId) return;
-        const el = scheduleGrid.querySelector(`.order-block[data-order-id="${highlightedOrderId}"]`);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }
-
-    function runSearch(query) {
-        searchQuery = query;
-        highlightedOrderId = null;
-
-        if (searchQuery) {
-            const matches = currentOrders.filter(o =>
-                (o.client && o.client.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (o.address && o.address.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                (o.name && o.name.toLowerCase().includes(searchQuery.toLowerCase()))
-            );
-
-            if (matches.length > 0) {
-                const firstMatch = matches[0];
-                highlightedOrderId = firstMatch.id;
-                const matchDate = parseDate(firstMatch.date);
-                if (matchDate) {
-                    currentDate = new Date(matchDate);
-                }
-            }
-        }
-
-        renderSchedule();
-
-        if (highlightedOrderId) {
-            setTimeout(scrollToHighlightedOrder, 100);
-        }
-    }
-
-    function openOrderModal(orderId) {
-        const order = currentOrders.find(o => o.id === orderId);
-        if (!order) return;
-
-        document.getElementById('modalOrderTitle').textContent = `Заказ #${order.id}`;
-        document.getElementById('viewAddress').textContent = order.address || '—';
-        document.getElementById('viewDate').textContent = order.date || '—';
-        document.getElementById('viewClient').textContent = order.client || '—';
-        document.getElementById('viewCost').textContent = order.cost || '—';
-        document.getElementById('viewStatus').textContent = getStatusLabel(order.status);
-        document.getElementById('viewManager').textContent = order.manager || '—';
-
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-
-        viewOrderBtn.onclick = function() {
-            window.location.href = `/orders/`;
-        };
-    }
-
-    function closeOrderModal() {
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-
-    function showToast(message) {
-        const container = document.getElementById('toastContainer');
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.textContent = message;
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(10px)';
-            setTimeout(() => {
-                if (toast.parentNode) toast.remove();
-            }, 300);
-        }, 2000);
     }
 
     function loadOrders() {
-        fetch('/orders/list/?status=all')
+        let url = '/orders/list/?status=all';
+        const isArtistView = myOrdersOnlyToggle && myOrdersOnlyToggle.checked;
+
+        if (isArtistView) {
+            url = '/schedule/my-orders/';
+        }
+
+        fetch(url)
             .then(r => r.json())
             .then(data => {
-                if (data.orders) {
-                    currentOrders = data.orders.map(o => ({
-                        id: o.id,
-                        name: o.name || '',
-                        address: o.address || '',
-                        date: o.date,
-                        client: o.client || '',
-                        cost: o.cost || '—',
-                        status: o.status,
-                        status_display: o.status_display,
-                        manager: o.manager || '',
-                        duration: o.duration || 1,
-                    }));
-                    renderSchedule();
-                    if (highlightedOrderId) {
-                        setTimeout(scrollToHighlightedOrder, 100);
-                    }
+                if (data.error) {
+                    dashboardList.innerHTML = `<div class="dashboard-empty">${escapeHtml(data.error)}</div>`;
+                    return;
                 }
+                currentOrders = data.orders || [];
+                render();
             })
             .catch(err => {
-                console.error('Ошибка загрузки заказов:', err);
-                showToast('Ошибка загрузки расписания');
+                dashboardList.innerHTML = '<div class="dashboard-empty">Ошибка загрузки расписания</div>';
+                console.error(err);
             });
     }
 
-    prevBtn.addEventListener('click', () => navigate(-1));
-    nextBtn.addEventListener('click', () => navigate(1));
-
-    document.querySelectorAll('.view-btn').forEach(btn => {
+    document.querySelectorAll('.view-switch__btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view-switch__btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentView = this.dataset.view;
-            if (currentView === 'today') {
-                goToToday();
-            } else {
-                renderSchedule();
-            }
+            render();
         });
     });
 
-    document.querySelectorAll('.status-filter-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const status = this.dataset.status;
-            if (status === 'all') {
-                activeStatuses = ['all'];
-                document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-            } else {
-                if (activeStatuses.includes('all')) {
-                    activeStatuses = [];
-                }
-                const index = activeStatuses.indexOf(status);
-                if (index > -1) {
-                    activeStatuses.splice(index, 1);
-                    this.classList.remove('active');
-                } else {
-                    activeStatuses.push(status);
-                    this.classList.add('active');
-                }
-                if (activeStatuses.length === 0) {
-                    activeStatuses = ['all'];
-                    document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
-                    document.querySelector('[data-status="all"]').classList.add('active');
-                }
-            }
-            renderSchedule();
+    if (myOrdersOnlyToggle) {
+        myOrdersOnlyToggle.addEventListener('change', function() {
+            loadOrders();
         });
-    });
+    }
 
     let searchTimeout;
     searchInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            runSearch(this.value.trim());
-        }, 400);
+        searchTimeout = setTimeout(render, 300);
     });
 
-    modalCloseBtn.addEventListener('click', closeOrderModal);
-    closeModalBtn.addEventListener('click', closeOrderModal);
+    sortSelect.addEventListener('change', render);
+    statusSelect.addEventListener('change', render);
 
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeOrderModal();
-        }
+    calendarPrev.addEventListener('click', function() {
+        calendarDate.setMonth(calendarDate.getMonth() - 1);
+        renderCalendar();
     });
+
+    calendarNext.addEventListener('click', function() {
+        calendarDate.setMonth(calendarDate.getMonth() + 1);
+        renderCalendar();
+    });
+
+    if (contextMenu) {
+        contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const action = this.dataset.action;
+                const dateStr = contextMenu.dataset.date || '';
+                hideContextMenu();
+                if (action === 'create-order') {
+                    const params = new URLSearchParams();
+                    if (dateStr) params.set('open_create', '1');
+                    if (dateStr) params.set('create_date', dateStr);
+                    window.location.href = '/orders/' + (params.toString() ? '?' + params.toString() : '');
+                } else if (action === 'create-training') {
+                    alert('Создание тренировки — функция в разработке');
+                } else if (action === 'create-event') {
+                    alert('Создание события — функция в разработке');
+                }
+            });
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!contextMenu.contains(e.target)) {
+                hideContextMenu();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideContextMenu();
+            }
+        });
+
+        window.addEventListener('scroll', hideContextMenu, true);
+    }
+
+    if (eventModalCloseBtn) {
+        eventModalCloseBtn.addEventListener('click', closeEventModal);
+    }
+    if (eventModalDismissBtn) {
+        eventModalDismissBtn.addEventListener('click', closeEventModal);
+    }
+    if (eventModal) {
+        eventModal.addEventListener('click', function(e) {
+            if (e.target === this) closeEventModal();
+        });
+    }
+    if (eventModalDetailsBtn) {
+        eventModalDetailsBtn.addEventListener('click', function() {
+            if (!activeOrderId) return;
+            window.location.href = `/orders/?open_order=${activeOrderId}`;
+        });
+    }
 
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeOrderModal();
+        if (e.key === 'Escape' && eventModal && eventModal.classList.contains('active')) {
+            closeEventModal();
         }
     });
 

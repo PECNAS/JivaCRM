@@ -5,9 +5,10 @@ from .views import (
     EmployeesView, EmployeeDetailView, EmployeeUpdateView, EmployeeDeleteView, EmployeeListView,
     ArtistCardDetailView, ArtistCardUpdateView, ServicesForArtistCardView,
     OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView,
-    ScheduleView,
+    ScheduleView, MyOrdersListView,
     ServicesView, ServiceTreeView, ServiceCreateView, ServiceDetailView,
-    ServiceUpdateView, ServiceDeleteView, ServiceCalculationView, CityListView,
+    ServiceUpdateView, ServiceDeleteView, ServiceCalculationView,
+    CityListView,
     ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView,
     ProfileView, ProfileDetailView, ProfileScheduleView, ProfileTicketsView,
 )
@@ -16,6 +17,9 @@ urlpatterns = [
     path('', IndexView.as_view(), name='index'),
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
+
+    path('schedule/', ScheduleView.as_view(), name='schedule'),
+    path('schedule/my-orders/', MyOrdersListView.as_view(), name='my_orders'),
 
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/detail/', ProfileDetailView.as_view(), name='profile_detail'),
@@ -48,8 +52,6 @@ urlpatterns = [
     path('orders/<int:order_id>/delete/', OrderDeleteView.as_view(), name='order_delete'),
     path('orders/services/<int:service_id>/price/', ServicePriceForOrderView.as_view(), name='order_service_price'),
     path('orders/services/<int:service_id>/employees/', ServiceEmployeesForOrderView.as_view(), name='order_service_employees'),
-
-    path('schedule/', ScheduleView.as_view(), name='schedule'),
 
     path('services/', ServicesView.as_view(), name='services'),
     path('services/tree/', ServiceTreeView.as_view(), name='service_tree'),

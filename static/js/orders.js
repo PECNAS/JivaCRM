@@ -204,13 +204,17 @@
             });
     }
 
-    function openCreateModal() {
+    function openCreateModal(prefillDate) {
         createModal.classList.add('active');
         document.body.style.overflow = 'hidden';
         createForm.reset();
 
-        const today = new Date().toISOString().split('T')[0];
-        createOrderDate.value = today;
+        if (prefillDate) {
+            createOrderDate.value = prefillDate;
+        } else {
+            const today = new Date().toISOString().split('T')[0];
+            createOrderDate.value = today;
+        }
     }
 
     function closeCreateModal() {
@@ -221,6 +225,27 @@
     function openEditor(orderId) {
         if (window.OrderEditor && typeof window.OrderEditor.open === 'function') {
             window.OrderEditor.open(orderId);
+            return true;
+        }
+        return false;
+    }
+
+    function tryOpenEditorFromUrl(attempts) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const openOrderId = urlParams.get('open_order');
+        if (!openOrderId) return;
+
+        const id = parseInt(openOrderId);
+        if (isNaN(id)) return;
+
+        if (openEditor(id)) {
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, '', cleanUrl);
+            return;
+        }
+
+        if (attempts > 0) {
+            setTimeout(() => tryOpenEditorFromUrl(attempts - 1), 100);
         }
     }
 
@@ -237,7 +262,9 @@
     }
 
     if (addOrderBtn) {
-        addOrderBtn.addEventListener('click', openCreateModal);
+        addOrderBtn.addEventListener('click', function() {
+            openCreateModal();
+        });
     }
 
     if (createModalCloseBtn) {
@@ -435,4 +462,17 @@
 
     loadClients();
     renderOrders();
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.get('open_create') === '1') {
+        const prefillDate = urlParams.get('create_date') || '';
+        openCreateModal(prefillDate);
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+    }
+
+    window.addEventListener('load', function() {
+        tryOpenEditorFromUrl(20);
+    });
 })();

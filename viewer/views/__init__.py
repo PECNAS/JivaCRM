@@ -10,11 +10,12 @@ from .employees import (
 from .orders import (
     OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView,
     ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView,
+    CityListView,
 )
-from .schedule import ScheduleView
+from .schedule import ScheduleView, MyOrdersListView
 from .services import (
     ServicesView, ServiceTreeView, ServiceCreateView, ServiceDetailView,
-    ServiceUpdateView, ServiceDeleteView, ServiceCalculationView, CityListView,
+    ServiceUpdateView, ServiceDeleteView, ServiceCalculationView,
 )
 from .profile import (
     ProfileView, ProfileDetailView, ProfileScheduleView, ProfileTicketsView,

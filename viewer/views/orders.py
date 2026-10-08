@@ -23,7 +23,7 @@ class OrdersView(View):
             return redirect("login")
         try:
             employee = request.user.employee_profile
-            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer']:
+            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer', 'technician', 'choreographer', 'production']:
                 messages.error(request, 'У вас недостаточно прав для просмотра заказов')
                 return redirect('index')
         except:
@@ -115,7 +115,7 @@ class OrderDetailView(View):
             return JsonResponse({'error': 'Не авторизован'}, status=401)
         try:
             employee = request.user.employee_profile
-            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer']:
+            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer', 'technician', 'choreographer', 'production']:
                 return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
@@ -350,7 +350,7 @@ class OrderListView(View):
             return JsonResponse({'error': 'Не авторизован'}, status=401)
         try:
             employee = request.user.employee_profile
-            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer']:
+            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer', 'technician', 'choreographer', 'production']:
                 return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
@@ -372,6 +372,11 @@ class OrderListView(View):
 
         orders_list = []
         for order in orders:
+            services_list = []
+            for item in order.estimate_items.all():
+                if item.service_name:
+                    services_list.append(item.service_name)
+
             orders_list.append({
                 'id': order.id,
                 'name': order.name or '—',
@@ -385,7 +390,71 @@ class OrderListView(View):
                 'status': order.status,
                 'status_display': order.get_status_display(),
                 'manager': order.manager.full_name if order.manager else '',
-                'manager_id': order.manager.id if order.manager else None
+                'manager_id': order.manager.id if order.manager else None,
+                'services': services_list,
+                'updated_at': order.updated_at.isoformat() if order.updated_at else None,
+            })
+
+        return JsonResponse({'orders': orders_list})
+
+
+class MyOrdersListView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+        try:
+            employee = request.user.employee_profile
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+
+        orders = Order.objects.filter(
+            employee_items__employee=employee
+        ).select_related('client', 'city', 'manager__user').distinct().order_by('-date', '-created_at')
+
+        search = request.GET.get('search', '')
+        status = request.GET.get('status', 'all')
+
+        if search:
+            orders = orders.filter(
+                Q(name__icontains=search) |
+                Q(address__icontains=search) |
+                Q(client__full_name__icontains=search) |
+                Q(manager__full_name__icontains=search)
+            )
+        if status != 'all':
+            orders = orders.filter(status=status)
+
+        orders_list = []
+        for order in orders:
+            my_payment = 0
+            try:
+                item = order.employee_items.get(employee=employee)
+                my_payment = float(item.payment)
+            except OrderEmployee.DoesNotExist:
+                pass
+
+            services_list = []
+            for item in order.estimate_items.all():
+                if item.service_name:
+                    services_list.append(item.service_name)
+
+            orders_list.append({
+                'id': order.id,
+                'name': order.name or '—',
+                'address': order.address or '',
+                'date': format_date(order.date),
+                'client': order.client.full_name,
+                'client_id': order.client.id,
+                'city_id': order.city.id if order.city else None,
+                'city_name': order.city.name if order.city else '',
+                'cost': order.cost or '—',
+                'status': order.status,
+                'status_display': order.get_status_display(),
+                'manager': order.manager.full_name if order.manager else '',
+                'manager_id': order.manager.id if order.manager else None,
+                'my_payment': my_payment,
+                'services': services_list,
+                'updated_at': order.updated_at.isoformat() if order.updated_at else None,
             })
 
         return JsonResponse({'orders': orders_list})
