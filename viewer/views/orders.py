@@ -29,6 +29,12 @@ def serialize_calendar_colors():
     return colors
 
 
+def get_city_salary_bonus(city):
+    if city and city.group:
+        return float(city.group.salary_bonus)
+    return 0.0
+
+
 class OrdersView(View):
     def get(self, request):
         if not request.user.is_authenticated:
@@ -154,6 +160,7 @@ class OrderDetailView(View):
                     'name': item.employee_name,
                     'role': item.employee_role,
                     'payment': float(item.payment),
+                    'overridden': item.is_overridden,
                     'comment': item.comment
                 })
 
@@ -310,6 +317,7 @@ class OrderUpdateView(View):
                             employee_name=item.get('name', ''),
                             employee_role=item.get('role', ''),
                             payment=item.get('payment', 0),
+                            is_overridden=bool(item.get('overridden', False)),
                             comment=item.get('comment', '')
                         )
                 except (json.JSONDecodeError, TypeError):
@@ -499,23 +507,22 @@ class ServicesFlatListView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
-        services = Service.objects.filter(type='service', is_active=True).order_by('name')
+        nodes = Service.objects.filter(is_active=True).prefetch_related('staff_rows').order_by('order', 'name')
         data = []
-        for s in services:
-            data.append({
+        for s in nodes:
+            item = {
                 'id': s.id,
                 'name': s.name,
-                'parent_name': s.parent.name if s.parent else None,
-                'artist_min': s.artist_min,
-                'artist_max': s.artist_max,
-                'artist_rate': float(s.artist_rate),
-                'technician_min': s.technician_min,
-                'technician_max': s.technician_max,
-                'technician_rate': float(s.technician_rate),
-                'driver_min': s.driver_min,
-                'driver_max': s.driver_max,
-                'driver_rate': float(s.driver_rate),
-            })
+                'type': s.type,
+                'parent_id': s.parent_id,
+            }
+            if s.type == 'service':
+                item['artist_rate'] = float(s.artist_rate)
+                item['staff_rows'] = [
+                    {'artist_count': row.artist_count, 'cost': float(row.cost)}
+                    for row in s.staff_rows.all()
+                ]
+            data.append(item)
         return JsonResponse({'services': data})
 
 
@@ -523,49 +530,18 @@ class ServicePriceForOrderView(View):
     def get(self, request, service_id):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
-
         try:
-            service = get_object_or_404(Service, id=service_id)
+            service = get_object_or_404(Service, id=service_id, type='service')
             city_id = request.GET.get('city_id')
-            people_count_param = request.GET.get('people_count')
-
-            city = None
-            if city_id:
-                city = City.objects.filter(id=city_id).first()
+            city = City.objects.filter(id=city_id).first() if city_id else None
             if city is None:
                 city = City.objects.filter(name__iexact='Казань').first()
 
-            total_people = None
-            if people_count_param is not None and people_count_param != '':
-                try:
-                    total_people = int(people_count_param)
-                except (ValueError, TypeError):
-                    total_people = None
-
-            if service.overridden_total is not None:
-                price = float(service.overridden_total)
-            else:
-                calc = service.calculate_for_city(city)
-                price = calc['total'] if calc else 0
-                if total_people is not None and calc:
-                    extra_people = max(0, total_people - calc['total_people'])
-                    if extra_people > 0:
-                        salary_bonus = calc['salary_bonus']
-                        avg_rate = 0
-                        if service.artist_min > 0:
-                            avg_rate = float(service.artist_rate) + salary_bonus
-                        elif service.technician_min > 0:
-                            avg_rate = float(service.technician_rate) + salary_bonus
-                        elif service.driver_min > 0:
-                            avg_rate = float(service.driver_rate) + salary_bonus
-                        price += extra_people * avg_rate
-
             return JsonResponse({
                 'success': True,
-                'price': price,
+                'price': 0,
                 'city_id': city.id if city else None,
                 'city_name': city.name if city else None,
-                'total_people': total_people,
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
@@ -575,36 +551,22 @@ class ServiceEmployeesForOrderView(View):
     def get(self, request, service_id):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
-
         try:
-            service = get_object_or_404(Service, id=service_id)
+            service = get_object_or_404(Service, id=service_id, type='service')
             city_id = request.GET.get('city_id')
-
-            city = None
-            if city_id:
-                city = City.objects.filter(id=city_id).first()
+            city = City.objects.filter(id=city_id).first() if city_id else None
             if city is None:
                 city = City.objects.filter(name__iexact='Казань').first()
 
-            salary_bonus = 0
-            if city and city.group:
-                salary_bonus = float(city.group.salary_bonus)
-
-            artists_rate = float(service.artist_rate) + salary_bonus
-            technicians_rate = float(service.technician_rate) + salary_bonus
-            drivers_rate = float(service.driver_rate) + salary_bonus
+            salary_bonus = get_city_salary_bonus(city)
 
             return JsonResponse({
                 'success': True,
-                'artist_rate': artists_rate,
-                'technician_rate': technicians_rate,
-                'driver_rate': drivers_rate,
-                'artist_min': service.artist_min,
-                'artist_max': service.artist_max,
-                'technician_min': service.technician_min,
-                'technician_max': service.technician_max,
-                'driver_min': service.driver_min,
-                'driver_max': service.driver_max,
+                'artist_rate': float(service.artist_rate) + salary_bonus,
+                'staff_rows': [
+                    {'artist_count': row.artist_count, 'cost': float(row.cost)}
+                    for row in service.staff_rows.all()
+                ],
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)

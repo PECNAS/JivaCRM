@@ -234,6 +234,11 @@
   overflow: hidden;
 }
 
+.services-catalog-panel {
+  width: 38%;
+  min-width: 300px;
+}
+
 .panel-header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #2b2620;
@@ -267,6 +272,58 @@
   padding: 0.5rem 0;
 }
 
+.svc-tree,
+.svc-tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.svc-tree-children {
+  padding-left: 1.1rem;
+}
+
+.svc-tree-children.collapsed {
+  display: none;
+}
+
+.svc-cat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  margin: 0.1rem 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #ddd4c7;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.svc-cat:hover { background: #1f1b17; }
+
+.svc-toggle {
+  flex-shrink: 0;
+  color: #7a7267;
+  transition: transform 0.15s;
+}
+
+.svc-toggle.expanded { transform: rotate(90deg); }
+
+.svc-folder {
+  flex-shrink: 0;
+  color: #f0a868;
+}
+
+.svc-cat-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .service-catalog-item {
   display: flex;
   align-items: center;
@@ -290,7 +347,7 @@
 
 .service-catalog-info { flex: 1; display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .service-catalog-name { font-size: 0.85rem; color: #ddd4c7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.service-catalog-meta { font-size: 0.7rem; color: #7a7267; }
+.service-catalog-meta { font-size: 0.7rem; color: #9e9487; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .add-service-catalog-btn,
 .add-employee-btn {
@@ -404,6 +461,11 @@
 .services-table-editor tbody tr:hover,
 .employees-table-editor tbody tr:hover { background: #1a1714; }
 
+.employees-table-editor tbody tr.row-overridden {
+  background: rgba(240, 168, 104, 0.06);
+  box-shadow: inset 3px 0 0 #f0a868;
+}
+
 .services-table-editor .empty-row td,
 .employees-table-editor .empty-row td {
   text-align: center;
@@ -438,9 +500,31 @@
   background: #14120f;
 }
 
+.services-table-editor .cell-input.cell-input--overridden,
+.employees-table-editor .cell-input.cell-input--overridden {
+  border-color: #f0a868;
+  background: rgba(240, 168, 104, 0.14);
+  color: #ffbe7a;
+  font-weight: 600;
+}
+
+.override-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 40px;
+  background: #f0a868;
+  color: #0b0b0b;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
 .services-table-editor .cell-input--number { width: 60px; text-align: center; }
 .services-table-editor .cell-input--price,
-.employees-table-editor .cell-input--price { width: 100px; }
+.employees-table-editor .cell-input--price { width: 110px; }
 
 .remove-btn {
   background: transparent;

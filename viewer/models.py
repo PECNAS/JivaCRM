@@ -459,6 +459,7 @@ class OrderEmployee(models.Model):
     employee_name = models.CharField('ФИО сотрудника', max_length=200)
     employee_role = models.CharField('Роль', max_length=100, blank=True)
     payment = models.DecimalField('Оплата', max_digits=10, decimal_places=2, default=0)
+    is_overridden = models.BooleanField('Ставка изменена вручную', default=False)
     comment = models.TextField('Комментарий', blank=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)

@@ -7,7 +7,7 @@
     let allServices = [];
     let allCities = [];
     let filteredEmployees = [];
-    let filteredServices = [];
+    let collapsedCats = new Set();
     let costOverride = false;
     let manualCost = '';
 
@@ -56,6 +56,16 @@
     const employeesTotal = document.getElementById('employeesTotal');
     const employeeSearchInput = document.getElementById('employeeSearchInput');
 
+    const roleLabels = {
+        artist: 'Артист',
+        technician: 'Техник',
+        choreographer: 'Хореограф',
+        manager: 'Управляющий',
+        sales_manager: 'Менеджер',
+        production: 'Выпускающий',
+        senior_admin: 'Старший администратор'
+    };
+
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
         return cookieValue ? cookieValue[2] : '';
@@ -83,7 +93,7 @@
 
     function formatPrice(value) {
         const num = parseFloat(value) || 0;
-        return num.toFixed(2).replace('.', ',') + ' ₽';
+        return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₽';
     }
 
     function switchTab(tabName) {
@@ -94,6 +104,58 @@
     tabButtons.forEach(btn => btn.addEventListener('click', function() {
         switchTab(this.dataset.tab);
     }));
+
+    function getSortedRows(service) {
+        return (service && service.staff_rows ? service.staff_rows.slice() : [])
+            .sort((a, b) => a.artist_count - b.artist_count);
+    }
+
+    function pickRow(service, count) {
+        const rows = getSortedRows(service);
+        if (rows.length === 0) return null;
+        const n = parseInt(count) || 0;
+        let chosen = null;
+        rows.forEach(r => {
+            if (r.artist_count <= n) chosen = r;
+        });
+        return chosen || rows[0];
+    }
+
+    function getPriceRangeLabel(service) {
+        const rows = getSortedRows(service);
+        if (rows.length === 0) return 'Цена не задана';
+        const first = rows[0];
+        const last = rows[rows.length - 1];
+        if (first.artist_count === last.artist_count) {
+            return `${formatPrice(first.cost)} (${first.artist_count})`;
+        }
+        return `${formatPrice(first.cost)} (${first.artist_count}) - ${formatPrice(last.cost)} (${last.artist_count})`;
+    }
+
+    function getDefaultPaymentByRole(rawRole) {
+        if (rawRole !== 'artist') return null;
+        let maxRate = 0;
+        estimateItems.forEach(item => {
+            if (!item.service_id) return;
+            const service = allServices.find(s => s.id === item.service_id);
+            if (service && (service.artist_rate || 0) > maxRate) maxRate = service.artist_rate;
+        });
+        return maxRate;
+    }
+
+    function getDefaultPaymentForItem(item) {
+        const emp = allEmployees.find(e => e.id === item.employee_id);
+        if (!emp) return null;
+        return getDefaultPaymentByRole(emp.role);
+    }
+
+    function refreshEmployeeDefaults() {
+        employeeItems.forEach(item => {
+            if (item.overridden) return;
+            const def = getDefaultPaymentForItem(item);
+            if (def !== null) item.payment = def;
+        });
+    }
 
     function getCurrentCityId() {
         if (!editOrderCity) return null;
@@ -249,38 +311,81 @@
         }
     }
 
-    function renderServicesCatalogPanel() {
-        const search = (serviceSearchInput.value || '').toLowerCase().trim();
-        filteredServices = allServices.filter(s => {
-            if (!search) return true;
-            return s.name.toLowerCase().includes(search) || (s.parent_name && s.parent_name.toLowerCase().includes(search));
+    function buildCatalogTreeHtml(parentId, search, parentMatched) {
+        const children = allServices.filter(n => (n.parent_id || null) === parentId);
+        let html = '';
+
+        children.forEach(node => {
+            const selfMatch = !search || node.name.toLowerCase().includes(search);
+            const matched = parentMatched || selfMatch;
+
+            if (node.type === 'service') {
+                if (!matched) return;
+                const isAdded = estimateItems.some(it => it.service_id === node.id);
+                html += `
+                    <li>
+                        <div class="service-catalog-item ${isAdded ? 'added' : ''}" data-service-id="${node.id}">
+                            <div class="service-catalog-info">
+                                <div class="service-catalog-name">${escapeHtml(node.name)}</div>
+                                <div class="service-catalog-meta">${escapeHtml(getPriceRangeLabel(node))}</div>
+                            </div>
+                            <button class="add-service-catalog-btn" data-service-id="${node.id}" title="Добавить в заказ">+</button>
+                        </div>
+                    </li>
+                `;
+                return;
+            }
+
+            const childrenHtml = buildCatalogTreeHtml(node.id, search, matched);
+            if (search && !matched && childrenHtml === '') return;
+
+            const isCollapsed = !search && collapsedCats.has(node.id);
+            html += `
+                <li>
+                    <div class="svc-cat" data-cat-id="${node.id}">
+                        <svg class="svc-toggle ${isCollapsed ? '' : 'expanded'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                        <svg class="svc-folder" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <span class="svc-cat-name">${escapeHtml(node.name)}</span>
+                    </div>
+                    <ul class="svc-tree-children ${isCollapsed ? 'collapsed' : ''}">${childrenHtml}</ul>
+                </li>
+            `;
         });
 
-        if (filteredServices.length === 0) {
+        return html;
+    }
+
+    function renderServicesCatalogPanel() {
+        const search = (serviceSearchInput.value || '').toLowerCase().trim();
+        const html = buildCatalogTreeHtml(null, search, false);
+
+        if (!html) {
             servicesCatalogList.innerHTML = '<div style="padding:1rem;text-align:center;color:#7a7267;font-size:0.85rem;">Услуги не найдены</div>';
             return;
         }
 
-        servicesCatalogList.innerHTML = filteredServices.map(s => {
-            const path = s.parent_name ? `${escapeHtml(s.parent_name)} / ${escapeHtml(s.name)}` : escapeHtml(s.name);
-            const isAdded = estimateItems.some(it => it.service_id === s.id);
-            return `
-                <div class="service-catalog-item ${isAdded ? 'added' : ''}" data-service-id="${s.id}">
-                    <div class="service-catalog-info">
-                        <div class="service-catalog-name">${path}</div>
-                        <div class="service-catalog-meta">Арт: ${s.artist_min}-${s.artist_max} × ${formatPrice(s.artist_rate)} · Тех: ${s.technician_min}-${s.technician_max} × ${formatPrice(s.technician_rate)}</div>
-                    </div>
-                    <button class="add-service-catalog-btn" data-service-id="${s.id}" title="Добавить в заказ">+</button>
-                </div>
-            `;
-        }).join('');
+        servicesCatalogList.innerHTML = `<ul class="svc-tree">${html}</ul>`;
+    }
 
-        servicesCatalogList.querySelectorAll('.add-service-catalog-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
+    if (servicesCatalogList) {
+        servicesCatalogList.addEventListener('click', function(e) {
+            const addBtn = e.target.closest('.add-service-catalog-btn');
+            if (addBtn) {
                 e.stopPropagation();
-                const id = parseInt(this.dataset.serviceId);
-                addServiceToEstimate(id);
-            });
+                addServiceToEstimate(parseInt(addBtn.dataset.serviceId));
+                return;
+            }
+            const cat = e.target.closest('.svc-cat');
+            if (cat) {
+                const id = parseInt(cat.dataset.catId);
+                if (collapsedCats.has(id)) collapsedCats.delete(id);
+                else collapsedCats.add(id);
+                renderServicesCatalogPanel();
+            }
         });
     }
 
@@ -293,39 +398,31 @@
         const service = allServices.find(s => s.id === serviceId);
         if (!service) return;
 
-        const peopleDefault = service.artist_min + service.technician_min + service.driver_min;
+        const rows = getSortedRows(service);
+        const minRow = rows.length > 0 ? rows[0] : null;
 
         estimateItems.push({
             service_id: serviceId,
             name: service.name,
-            people_count: peopleDefault,
+            people_count: minRow ? minRow.artist_count : 0,
             coefficient: 1,
-            price: 0,
+            price: minRow ? minRow.cost : 0,
             comment: '',
             overridden: false,
         });
 
+        refreshEmployeeDefaults();
         renderServices();
-        fetchServicePrice(estimateItems.length - 1);
+        renderEmployees();
     }
 
-    function fetchServicePrice(index) {
+    function recalcServicePrice(index) {
         const item = estimateItems[index];
         if (!item || !item.service_id) return;
-        const cityId = getCurrentCityId();
-        const params = new URLSearchParams();
-        if (cityId) params.append('city_id', cityId);
-        if (item.people_count) params.append('people_count', item.people_count);
-
-        fetch(`/orders/services/${item.service_id}/price/?${params.toString()}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    estimateItems[index].price = data.price;
-                    renderServices();
-                }
-            })
-            .catch(err => console.error('Ошибка загрузки цены услуги:', err));
+        const service = allServices.find(s => s.id === item.service_id);
+        const row = pickRow(service, item.people_count);
+        item.price = row ? row.cost : 0;
+        item.overridden = false;
     }
 
     function renderServices() {
@@ -345,8 +442,9 @@
                            value="${item.people_count}" data-field="people_count" data-index="${index}">
                 </td>
                 <td>
-                    <input type="number" class="cell-input cell-input--price" step="0.01" min="0"
-                           value="${item.price}" data-field="price" data-index="${index}">
+                    <input type="number" class="cell-input cell-input--price ${item.overridden ? 'cell-input--overridden' : ''}" step="0.01" min="0"
+                           value="${item.price}" data-field="price" data-index="${index}"
+                           title="${item.overridden ? 'Стоимость изменена вручную' : ''}">
                 </td>
                 <td>
                     <input type="text" class="cell-input" value="${escapeHtml(item.comment)}"
@@ -379,13 +477,14 @@
                     value = parseFloat(value) || 0;
                 }
 
-                if (field === 'price') {
-                    estimateItems[index].overridden = true;
-                }
-
                 estimateItems[index][field] = value;
+
                 if (field === 'people_count') {
-                    fetchServicePrice(index);
+                    recalcServicePrice(index);
+                    renderServices();
+                } else if (field === 'price') {
+                    estimateItems[index].overridden = true;
+                    renderServices();
                 } else {
                     updateServicesTotal();
                 }
@@ -396,7 +495,9 @@
             btn.addEventListener('click', function() {
                 const index = parseInt(this.dataset.removeIndex);
                 estimateItems.splice(index, 1);
+                refreshEmployeeDefaults();
                 renderServices();
+                renderEmployees();
             });
         });
     }
@@ -415,21 +516,14 @@
         const search = (employeeSearchInput.value || '').toLowerCase().trim();
         filteredEmployees = allEmployees.filter(emp => {
             if (!search) return true;
-            return emp.full_name.toLowerCase().includes(search) || (emp.role && emp.role.toLowerCase().includes(search));
+            const label = (roleLabels[emp.role] || emp.role || '').toLowerCase();
+            return emp.full_name.toLowerCase().includes(search) || label.includes(search);
         });
 
         if (filteredEmployees.length === 0) {
             employeesListPanel.innerHTML = '<div style="padding:1rem;text-align:center;color:#7a7267;font-size:0.85rem;">Сотрудники не найдены</div>';
             return;
         }
-
-        const roleLabels = {
-            senior_admin: 'Старший администратор',
-            admin: 'Администратор',
-            manager: 'Менеджер',
-            trainer: 'Тренер',
-            artist: 'Артист'
-        };
 
         employeesListPanel.innerHTML = filteredEmployees.map(emp => {
             const initials = emp.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -470,25 +564,14 @@
             return;
         }
 
-        let payment = 0;
-        if (estimateItems.length > 0 && allServices.length > 0) {
-            let maxRate = 0;
-            estimateItems.forEach(item => {
-                if (!item.service_id) return;
-                const service = allServices.find(s => s.id === item.service_id);
-                if (!service) return;
-                if (rawRole === 'artist' && service.artist_rate > maxRate) maxRate = service.artist_rate;
-                if (rawRole === 'trainer' && service.technician_rate > maxRate) maxRate = service.technician_rate;
-                if (rawRole === 'artist' && service.artist_rate === 0 && service.technician_rate > maxRate) maxRate = service.technician_rate;
-            });
-            payment = maxRate;
-        }
+        const def = getDefaultPaymentByRole(rawRole);
 
         employeeItems.push({
             employee_id: id,
             name: name,
             role: roleLabel,
-            payment: payment,
+            payment: def !== null ? def : 0,
+            overridden: false,
             comment: ''
         });
 
@@ -504,13 +587,21 @@
             return;
         }
 
-        employeesTableBody.innerHTML = employeeItems.map((item, index) => `
-            <tr data-index="${index}">
-                <td>${escapeHtml(item.name)}</td>
+        employeesTableBody.innerHTML = employeeItems.map((item, index) => {
+            const def = getDefaultPaymentForItem(item);
+            const title = item.overridden && def !== null
+                ? `Ставка изменена вручную. Ставка по шоу: ${formatPrice(def)}`
+                : '';
+            return `
+            <tr data-index="${index}" class="${item.overridden ? 'row-overridden' : ''}">
+                <td>
+                    ${escapeHtml(item.name)}
+                    ${item.overridden ? '<span class="override-badge">Ставка изменена</span>' : ''}
+                </td>
                 <td>${escapeHtml(item.role)}</td>
                 <td>
-                    <input type="number" class="cell-input cell-input--price" step="0.01" min="0"
-                           value="${item.payment}" data-field="payment" data-index="${index}">
+                    <input type="number" class="cell-input cell-input--price ${item.overridden ? 'cell-input--overridden' : ''}" step="0.01" min="0"
+                           value="${item.payment}" data-field="payment" data-index="${index}" title="${escapeHtml(title)}">
                 </td>
                 <td>
                     <input type="text" class="cell-input" value="${escapeHtml(item.comment)}"
@@ -525,7 +616,8 @@
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
 
         attachEmployeeTableEvents();
         updateEmployeesTotal();
@@ -537,7 +629,14 @@
                 const index = parseInt(this.dataset.index);
                 const field = this.dataset.field;
                 let value = this.value;
-                if (field === 'payment') value = parseFloat(value) || 0;
+                if (field === 'payment') {
+                    value = parseFloat(value) || 0;
+                    employeeItems[index].payment = value;
+                    const def = getDefaultPaymentForItem(employeeItems[index]);
+                    employeeItems[index].overridden = def !== null && Math.abs(value - def) > 0.005;
+                    renderEmployees();
+                    return;
+                }
                 employeeItems[index][field] = value;
                 updateEmployeesTotal();
             });
@@ -601,16 +700,6 @@
         });
         editOrderCost.addEventListener('blur', function() {
             if (costOverride) manualCost = this.value;
-        });
-    }
-
-    if (editOrderCity) {
-        editOrderCity.addEventListener('change', function() {
-            estimateItems.forEach((item, index) => {
-                if (item.service_id && !item.overridden) {
-                    fetchServicePrice(index);
-                }
-            });
         });
     }
 
