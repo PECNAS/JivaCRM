@@ -1,8 +1,11 @@
 (function() {
-    let currentView = 'calendar';
+    const VIEW_STORAGE_KEY = 'jiva_schedule_view';
+
+    let currentView = localStorage.getItem(VIEW_STORAGE_KEY) === 'list' ? 'list' : 'calendar';
     let currentOrders = [];
     let calendarDate = new Date();
     let activeOrderId = null;
+    let statusColors = {};
 
     const myOrdersOnlyToggle = document.getElementById('myOrdersOnly');
     const searchInput = document.getElementById('dashboardSearch');
@@ -106,6 +109,12 @@
             || role === 'sales_manager'
             || role === 'production'
             || role === 'choreographer';
+    }
+
+    function getEventStyle(status) {
+        const c = statusColors['order:' + status];
+        if (!c) return '';
+        return `background:${c.background}33; border-left-color:${c.border};`;
     }
 
     function renderEventModal(order) {
@@ -337,8 +346,9 @@
                             const costHtml = (canSeeCost() && e.cost && e.cost !== '—')
                                 ? `<div class="calendar-event__cost">${escapeHtml(e.cost)}</div>`
                                 : '';
+                            const style = getEventStyle(e.status);
                             return `
-                                <div class="calendar-event calendar-event--${e.status}" data-order-id="${e.id}">
+                                <div class="calendar-event" style="${style}" data-order-id="${e.id}">
                                     <div class="calendar-event__id">#${e.id}</div>
                                     <div class="calendar-event__name">${escapeHtml(e.name || 'Без названия')}</div>
                                     <div class="calendar-event__client">${escapeHtml(e.client || '—')}</div>
@@ -438,6 +448,12 @@
         }
     }
 
+    function applyInitialView() {
+        document.querySelectorAll('.view-switch__btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.view === currentView);
+        });
+    }
+
     function loadOrders() {
         let url = '/orders/list/?status=all';
         const isArtistView = myOrdersOnlyToggle && myOrdersOnlyToggle.checked;
@@ -454,6 +470,7 @@
                     return;
                 }
                 currentOrders = data.orders || [];
+                statusColors = data.colors || {};
                 render();
             })
             .catch(err => {
@@ -467,6 +484,9 @@
             document.querySelectorAll('.view-switch__btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentView = this.dataset.view;
+            try {
+                localStorage.setItem(VIEW_STORAGE_KEY, currentView);
+            } catch {}
             render();
         });
     });
@@ -554,5 +574,6 @@
         }
     });
 
+    applyInitialView();
     loadOrders();
 })();

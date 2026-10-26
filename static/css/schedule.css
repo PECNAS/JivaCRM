@@ -134,21 +134,6 @@
     z-index: 2;
 }
 
-.calendar-event--request {
-    background: rgba(33, 100, 200, 0.2);
-    border-left-color: #2164c8;
-}
-
-.calendar-event--confirmed {
-    background: rgba(46, 125, 50, 0.2);
-    border-left-color: #2e7d32;
-}
-
-.calendar-event--completed {
-    background: rgba(220, 200, 160, 0.2);
-    border-left-color: #dcc8a0;
-}
-
 .calendar-event__id {
     font-size: 0.7rem;
     font-weight: 700;

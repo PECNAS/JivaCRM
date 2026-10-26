@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
 import json
-from ..models import Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City
+from ..models import Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City, CalendarColor
 
 
 def format_date(date_value):
@@ -15,6 +15,18 @@ def format_date(date_value):
     if hasattr(date_value, 'strftime'):
         return date_value.strftime('%Y-%m-%d')
     return str(date_value)
+
+
+def serialize_calendar_colors():
+    colors = {}
+    for c in CalendarColor.objects.filter(is_active=True):
+        key = c.type if c.type != 'order' else f'order:{c.status}'
+        colors[key] = {
+            'background': c.background_color,
+            'border': c.border_color,
+            'text': c.text_color,
+        }
+    return colors
 
 
 class OrdersView(View):
@@ -395,7 +407,10 @@ class OrderListView(View):
                 'updated_at': order.updated_at.isoformat() if order.updated_at else None,
             })
 
-        return JsonResponse({'orders': orders_list})
+        return JsonResponse({
+            'orders': orders_list,
+            'colors': serialize_calendar_colors(),
+        })
 
 
 class MyOrdersListView(View):
@@ -457,7 +472,10 @@ class MyOrdersListView(View):
                 'updated_at': order.updated_at.isoformat() if order.updated_at else None,
             })
 
-        return JsonResponse({'orders': orders_list})
+        return JsonResponse({
+            'orders': orders_list,
+            'colors': serialize_calendar_colors(),
+        })
 
 
 class CityListView(View):

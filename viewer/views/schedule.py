@@ -2,9 +2,9 @@ from django.http import HttpResponse, JsonResponse
 from django.views import View
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from ..models import Employee, Order, City
 from django.db.models import Q
-from ..models import Order, OrderEmployee, City
+from ..models import Employee, Order, OrderEmployee, City, CalendarColor
+
 
 class ScheduleView(View):
     def get(self, request):
@@ -49,8 +49,6 @@ class MyOrdersListView(View):
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
-        from ..models import OrderEmployee
-
         orders = Order.objects.filter(
             employee_items__employee=employee
         ).select_related('client', 'city', 'manager__user').distinct().order_by('-date', '-created_at')
@@ -77,6 +75,11 @@ class MyOrdersListView(View):
             except OrderEmployee.DoesNotExist:
                 pass
 
+            services_list = []
+            for item in order.estimate_items.all():
+                if item.service_name:
+                    services_list.append(item.service_name)
+
             orders_list.append({
                 'id': order.id,
                 'name': order.name or '—',
@@ -93,7 +96,17 @@ class MyOrdersListView(View):
                 'manager_id': order.manager.id if order.manager else None,
                 'my_payment': my_payment,
                 'duration': order.duration or 1,
+                'services': services_list,
                 'updated_at': order.updated_at.isoformat() if order.updated_at else None,
             })
 
-        return JsonResponse({'orders': orders_list})
+        colors = {}
+        for c in CalendarColor.objects.filter(is_active=True):
+            key = c.type if c.type != 'order' else f'order:{c.status}'
+            colors[key] = {
+                'background': c.background_color,
+                'border': c.border_color,
+                'text': c.text_color,
+            }
+
+        return JsonResponse({'orders': orders_list, 'colors': colors})

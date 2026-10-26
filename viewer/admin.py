@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Agency, Role, Skill, Employee, Client, Order,
     OrderEstimate, OrderEmployee, Service, ArtistSchedule,
-    City, CityGroup, ArtistCard,
+    City, CityGroup, ArtistCard, CalendarColor,
 )
 
 
@@ -36,6 +36,22 @@ class CityAdmin(admin.ModelAdmin):
     list_filter = ['group']
     search_fields = ['name']
     fields = ['name', 'group', 'transport_costs']
+
+
+@admin.register(CalendarColor)
+class CalendarColorAdmin(admin.ModelAdmin):
+    list_display = ['id', 'type', 'status', 'background_color', 'border_color', 'text_color', 'is_active']
+    list_filter = ['type', 'status', 'is_active']
+    list_editable = ['background_color', 'border_color', 'text_color', 'is_active']
+    fieldsets = (
+        ('Основное', {
+            'fields': ('type', 'status', 'is_active')
+        }),
+        ('Цвета', {
+            'fields': ('background_color', 'border_color', 'text_color'),
+            'description': 'Укажите цвет в формате HEX (например, #2164c8) или RGB (например, rgb(33, 100, 200)).'
+        }),
+    )
 
 
 @admin.register(Employee)

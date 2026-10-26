@@ -86,6 +86,40 @@ class City(models.Model):
         return 0
 
 
+class CalendarColor(models.Model):
+    COLOR_TYPES = [
+        ('order', 'Заказ'),
+        ('training', 'Тренировка'),
+        ('event', 'Событие'),
+    ]
+
+    ORDER_STATUSES = [
+        ('request', 'Запрос'),
+        ('confirmed', 'Подтвержденный'),
+        ('completed', 'Выполненный'),
+    ]
+
+    type = models.CharField('Тип', max_length=20, choices=COLOR_TYPES, default='order')
+    status = models.CharField('Статус заказа', max_length=20, choices=ORDER_STATUSES, blank=True)
+    background_color = models.CharField('Цвет фона', max_length=20, default='#2164c8')
+    border_color = models.CharField('Цвет полосы', max_length=20, default='#2164c8')
+    text_color = models.CharField('Цвет текста', max_length=20, default='#ddd4c7')
+    is_active = models.BooleanField('Активен', default=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Цвет календаря'
+        verbose_name_plural = 'Цвета календаря'
+        ordering = ['type', 'status']
+        unique_together = ['type', 'status']
+
+    def __str__(self):
+        if self.type == 'order':
+            return f'Заказ — {self.get_status_display() or "—"}'
+        return self.get_type_display()
+
+
 class Employee(models.Model):
     USER_ROLES = [
         ('artist', 'Артист'),
@@ -172,6 +206,9 @@ class Employee(models.Model):
 
     def can_manage_cities(self):
         return self.role in ['senior_admin', 'manager']
+
+    def can_manage_calendar_colors(self):
+        return self.role == 'senior_admin'
 
     def can_view_own_profile(self):
         return True
