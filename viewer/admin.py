@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Agency, Role, Skill, Employee, Client, Order,
-    OrderEstimate, OrderEmployee, Service, ArtistSchedule,
+    OrderEstimate, OrderEmployee, Service, ServiceStaffRow, ArtistSchedule,
     City, CityGroup, ArtistCard, CalendarColor,
 )
 
@@ -92,12 +92,18 @@ class ClientAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
 
 
+class ServiceStaffRowInline(admin.TabularInline):
+    model = ServiceStaffRow
+    extra = 0
+
+
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name', 'type', 'parent', 'payment_method', 'is_active']
-    list_filter = ['type', 'is_active', 'payment_method']
+    list_display = ['id', 'name', 'type', 'parent', 'artist_rate', 'is_active']
+    list_filter = ['type', 'is_active']
     search_fields = ['name', 'description']
     readonly_fields = ['created_at', 'updated_at']
+    inlines = [ServiceStaffRowInline]
 
 
 class OrderEstimateInline(admin.TabularInline):

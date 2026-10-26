@@ -1,11 +1,18 @@
 import os
+import random
+from datetime import date, timedelta
+
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jiva.settings')
 django.setup()
 
 from django.contrib.auth.models import User
-from viewer.models import Employee, Role, ArtistCard, CalendarColor, Skill
+from viewer.models import (
+    Employee, Role, ArtistCard, CalendarColor, Skill,
+    Client, Agency, City, CityGroup, Service, Order,
+    OrderEstimate, OrderEmployee,
+)
 
 
 DEFAULT_USERS = [
@@ -167,20 +174,37 @@ DEFAULT_ARTISTS = [
 ]
 
 
+DEMO_CLIENTS = [
+    {'full_name': 'Иванова Анна Сергеевна', 'phone': '79161234501', 'city': 'Казань'},
+    {'full_name': 'Петров Игорь Михайлович', 'phone': '79161234502', 'city': 'Казань'},
+    {'full_name': 'Смирнова Ольга Викторовна', 'phone': '79161234503', 'city': 'Москва'},
+    {'full_name': 'Кузнецов Дмитрий Олегович', 'phone': '79161234504', 'city': 'Казань'},
+]
+
+DEMO_AGENCY_NAME = 'Праздник Плюс'
+
+DEMO_EVENTS = [
+    {'offset': -10, 'name': 'Корпоратив «Итоги года»', 'status': 'completed', 'address': 'Казань, ул. Баумана, 15'},
+    {'offset': -3, 'name': 'День рождения «Цирковая ночь»', 'status': 'completed', 'address': 'Казань, ул. Пушкина, 4'},
+    {'offset': 0, 'name': 'Фестиваль «Огни города»', 'status': 'confirmed', 'address': 'Казань, Кремлёвская наб., 2'},
+    {'offset': 0, 'name': 'Открытие ресторана «Гранд»', 'status': 'request', 'address': 'Казань, ул. Мусы Джалиля, 8'},
+    {'offset': 4, 'name': 'Новогодний корпоратив', 'status': 'confirmed', 'address': 'Казань, ул. Декабристов, 60'},
+    {'offset': 7, 'name': 'Свадебное шоу «Белая сказка»', 'status': 'request', 'address': 'Казань, ул. Чистопольская, 12'},
+    {'offset': 12, 'name': 'Презентация бренда', 'status': 'confirmed', 'address': 'Москва, Тверская ул., 22'},
+    {'offset': 20, 'name': 'Выпускной «Звёздный путь»', 'status': 'request', 'address': 'Казань, ул. Адоратского, 1'},
+]
+
+
+def ask_yes_no(question):
+    answer = input(f'{question} [y/N]: ').strip().lower()
+    return answer in ('y', 'yes', 'д', 'да')
+
+
 def create_default_users():
-    senior_admin_exists = User.objects.filter(
-        username='PECNAS', is_superuser=True
-    ).exists()
-
-    # if senior_admin_exists:
-    #     print('Старший администратор уже существует. Пропускаем создание.')
-    #     # return
-
     print('Создание пользователей по умолчанию...')
 
     for user_data in DEFAULT_USERS:
         username = user_data['username']
-        password = user_data['password']
 
         if User.objects.filter(username=username).exists():
             print(f'  Пользователь "{username}" уже существует. Пропускаем.')
@@ -188,14 +212,14 @@ def create_default_users():
 
         user = User.objects.create_user(
             username=username,
-            password=password,
+            password=user_data['password'],
             first_name=user_data['full_name'],
             is_active=True,
             is_staff=user_data['is_staff'],
             is_superuser=user_data['is_superuser'],
         )
 
-        role, _ = Role.objects.get_or_create(name=user_data['full_name'])
+        Role.objects.get_or_create(name=user_data['full_name'])
 
         employee = Employee.objects.create(
             user=user,
@@ -253,7 +277,7 @@ def create_default_artists():
             is_staff=True,
         )
 
-        role, _ = Role.objects.get_or_create(name='Артист')
+        Role.objects.get_or_create(name='Артист')
 
         employee = Employee.objects.create(
             user=user,
@@ -274,7 +298,107 @@ def create_default_artists():
     print('Готово.')
 
 
+def create_demo_events():
+    print('Создание тестовых мероприятий...')
+
+    today = date.today()
+    manager = Employee.objects.filter(role='sales_manager').first() or Employee.objects.filter(role='senior_admin').first()
+    producer = Employee.objects.filter(role='production').first()
+    artists = list(Employee.objects.filter(role='artist'))
+    technicians = list(Employee.objects.filter(role='technician'))
+    city_kazan = City.objects.filter(name__iexact='Казань').first()
+    city_moscow = City.objects.filter(name__iexact='Москва').first()
+
+    agency, _ = Agency.objects.get_or_create(name=DEMO_AGENCY_NAME)
+
+    clients = []
+    for c in DEMO_CLIENTS:
+        client, _ = Client.objects.get_or_create(
+            phone=c['phone'],
+            defaults={
+                'full_name': c['full_name'],
+                'client_type': 'organizer',
+                'city': c['city'],
+                'rating': 'medium',
+                'created_by': manager,
+            },
+        )
+        clients.append(client)
+
+    agency_client, _ = Client.objects.get_or_create(
+        phone='79161239999',
+        defaults={
+            'full_name': 'Агентство Праздник',
+            'client_type': 'agency',
+            'agency': agency,
+            'city': 'Казань',
+            'rating': 'high',
+            'created_by': manager,
+        },
+    )
+    clients.append(agency_client)
+
+    services = list(Service.objects.filter(type='service', is_active=True))
+
+    for item in DEMO_EVENTS:
+        event_date = today + timedelta(days=item['offset'])
+        city = city_moscow if 'Москва' in item['address'] else city_kazan
+        client = random.choice(clients)
+
+        order = Order.objects.create(
+            name=item['name'],
+            client=client,
+            city=city,
+            date=event_date,
+            address=item['address'],
+            setup_time='18:00',
+            concept='Тестовое мероприятие',
+            manager=manager,
+            story_manager=producer,
+            status=item['status'],
+            duration=1,
+            payment_method='cash',
+        )
+
+        if services:
+            service = random.choice(services)
+            OrderEstimate.objects.create(
+                order=order,
+                service=service,
+                service_name=service.name,
+                people_count=service.artist_min + service.technician_min + service.driver_min,
+                coefficient=1,
+                price=0,
+            )
+
+        for employee in random.sample(artists, k=min(2, len(artists))):
+            OrderEmployee.objects.create(
+                order=order,
+                employee=employee,
+                employee_name=employee.full_name,
+                employee_role=employee.get_role_display(),
+                payment=0,
+            )
+
+        if technicians:
+            tech = random.choice(technicians)
+            OrderEmployee.objects.create(
+                order=order,
+                employee=tech,
+                employee_name=tech.full_name,
+                employee_role=tech.get_role_display(),
+                payment=0,
+            )
+
+        print(f'  Создано мероприятие "{order.name}" на {event_date.strftime("%d.%m.%Y")} ({item["status"]}).')
+
+    print('Готово.')
+
+
 if __name__ == '__main__':
     create_default_users()
     create_default_calendar_colors()
     create_default_artists()
+
+    if ask_yes_no('Создать мероприятия?'):
+        create_demo_events()

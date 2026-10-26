@@ -7,7 +7,7 @@ from .views import (
     OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView,
     ScheduleView, MyOrdersListView,
     ServicesView, ServiceTreeView, ServiceCreateView, ServiceDetailView,
-    ServiceUpdateView, ServiceDeleteView, ServiceCalculationView,
+    ServiceUpdateView, ServiceDeleteView,
     CityListView,
     ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView,
     ProfileView, ProfileDetailView, ProfileScheduleView, ProfileTicketsView,
@@ -60,5 +60,4 @@ urlpatterns = [
     path('services/<int:service_id>/', ServiceDetailView.as_view(), name='service_detail'),
     path('services/<int:service_id>/update/', ServiceUpdateView.as_view(), name='service_update'),
     path('services/<int:service_id>/delete/', ServiceDeleteView.as_view(), name='service_delete'),
-    path('services/<int:service_id>/calculate/', ServiceCalculationView.as_view(), name='service_calculate'),
 ]

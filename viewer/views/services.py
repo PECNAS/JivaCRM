@@ -1,8 +1,12 @@
+import json
+from decimal import Decimal, InvalidOperation
+
+from django.db import transaction
 from django.http import JsonResponse
 from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from ..models import Service, Employee, City
+from ..models import Service, ServiceStaffRow, City
 
 
 def serialize_service(service, full=True):
@@ -22,25 +26,60 @@ def serialize_service(service, full=True):
             'description': service.description or '',
             'duration': service.duration or '',
             'media_url': service.media_url or '',
-            'artist_min': service.artist_min,
-            'artist_max': service.artist_max,
             'artist_rate': float(service.artist_rate),
-            'technician_min': service.technician_min,
-            'technician_max': service.technician_max,
-            'technician_rate': float(service.technician_rate),
-            'driver_min': service.driver_min,
-            'driver_max': service.driver_max,
-            'driver_rate': float(service.driver_rate),
-            'amortization': float(service.amortization),
-            'logist': float(service.logist),
-            'laser': float(service.laser),
-            'manager_salary': float(service.manager_salary),
-            'unforeseen': float(service.unforeseen),
-            'extra_margin': float(service.extra_margin),
-            'payment_method': service.payment_method,
-            'overridden_total': float(service.overridden_total) if service.overridden_total is not None else None,
+            'staff_rows': [
+                {'id': row.id, 'artist_count': row.artist_count, 'cost': float(row.cost)}
+                for row in service.staff_rows.all()
+            ],
         })
     return data
+
+
+def parse_decimal(value):
+    try:
+        number = Decimal(str(value).strip().replace(',', '.'))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    if not number.is_finite():
+        return None
+    return number.quantize(Decimal('0.01'))
+
+
+def parse_non_negative_decimal(value):
+    number = parse_decimal(value)
+    return number if number is not None and number >= 0 else None
+
+
+def parse_positive_decimal(value):
+    number = parse_decimal(value)
+    return number if number is not None and number > 0 else None
+
+
+def parse_positive_int(value):
+    try:
+        number = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def parse_staff_rows(raw):
+    try:
+        items = json.loads(raw or '[]')
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(items, list):
+        return None
+    rows = []
+    for item in items:
+        if not isinstance(item, dict):
+            return None
+        count = parse_positive_int(item.get('artist_count'))
+        cost = parse_positive_decimal(item.get('cost'))
+        if count is None or cost is None:
+            return None
+        rows.append((count, cost))
+    return rows
 
 
 class ServicesView(View):
@@ -156,50 +195,30 @@ class ServiceUpdateView(View):
             if 'description' in request.POST:
                 service.description = request.POST.get('description', '')
             if 'duration' in request.POST:
-                service.duration = request.POST.get('duration', '')
+                service.duration = request.POST.get('duration', '').strip()
             if 'media_url' in request.POST:
-                service.media_url = request.POST.get('media_url', '')
+                service.media_url = request.POST.get('media_url', '').strip()
 
-            int_fields = [
-                'artist_min', 'artist_max',
-                'technician_min', 'technician_max',
-                'driver_min', 'driver_max',
-            ]
-            for field in int_fields:
-                if field in request.POST:
-                    try:
-                        setattr(service, field, int(request.POST.get(field) or 0))
-                    except (ValueError, TypeError):
-                        pass
+            if 'artist_rate' in request.POST:
+                rate = parse_non_negative_decimal(request.POST.get('artist_rate'))
+                if rate is None:
+                    return JsonResponse({'error': 'Ставка артиста должна быть неотрицательным числом'}, status=400)
+                service.artist_rate = rate
 
-            decimal_fields = [
-                'artist_rate', 'technician_rate', 'driver_rate',
-                'amortization', 'logist', 'laser', 'manager_salary',
-                'unforeseen', 'extra_margin',
-            ]
-            for field in decimal_fields:
-                if field in request.POST:
-                    try:
-                        setattr(service, field, float(request.POST.get(field) or 0))
-                    except (ValueError, TypeError):
-                        pass
+            staff_rows = None
+            if 'staff_rows' in request.POST:
+                staff_rows = parse_staff_rows(request.POST.get('staff_rows'))
+                if staff_rows is None:
+                    return JsonResponse({'error': 'Значения персонала должны быть положительными числами'}, status=400)
 
-            if 'payment_method' in request.POST:
-                pm = request.POST.get('payment_method')
-                if pm in ['cash', 'self', 'ip']:
-                    service.payment_method = pm
-
-            if 'overridden_total' in request.POST:
-                raw = request.POST.get('overridden_total')
-                if raw in (None, '', 'null'):
-                    service.overridden_total = None
-                else:
-                    try:
-                        service.overridden_total = float(raw)
-                    except (ValueError, TypeError):
-                        service.overridden_total = None
-
-            service.save()
+            with transaction.atomic():
+                service.save()
+                if staff_rows is not None:
+                    service.staff_rows.all().delete()
+                    ServiceStaffRow.objects.bulk_create([
+                        ServiceStaffRow(service=service, artist_count=count, cost=cost, order=index)
+                        for index, (count, cost) in enumerate(staff_rows)
+                    ])
 
             return JsonResponse({
                 'success': True,
@@ -224,32 +243,6 @@ class ServiceDeleteView(View):
             service = get_object_or_404(Service, id=service_id)
             service.delete()
             return JsonResponse({'success': True})
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-
-class ServiceCalculationView(View):
-    def get(self, request, service_id):
-        if not request.user.is_authenticated:
-            return JsonResponse({'error': 'Не авторизован'}, status=401)
-        try:
-            employee = request.user.employee_profile
-            if not employee.can_manage_services():
-                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
-        except:
-            return JsonResponse({'error': 'Профиль не найден'}, status=404)
-
-        try:
-            service = get_object_or_404(Service, id=service_id)
-            city_id = request.GET.get('city_id')
-            city = None
-            if city_id:
-                city = City.objects.filter(id=city_id).first()
-            if city is None:
-                city = City.objects.filter(name__iexact='Казань').first()
-
-            result = service.calculate_for_city(city)
-            return JsonResponse({'success': True, 'calculation': result})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 

@@ -4,7 +4,7 @@
     let contextNode = null;
     let currentServiceData = null;
     let currentActiveTab = 'info';
-    let debounceTimer = null;
+    let staffRows = [];
     let isSaving = false;
 
     const treeContainer = document.getElementById('treeRoot');
@@ -53,10 +53,7 @@
         const containers = [];
         const treeBody = document.querySelector('.tree-body');
         if (treeBody) containers.push({ el: treeBody, scroll: treeBody.scrollTop });
-        const activeTab = contentBody.querySelector('.service-tab-content.active');
-        if (activeTab) containers.push({ el: activeTab, scroll: activeTab.scrollTop });
-        const contentBodyEl = contentBody;
-        if (contentBodyEl) containers.push({ el: contentBodyEl, scroll: contentBodyEl.scrollTop });
+        if (contentBody) containers.push({ el: contentBody, scroll: contentBody.scrollTop });
         return containers;
     }
 
@@ -64,6 +61,16 @@
         containers.forEach(item => {
             if (item.el) item.el.scrollTop = item.scroll;
         });
+    }
+
+    function showContextMenu(x, y) {
+        contextMenu.style.display = 'block';
+        contextMenu.style.left = x + 'px';
+        contextMenu.style.top = y + 'px';
+    }
+
+    function hideContextMenu() {
+        contextMenu.style.display = 'none';
     }
 
     function fetchTree() {
@@ -119,12 +126,12 @@
             item.addEventListener('click', function(e) {
                 if (e.target.classList.contains('toggle-icon')) return;
                 e.stopPropagation();
-                selectNode(parseInt(this.dataset.id), this);
+                selectNode(parseInt(this.dataset.id, 10), this);
             });
             item.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                contextNode = parseInt(this.dataset.id);
+                contextNode = parseInt(this.dataset.id, 10);
                 showContextMenu(e.clientX, e.clientY);
             });
         });
@@ -142,18 +149,6 @@
                 }
             });
         });
-
-        document.addEventListener('click', function(e) {
-            if (contextMenu && !contextMenu.contains(e.target)) {
-                contextMenu.style.display = 'none';
-            }
-        });
-    }
-
-    function showContextMenu(x, y) {
-        contextMenu.style.display = 'block';
-        contextMenu.style.left = x + 'px';
-        contextMenu.style.top = y + 'px';
     }
 
     function selectNode(id, element) {
@@ -179,8 +174,8 @@
 
     function renderServiceCard(data) {
         contentTitle.textContent = data.name;
-        saveServiceBtn.style.display = 'inline-flex';
         deleteServiceBtn.style.display = 'inline-flex';
+        saveServiceBtn.style.display = data.type === 'service' ? 'inline-flex' : 'none';
 
         if (data.type === 'category') {
             renderCategoryCard(data);
@@ -202,38 +197,29 @@
     }
 
     function renderServiceTabs(data) {
+        if (currentActiveTab !== 'info' && currentActiveTab !== 'staff') {
+            currentActiveTab = 'info';
+        }
+
         contentBody.innerHTML = `
             <div class="service-tabs">
                 <button class="service-tab-btn ${currentActiveTab === 'info' ? 'active' : ''}" data-tab="info">Информация</button>
-                <button class="service-tab-btn ${currentActiveTab === 'artists' ? 'active' : ''}" data-tab="artists">Артисты</button>
-                <button class="service-tab-btn ${currentActiveTab === 'technicians' ? 'active' : ''}" data-tab="technicians">Техника</button>
-                <button class="service-tab-btn ${currentActiveTab === 'transport' ? 'active' : ''}" data-tab="transport">Транспорт</button>
-                <button class="service-tab-btn ${currentActiveTab === 'calc' ? 'active' : ''}" data-tab="calc">Расчёт</button>
+                <button class="service-tab-btn ${currentActiveTab === 'staff' ? 'active' : ''}" data-tab="staff">Персонал</button>
             </div>
             <div class="service-tab-content ${currentActiveTab === 'info' ? 'active' : ''}" data-content="info"></div>
-            <div class="service-tab-content ${currentActiveTab === 'artists' ? 'active' : ''}" data-content="artists"></div>
-            <div class="service-tab-content ${currentActiveTab === 'technicians' ? 'active' : ''}" data-content="technicians"></div>
-            <div class="service-tab-content ${currentActiveTab === 'transport' ? 'active' : ''}" data-content="transport"></div>
-            <div class="service-tab-content service-tab-content--calc ${currentActiveTab === 'calc' ? 'active' : ''}" data-content="calc"></div>
+            <div class="service-tab-content ${currentActiveTab === 'staff' ? 'active' : ''}" data-content="staff"></div>
         `;
 
         contentBody.querySelectorAll('.service-tab-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 currentActiveTab = this.dataset.tab;
-                contentBody.querySelectorAll('.service-tab-btn').forEach(b => b.classList.remove('active'));
-                contentBody.querySelectorAll('.service-tab-content').forEach(c => c.classList.remove('active'));
-                this.classList.add('active');
-                const target = contentBody.querySelector(`[data-content="${currentActiveTab}"]`);
-                if (target) target.classList.add('active');
+                contentBody.querySelectorAll('.service-tab-btn').forEach(b => b.classList.toggle('active', b === this));
+                contentBody.querySelectorAll('[data-content]').forEach(c => c.classList.toggle('active', c.dataset.content === currentActiveTab));
             });
         });
 
         renderInfoTab(data);
-        renderArtistsTab(data);
-        renderTechniciansTab(data);
-        renderTransportTab(data);
-        renderCalcTab(data);
-
+        renderStaffTab(data);
         attachFieldEvents();
     }
 
@@ -259,198 +245,91 @@
         `;
     }
 
-    function renderArtistsTab(data) {
-        const tab = contentBody.querySelector('[data-content="artists"]');
+    function isStaffRowEmpty(row) {
+        return !String(row.artist_count).trim() && !String(row.cost).trim();
+    }
+
+    function ensureTrailingEmptyRow() {
+        if (staffRows.length === 0 || !isStaffRowEmpty(staffRows[staffRows.length - 1])) {
+            staffRows.push({ artist_count: '', cost: '' });
+        }
+    }
+
+    function buildStaffRowHtml(index, row) {
+        return `
+            <tr>
+                <td>
+                    <input type="text" inputmode="numeric" class="field-input field-input--number" data-field="artist_count" data-index="${index}" value="${escapeHtml(row.artist_count)}" placeholder="0">
+                </td>
+                <td>
+                    <input type="number" step="0.01" min="0.01" class="field-input field-input--number" data-field="cost" data-index="${index}" value="${escapeHtml(row.cost)}" placeholder="0">
+                </td>
+            </tr>
+        `;
+    }
+
+    function attachStaffEvents(tbody) {
+        if (!tbody) return;
+
+        tbody.addEventListener('input', function(e) {
+            const input = e.target;
+            const field = input.dataset.field;
+            if (!field) return;
+            const index = parseInt(input.dataset.index, 10);
+
+            if (field === 'artist_count') {
+                const digits = input.value.replace(/\D/g, '').replace(/^0+/, '');
+                if (digits !== input.value) input.value = digits;
+            }
+
+            staffRows[index][field] = input.value;
+
+            if (index === staffRows.length - 1 && !isStaffRowEmpty(staffRows[index])) {
+                staffRows.push({ artist_count: '', cost: '' });
+                tbody.insertAdjacentHTML('beforeend', buildStaffRowHtml(staffRows.length - 1, staffRows[staffRows.length - 1]));
+            }
+        });
+
+        tbody.addEventListener('change', function(e) {
+            const input = e.target;
+            if (input.dataset.field !== 'cost') return;
+            const index = parseInt(input.dataset.index, 10);
+            if (input.value !== '' && !(parseFloat(input.value) > 0)) {
+                input.value = '';
+                staffRows[index].cost = '';
+                showToast('Стоимость должна быть положительным числом');
+            }
+        });
+    }
+
+    function renderStaffTab(data) {
+        const tab = contentBody.querySelector('[data-content="staff"]');
+        staffRows = (data.staff_rows || []).map(r => ({
+            artist_count: String(r.artist_count),
+            cost: String(r.cost),
+        }));
+        ensureTrailingEmptyRow();
+
         tab.innerHTML = `
-            <div class="field-row">
-                <div class="field-label">Минимум артистов</div>
-                <div class="field-value" data-field="artist_min" data-type="number">${data.artist_min}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Максимум артистов</div>
-                <div class="field-value" data-field="artist_max" data-type="number">${data.artist_max}</div>
-            </div>
             <div class="field-row">
                 <div class="field-label">Ставка за артиста</div>
                 <div class="field-value" data-field="artist_rate" data-type="number">${formatPrice(data.artist_rate)}</div>
             </div>
-        `;
-    }
-
-    function renderTechniciansTab(data) {
-        const tab = contentBody.querySelector('[data-content="technicians"]');
-        tab.innerHTML = `
-            <div class="field-row">
-                <div class="field-label">Минимум техников</div>
-                <div class="field-value" data-field="technician_min" data-type="number">${data.technician_min}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Максимум техников</div>
-                <div class="field-value" data-field="technician_max" data-type="number">${data.technician_max}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Ставка за техника</div>
-                <div class="field-value" data-field="technician_rate" data-type="number">${formatPrice(data.technician_rate)}</div>
-            </div>
-        `;
-    }
-
-    function renderTransportTab(data) {
-        const tab = contentBody.querySelector('[data-content="transport"]');
-        tab.innerHTML = `
-            <div class="field-row">
-                <div class="field-label">Минимум водителей</div>
-                <div class="field-value" data-field="driver_min" data-type="number">${data.driver_min}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Максимум водителей</div>
-                <div class="field-value" data-field="driver_max" data-type="number">${data.driver_max}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Ставка за водителя</div>
-                <div class="field-value" data-field="driver_rate" data-type="number">${formatPrice(data.driver_rate)}</div>
-            </div>
-        `;
-    }
-
-    function renderCalcTab(data) {
-        const tab = contentBody.querySelector('[data-content="calc"]');
-        tab.innerHTML = `
-            <table class="calc-table">
+            <table class="calc-table staff-table">
                 <thead>
                     <tr>
-                        <th>Позиция</th>
+                        <th>Кол-во артистов</th>
                         <th style="text-align:right;">Стоимость</th>
                     </tr>
                 </thead>
-                <tbody id="calcTableBody"></tbody>
+                <tbody id="staffTableBody">
+                    ${staffRows.map((row, index) => buildStaffRowHtml(index, row)).join('')}
+                </tbody>
             </table>
-            <div class="calc-hint">Кликните на значение, чтобы изменить его вручную</div>
+            <div class="calc-hint">Новая строка добавляется автоматически. Пустые строки при сохранении пропускаются.</div>
         `;
-        updateCalcTable();
-    }
 
-    function updateCalcTable() {
-        if (!currentServiceData || selectedNodeType !== 'service') return;
-        const tbody = contentBody.querySelector('#calcTableBody');
-        if (!tbody) return;
-
-        fetch(`/services/${selectedNodeId}/calculate/`)
-            .then(r => r.json())
-            .then(res => {
-                if (res.error) { showToast(res.error); return; }
-                const c = res.calculation;
-                const override = currentServiceData.overridden_total;
-
-                const totalToShow = override !== null && override !== undefined ? override : c.total;
-
-                tbody.innerHTML = `
-                    <tr class="calc-editable">
-                        <td class="calc-label">Артисты (${currentServiceData.artist_min} × ${formatPrice(currentServiceData.artist_rate + c.salary_bonus)})</td>
-                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.artist_sum)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Техники (${currentServiceData.technician_min} × ${formatPrice(currentServiceData.technician_rate + c.salary_bonus)})</td>
-                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.technician_sum)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Водители (${currentServiceData.driver_min} × ${formatPrice(currentServiceData.driver_rate + c.salary_bonus)})</td>
-                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.driver_sum)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Дорожные расходы (${c.total_people} чел., ${c.city_name})</td>
-                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.transport)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Амортизация</td>
-                        <td style="text-align:right;"><span class="calc-value" data-field="amortization">${formatPrice(currentServiceData.amortization)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Логист</td>
-                        <td style="text-align:right;"><span class="calc-value" data-field="logist">${formatPrice(currentServiceData.logist)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Лазер</td>
-                        <td style="text-align:right;"><span class="calc-value" data-field="laser">${formatPrice(currentServiceData.laser)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">ЗП менеджера</td>
-                        <td style="text-align:right;"><span class="calc-value" data-field="manager_salary">${formatPrice(currentServiceData.manager_salary)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Запас на непредвиденные</td>
-                        <td style="text-align:right;"><span class="calc-value" data-field="unforeseen">${formatPrice(currentServiceData.unforeseen)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Доп. моржа</td>
-                        <td style="text-align:right;"><span class="calc-value" data-field="extra_margin">${formatPrice(currentServiceData.extra_margin)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Способ оплаты</td>
-                        <td style="text-align:right;"><span class="calc-value" data-field="payment_method">${getPaymentLabel(currentServiceData.payment_method)}</span></td>
-                    </tr>
-                    <tr class="calc-editable">
-                        <td class="calc-label">Подытог</td>
-                        <td style="text-align:right;"><span class="calc-value">${formatPrice(c.subtotal)}</span></td>
-                    </tr>
-                    <tr class="calc-editable ${override !== null && override !== undefined ? 'calc-overridden' : ''}">
-                        <td class="calc-label">Итоговая стоимость ${override !== null && override !== undefined ? '(переопределена)' : ''}</td>
-                        <td style="text-align:right;"><span class="calc-value" data-field="overridden_total">${formatPrice(totalToShow)}</span></td>
-                    </tr>
-                `;
-                attachCalcEvents();
-            })
-            .catch(err => { showToast('Ошибка расчёта'); console.error(err); });
-    }
-
-    function getPaymentLabel(pm) {
-        if (pm === 'self') return 'Самозанятость';
-        if (pm === 'ip') return 'ИП';
-        return 'Наличные';
-    }
-
-    function attachCalcEvents() {
-        const tbody = contentBody.querySelector('#calcTableBody');
-        if (!tbody) return;
-        tbody.querySelectorAll('.calc-value[data-field]').forEach(el => {
-            el.addEventListener('click', function() {
-                const field = this.dataset.field;
-                const currentText = this.textContent.trim();
-                const currentValue = parseFloat(currentText.replace(/[^\d.,-]/g, '').replace(',', '.')) || 0;
-
-                if (field === 'payment_method') {
-                    const select = document.createElement('select');
-                    select.className = 'calc-input';
-                    select.innerHTML = `
-                        <option value="cash" ${currentServiceData.payment_method === 'cash' ? 'selected' : ''}>Наличные</option>
-                        <option value="self" ${currentServiceData.payment_method === 'self' ? 'selected' : ''}>Самозанятость</option>
-                        <option value="ip" ${currentServiceData.payment_method === 'ip' ? 'selected' : ''}>ИП</option>
-                    `;
-                    this.replaceWith(select);
-                    select.focus();
-                    const save = () => saveField(field, select.value, 'calc');
-                    select.addEventListener('blur', save);
-                    select.addEventListener('change', save);
-                    return;
-                }
-
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.step = '0.01';
-                input.className = 'calc-input';
-                input.value = currentValue;
-                this.replaceWith(input);
-                input.focus();
-                input.select();
-
-                const save = () => saveField(field, input.value, 'calc');
-                input.addEventListener('blur', save);
-                input.addEventListener('keydown', e => {
-                    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-                    if (e.key === 'Escape') { input.value = currentValue; input.blur(); }
-                });
-            });
-        });
+        attachStaffEvents(tab.querySelector('#staffTableBody'));
     }
 
     function attachFieldEvents() {
@@ -465,7 +344,9 @@
     function startEditing(el) {
         const field = el.dataset.field;
         const type = el.dataset.type;
-        const rawValue = currentServiceData[field] !== undefined ? currentServiceData[field] : '';
+        const rawValue = currentServiceData[field] !== undefined && currentServiceData[field] !== null
+            ? currentServiceData[field]
+            : '';
 
         let input;
         if (type === 'textarea') {
@@ -476,13 +357,9 @@
             input = document.createElement('input');
             input.type = 'number';
             input.className = 'field-input field-input--number';
+            input.step = '0.01';
+            input.min = '0';
             input.value = parseFloat(rawValue) || 0;
-            if (field.endsWith('_rate') || ['amortization', 'logist', 'laser', 'manager_salary', 'unforeseen', 'extra_margin'].includes(field)) {
-                input.step = '0.01';
-            } else {
-                input.step = '1';
-                input.min = '0';
-            }
         } else {
             input = document.createElement('input');
             input.type = 'text';
@@ -493,65 +370,40 @@
         el.textContent = '';
         el.appendChild(input);
         input.focus();
-        if (input.select) input.select();
+        input.select();
 
         let cancelled = false;
 
-        const finish = () => {
+        input.addEventListener('blur', function() {
             if (cancelled) return;
-            saveField(field, input.value, 'field');
-        };
+            saveField(field, input.value);
+        });
 
-        input.addEventListener('blur', finish);
-        input.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && type !== 'textarea') { e.preventDefault(); input.blur(); }
-            if (e.key === 'Escape') { cancelled = true; renderServiceCard(currentServiceData); }
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && type !== 'textarea') {
+                e.preventDefault();
+                input.blur();
+            }
+            if (e.key === 'Escape') {
+                cancelled = true;
+                renderServiceCard(currentServiceData);
+            }
         });
     }
 
-    function getCascadeUpdates(field, value) {
-        const updates = {};
-        const data = currentServiceData;
-        const pairs = [
-            { min: 'artist_min', max: 'artist_max' },
-            { min: 'technician_min', max: 'technician_max' },
-            { min: 'driver_min', max: 'driver_max' },
-        ];
+    function saveField(field, value) {
+        if (isSaving) return;
 
-        for (const pair of pairs) {
-            if (field === pair.min) {
-                const currentMax = parseInt(data[pair.max]) || 0;
-                if (value > currentMax) {
-                    updates[pair.max] = value;
-                }
-            } else if (field === pair.max) {
-                const currentMin = parseInt(data[pair.min]) || 0;
-                if (value < currentMin) {
-                    updates[pair.min] = value;
-                }
+        if (field === 'artist_rate') {
+            value = parseFloat(value) || 0;
+            if (value < 0) {
+                showToast('Ставка не может быть отрицательной');
+                renderServiceCard(currentServiceData);
+                return;
             }
         }
 
-        return updates;
-    }
-
-    function saveField(field, value, mode) {
-        if (isSaving) return;
         isSaving = true;
-
-        if (field === 'artist_min' || field === 'artist_max' || field === 'technician_min' || field === 'technician_max' || field === 'driver_min' || field === 'driver_max') {
-            value = Math.max(0, parseInt(value) || 0);
-        } else if (['artist_rate', 'technician_rate', 'driver_rate', 'amortization', 'logist', 'laser', 'manager_salary', 'unforeseen', 'extra_margin', 'overridden_total'].includes(field)) {
-            value = parseFloat(value) || 0;
-        }
-
-        const cascade = getCascadeUpdates(field, value);
-
-        const payload = { [field]: value };
-        for (const key in cascade) {
-            payload[key] = cascade[key];
-        }
-
         showLoading();
         const scrollPositions = getScrollableContainers();
 
@@ -561,7 +413,7 @@
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': getCSRFToken()
             },
-            body: new URLSearchParams(payload)
+            body: new URLSearchParams({ [field]: value })
         })
         .then(r => r.json())
         .then(data => {
@@ -573,6 +425,67 @@
                 restoreScroll(scrollPositions);
                 return;
             }
+            currentServiceData = data.service;
+            fetchTree();
+            renderServiceCard(currentServiceData);
+            restoreScroll(scrollPositions);
+        })
+        .catch(err => {
+            hideLoading();
+            isSaving = false;
+            showToast('Ошибка сохранения');
+            console.error(err);
+        });
+    }
+
+    function collectStaffRows() {
+        const result = [];
+        for (const row of staffRows) {
+            const countRaw = String(row.artist_count).trim();
+            const costRaw = String(row.cost).trim();
+            if (!countRaw && !costRaw) continue;
+            if (!countRaw || !costRaw) {
+                showToast('Заполните обе ячейки строки');
+                return null;
+            }
+            const count = parseInt(countRaw, 10);
+            const cost = parseFloat(costRaw);
+            if (!(count > 0) || !(cost > 0)) {
+                showToast('Значения должны быть положительными');
+                return null;
+            }
+            result.push({ artist_count: count, cost: cost });
+        }
+        return result;
+    }
+
+    function saveStaffRows() {
+        if (!selectedNodeId || selectedNodeType !== 'service' || isSaving) return;
+
+        const rows = collectStaffRows();
+        if (rows === null) return;
+
+        isSaving = true;
+        showLoading();
+        const scrollPositions = getScrollableContainers();
+
+        fetch(`/services/${selectedNodeId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: new URLSearchParams({ staff_rows: JSON.stringify(rows) })
+        })
+        .then(r => r.json())
+        .then(data => {
+            hideLoading();
+            isSaving = false;
+            if (data.error) {
+                showToast(data.error);
+                return;
+            }
+            showToast('Персонал сохранён');
             currentServiceData = data.service;
             fetchTree();
             renderServiceCard(currentServiceData);
@@ -602,7 +515,6 @@
             if (data.error) { showToast(data.error); return; }
             if (data.success) {
                 showToast(`Создан ${type === 'category' ? 'каталог' : 'услуга'}`);
-                contextMenu.style.display = 'none';
                 fetchTree();
                 setTimeout(() => {
                     const el = document.querySelector(`.tree-item[data-id="${data.service.id}"]`);
@@ -631,7 +543,9 @@
                 saveServiceBtn.style.display = 'none';
                 deleteServiceBtn.style.display = 'none';
                 selectedNodeId = null;
+                selectedNodeType = null;
                 currentServiceData = null;
+                staffRows = [];
                 fetchTree();
             }
         })
@@ -641,6 +555,7 @@
     document.querySelectorAll('.context-menu-item').forEach(item => {
         item.addEventListener('click', function() {
             const action = this.dataset.action;
+            hideContextMenu();
             if (contextNode === null) return;
             if (action === 'add-category') createNode(contextNode, 'category');
             else if (action === 'add-service') createNode(contextNode, 'service');
@@ -648,8 +563,15 @@
                 const el = document.querySelector(`.tree-item[data-id="${contextNode}"]`);
                 if (el) selectNode(contextNode, el);
             } else if (action === 'delete') deleteNode(contextNode);
-            contextMenu.style.display = 'none';
         });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (contextMenu && !contextMenu.contains(e.target)) hideContextMenu();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') hideContextMenu();
     });
 
     if (addRootCategoryBtn) {
@@ -657,14 +579,7 @@
     }
 
     if (saveServiceBtn) {
-        saveServiceBtn.addEventListener('click', function() {
-            if (!selectedNodeId) return;
-            showLoading();
-            setTimeout(() => {
-                hideLoading();
-                showToast('Услуга сохранена');
-            }, 300);
-        });
+        saveServiceBtn.addEventListener('click', saveStaffRows);
     }
 
     if (deleteServiceBtn) {
@@ -672,10 +587,6 @@
             if (selectedNodeId) deleteNode(selectedNodeId);
         });
     }
-
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') contextMenu.style.display = 'none';
-    });
 
     fetchTree();
 })();

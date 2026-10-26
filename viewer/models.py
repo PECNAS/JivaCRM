@@ -1,5 +1,7 @@
+from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator
 from django.utils import timezone
 
 
@@ -305,12 +307,6 @@ class Service(models.Model):
         ('service', 'Услуга'),
     ]
 
-    PAYMENT_METHODS = [
-        ('cash', 'Наличные'),
-        ('self', 'Самозанятость'),
-        ('ip', 'ИП'),
-    ]
-
     name = models.CharField('Название', max_length=200)
     type = models.CharField('Тип', max_length=10, choices=SERVICE_TYPES, default='category')
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children', verbose_name='Родительский каталог')
@@ -319,28 +315,7 @@ class Service(models.Model):
     duration = models.CharField('Длительность', max_length=100, blank=True)
     media_url = models.URLField('Ссылка на медиаконтент', max_length=500, blank=True)
 
-    artist_min = models.PositiveIntegerField('Артисты (мин)', default=0)
-    artist_max = models.PositiveIntegerField('Артисты (макс)', default=0)
     artist_rate = models.DecimalField('Ставка артиста', max_digits=10, decimal_places=2, default=0)
-
-    technician_min = models.PositiveIntegerField('Техники (мин)', default=0)
-    technician_max = models.PositiveIntegerField('Техники (макс)', default=0)
-    technician_rate = models.DecimalField('Ставка техника', max_digits=10, decimal_places=2, default=0)
-
-    driver_min = models.PositiveIntegerField('Водители (мин)', default=0)
-    driver_max = models.PositiveIntegerField('Водители (макс)', default=0)
-    driver_rate = models.DecimalField('Ставка водителя', max_digits=10, decimal_places=2, default=0)
-
-    amortization = models.DecimalField('Амортизация', max_digits=10, decimal_places=2, default=0)
-    logist = models.DecimalField('Логист', max_digits=10, decimal_places=2, default=0)
-    laser = models.DecimalField('Лазер', max_digits=10, decimal_places=2, default=0)
-    manager_salary = models.DecimalField('ЗП менеджера', max_digits=10, decimal_places=2, default=0)
-    unforeseen = models.DecimalField('Запас на непредвиденные', max_digits=10, decimal_places=2, default=0)
-    extra_margin = models.DecimalField('Доп. моржа', max_digits=10, decimal_places=2, default=0)
-
-    payment_method = models.CharField('Способ оплаты', max_length=10, choices=PAYMENT_METHODS, default='cash')
-
-    overridden_total = models.DecimalField('Переопределённая стоимость', max_digits=12, decimal_places=2, null=True, blank=True)
 
     order = models.PositiveIntegerField('Порядок', default=0)
     is_active = models.BooleanField('Активен', default=True)
@@ -367,81 +342,26 @@ class Service(models.Model):
     def get_full_path(self):
         return ' / '.join([a.name for a in self.get_ancestors()] + [self.name])
 
-    def calculate_for_city(self, city, people_count=None):
-        if self.type != 'service':
-            return None
 
-        if city is None:
-            city = City.objects.filter(name__iexact='Казань').first()
+class ServiceStaffRow(models.Model):
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='staff_rows', verbose_name='Услуга')
+    artist_count = models.PositiveIntegerField('Кол-во артистов', validators=[MinValueValidator(1)])
+    cost = models.DecimalField('Стоимость', max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    order = models.PositiveIntegerField('Порядок', default=0)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
 
-        salary_bonus = 0
-        if city and city.group:
-            salary_bonus = float(city.group.salary_bonus)
+    class Meta:
+        verbose_name = 'Строка персонала'
+        verbose_name_plural = 'Строки персонала'
+        ordering = ['order', 'artist_count', 'id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(artist_count__gt=0), name='service_staff_row_artist_count_positive'),
+            models.CheckConstraint(condition=models.Q(cost__gt=0), name='service_staff_row_cost_positive'),
+        ]
 
-        artist_min = self.artist_min
-        technician_min = self.technician_min
-        driver_min = self.driver_min
-
-        if people_count is not None:
-            total_min = artist_min + technician_min + driver_min
-            if people_count > total_min:
-                extra = people_count - total_min
-                if artist_min > 0:
-                    artist_min += extra
-                elif technician_min > 0:
-                    technician_min += extra
-                elif driver_min > 0:
-                    driver_min += extra
-
-        artist_sum = artist_min * (float(self.artist_rate) + salary_bonus)
-        technician_sum = technician_min * (float(self.technician_rate) + salary_bonus)
-        driver_sum = driver_min * (float(self.driver_rate) + salary_bonus)
-
-        total_people = artist_min + technician_min + driver_min
-        transport = 0
-        if city:
-            transport = city.get_transport_cost(total_people)
-
-        amortization = float(self.amortization)
-        logist = float(self.logist)
-        laser = float(self.laser)
-        manager_salary = float(self.manager_salary)
-        unforeseen = float(self.unforeseen)
-        extra_margin = float(self.extra_margin)
-
-        subtotal = (
-            artist_sum + technician_sum + driver_sum + transport +
-            amortization + logist + laser + manager_salary + unforeseen + extra_margin
-        )
-
-        coefficient = 1.0
-        if self.payment_method == 'self':
-            coefficient = 1 / 0.94
-        elif self.payment_method == 'ip':
-            coefficient = 1 / 0.9
-
-        total = subtotal * coefficient
-
-        return {
-            'city_id': city.id if city else None,
-            'city_name': city.name if city else None,
-            'salary_bonus': salary_bonus,
-            'artist_sum': artist_sum,
-            'technician_sum': technician_sum,
-            'driver_sum': driver_sum,
-            'transport': transport,
-            'total_people': total_people,
-            'amortization': amortization,
-            'logist': logist,
-            'laser': laser,
-            'manager_salary': manager_salary,
-            'unforeseen': unforeseen,
-            'extra_margin': extra_margin,
-            'payment_method': self.payment_method,
-            'coefficient': coefficient,
-            'subtotal': subtotal,
-            'total': total,
-        }
+    def __str__(self):
+        return f'{self.service.name}: {self.artist_count} арт. — {self.cost}'
 
 
 class Order(models.Model):

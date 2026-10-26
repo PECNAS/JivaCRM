@@ -15,7 +15,7 @@ from .orders import (
 from .schedule import ScheduleView, MyOrdersListView
 from .services import (
     ServicesView, ServiceTreeView, ServiceCreateView, ServiceDetailView,
-    ServiceUpdateView, ServiceDeleteView, ServiceCalculationView,
+    ServiceUpdateView, ServiceDeleteView,
 )
 from .profile import (
     ProfileView, ProfileDetailView, ProfileScheduleView, ProfileTicketsView,
