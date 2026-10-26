@@ -79,3 +79,11 @@ $RECYCLE.BIN/
 .mypy_cache/
 .ruff_cache/
 .eslintcache
+
+# Заметки и инструкции для ИИ-агентов
+AGENTS.md
+CLAUDE.md
+PROJECT_KNOWLEDGE.md
+.cursorrules
+.windsurfrules
+.aider*
