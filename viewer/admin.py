@@ -86,10 +86,15 @@ class ArtistCardAdmin(admin.ModelAdmin):
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ['id', 'full_name', 'agency', 'phone', 'city', 'rating', 'created_by']
-    list_filter = ['rating', 'city', 'agency']
-    search_fields = ['full_name', 'phone', 'telegram_username']
+    list_display = ['id', 'full_name', 'agency', 'phone', 'get_cities', 'rating', 'created_by']
+    list_filter = ['rating', 'cities', 'agency']
+    search_fields = ['full_name', 'phone', 'telegram_username', 'cities__name', 'comment']
+    filter_horizontal = ['cities']
     readonly_fields = ['created_at', 'updated_at']
+
+    def get_cities(self, obj):
+        return obj.get_cities_display()
+    get_cities.short_description = 'Города'
 
 
 class ServiceStaffRowInline(admin.TabularInline):

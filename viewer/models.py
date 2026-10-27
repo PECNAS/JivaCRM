@@ -286,7 +286,9 @@ class Client(models.Model):
     telegram_username = models.CharField('Юзернейм в тг', max_length=100, blank=True)
     email = models.EmailField('Email', max_length=254, blank=True)
     city = models.CharField('Город', max_length=100, blank=True)
+    cities = models.ManyToManyField(City, related_name='clients', blank=True, verbose_name='Города')
     rating = models.CharField('Рейтинг', max_length=10, choices=RATING_CHOICES, default='medium')
+    comment = models.TextField('Комментарий', blank=True)
     requests_count = models.PositiveIntegerField('Количество запросов', default=0)
     created_by = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='created_clients', verbose_name='Создан сотрудником')
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
@@ -299,6 +301,12 @@ class Client(models.Model):
 
     def __str__(self):
         return self.full_name
+
+    def get_cities_display(self):
+        names = [city.name for city in self.cities.all()]
+        if names:
+            return ', '.join(names)
+        return self.city or ''
 
 
 class Service(models.Model):

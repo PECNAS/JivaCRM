@@ -28,6 +28,12 @@
             <option value="medium" {% if rating_filter == 'medium' %}selected{% endif %}>Средний</option>
             <option value="low" {% if rating_filter == 'low' %}selected{% endif %}>Низкий</option>
         </select>
+        <select class="filter-select" id="cityFilter">
+            <option value="all" {% if city_filter == 'all' %}selected{% endif %}>Все города</option>
+            {% for city in cities %}
+            <option value="{{ city.id }}" {% if city_filter == city.id|stringformat:"s" %}selected{% endif %}>{{ city.name }}</option>
+            {% endfor %}
+        </select>
     </div>
 </section>
 
@@ -38,6 +44,7 @@
                 <th>ФИО</th>
                 <th>Телефон</th>
                 <th>Агентство</th>
+                <th>Города</th>
                 <th>Рейтинг</th>
                 <th>Запросов</th>
                 <th>Заказов</th>
@@ -50,6 +57,7 @@
                 <td>{{ client.full_name }}</td>
                 <td>{{ client.phone }}</td>
                 <td>{{ client.agency.name|default:"—" }}</td>
+                <td>{{ client.get_cities_display|default:"—" }}</td>
                 <td>
                     <span class="rating-badge rating-badge--{{ client.rating }}">
                         {{ client.get_rating_display }}
@@ -63,7 +71,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" style="text-align:center; padding: 2rem; color: #7a7267;">
+                <td colspan="8" style="text-align:center; padding: 2rem; color: #7a7267;">
                     Клиенты не найдены
                 </td>
             </tr>
@@ -115,8 +123,12 @@
                         <span class="detail-value" id="viewTelegram">—</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">Город:</span>
+                        <span class="detail-label">Города:</span>
                         <span class="detail-value" id="viewCity">—</span>
+                    </div>
+                    <div class="detail-row detail-row--wide">
+                        <span class="detail-label">Комментарий:</span>
+                        <span class="detail-value" id="viewComment">—</span>
                     </div>
                 </div>
                 <div class="client-orders">
@@ -186,8 +198,9 @@
                         <input type="email" class="form-input" id="editEmail">
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="editCity">Город</label>
-                        <input type="text" class="form-input" id="editCity">
+                        <label class="form-label">Города</label>
+                        <div class="city-selector" id="editCitySelector"></div>
+                        <input type="hidden" id="editCityNames" name="city_names">
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="editRating">Рейтинг *</label>
@@ -196,6 +209,10 @@
                             <option value="medium">Средний</option>
                             <option value="low">Низкий</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="editComment">Комментарий</label>
+                        <textarea class="form-textarea" id="editComment" rows="3"></textarea>
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
@@ -226,7 +243,7 @@
             </button>
         </div>
         <div class="modal__body">
-            <form id="addClientForm" class="add-client-form">
+            <form id="addClientForm" class="add-client-form add-client-form--grid">
                 {% csrf_token %}
                 <div class="form-group">
                     <label class="form-label" for="addFullName">ФИО *</label>
@@ -269,9 +286,10 @@
                     <label class="form-label" for="addEmail">Email</label>
                     <input type="email" class="form-input" id="addEmail" placeholder="client@example.ru">
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="addCity">Город</label>
-                    <input type="text" class="form-input" id="addCity" placeholder="Москва">
+                <div class="form-group form-group--wide">
+                    <label class="form-label">Города</label>
+                    <div class="city-selector" id="addCitySelector"></div>
+                    <input type="hidden" id="addCityNames" name="city_names">
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="addRating">Рейтинг *</label>
@@ -281,7 +299,11 @@
                         <option value="low">Низкий</option>
                     </select>
                 </div>
-                <div class="form-actions">
+                <div class="form-group form-group--wide">
+                    <label class="form-label" for="addComment">Комментарий</label>
+                    <textarea class="form-textarea" id="addComment" rows="2"></textarea>
+                </div>
+                <div class="form-actions form-actions--wide">
                     <button type="button" class="btn btn-outline" id="addModalCancelBtn">Отмена</button>
                     <button type="submit" class="btn btn-primary" id="addModalSubmitBtn">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -293,6 +315,108 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="duplicateModal">
+    <div class="modal modal--add modal--duplicate">
+        <div class="modal__header">
+            <h2 class="modal__title">Найдено совпадение</h2>
+            <button class="modal__close" id="duplicateModalCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <div class="duplicate-notice">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>В базе есть клиент с похожими данными. Выберите запись слева, затем решите: удалить выбранного, создать нового или отменить.</span>
+            </div>
+            <div class="duplicate-columns">
+                <div class="duplicate-column">
+                    <h3 class="duplicate-column__title">Найденные клиенты</h3>
+                    <div class="duplicate-matches" id="duplicateMatchesList"></div>
+                </div>
+                <div class="duplicate-column">
+                    <h3 class="duplicate-column__title">Новый клиент</h3>
+                    <form id="duplicateClientForm" class="add-client-form duplicate-form">
+                        {% csrf_token %}
+                        <input type="hidden" id="dupMatchedClientId">
+                        <div class="duplicate-form__grid">
+                            <div class="form-group">
+                                <label class="form-label" for="dupFullName">ФИО *</label>
+                                <input type="text" class="form-input" id="dupFullName" placeholder="Иванов Иван Иванович" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="dupPhone">Телефон *</label>
+                                <input type="tel" class="form-input" id="dupPhone" placeholder="+7 (999) 123-45-67" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="dupClientType">Тип клиента *</label>
+                                <select class="form-select" id="dupClientType" required>
+                                    <option value="organizer">Организатор</option>
+                                    <option value="agency">Агентство</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="dupAgencyGroup" style="display:none;">
+                                <label class="form-label" for="dupAgency">Агентство</label>
+                                <div class="select-with-button">
+                                    <select class="form-select" id="dupAgency">
+                                        <option value="">Не выбрано</option>
+                                        {% for agency in agencies %}
+                                        <option value="{{ agency.id }}">{{ agency.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="button" class="btn-add-agency" id="dupAddAgencyBtn">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <line x1="12" y1="8" x2="12" y2="16"/>
+                                            <line x1="8" y1="12" x2="16" y2="12"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="dupTelegram">Телеграм</label>
+                                <input type="text" class="form-input" id="dupTelegram" placeholder="@username">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="dupEmail">Email</label>
+                                <input type="email" class="form-input" id="dupEmail" placeholder="client@example.ru">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="dupRating">Рейтинг *</label>
+                                <select class="form-select" id="dupRating" required>
+                                    <option value="high">Высокий</option>
+                                    <option value="medium" selected>Средний</option>
+                                    <option value="low">Низкий</option>
+                                </select>
+                            </div>
+                            <div class="form-group form-group--wide">
+                                <label class="form-label">Города</label>
+                                <div class="city-selector" id="dupCitySelector"></div>
+                                <input type="hidden" id="dupCityNames" name="city_names">
+                            </div>
+                            <div class="form-group form-group--wide">
+                                <label class="form-label" for="dupComment">Комментарий</label>
+                                <textarea class="form-textarea" id="dupComment" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="form-actions duplicate-actions">
+                <button type="button" class="btn btn-primary" id="dupCreateBtn">Создать</button>
+                <button type="button" class="btn btn-danger" id="dupDeleteOldBtn">Удалить</button>
+                <button type="button" class="btn btn-outline" id="dupCancelBtn">Отмена</button>
+            </div>
         </div>
     </div>
 </div>

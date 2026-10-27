@@ -1,7 +1,7 @@
 from .base import IndexView, LoginView, LogoutView
 from .clients import (
     ClientsView, ClientDetailView, ClientUpdateView, ClientDeleteView,
-    ClientListView, AgencyCreateView,
+    ClientListView, ClientDeleteMatchedView, AgencyCreateView, CityCreateView,
 )
 from .employees import (
     EmployeesView, EmployeeDetailView, EmployeeUpdateView, EmployeeDeleteView, EmployeeListView,

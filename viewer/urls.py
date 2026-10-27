@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     IndexView, LoginView, LogoutView,
-    ClientsView, ClientDetailView, ClientUpdateView, ClientDeleteView, ClientListView, AgencyCreateView,
+    ClientsView, ClientDetailView, ClientUpdateView, ClientDeleteView, ClientListView,
+    ClientDeleteMatchedView, AgencyCreateView, CityCreateView,
     EmployeesView, EmployeeDetailView, EmployeeUpdateView, EmployeeDeleteView, EmployeeListView,
     ArtistCardDetailView, ArtistCardUpdateView, ServicesForArtistCardView,
     OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView,
@@ -27,9 +28,11 @@ urlpatterns = [
     path('profile/tickets/', ProfileTicketsView.as_view(), name='profile_tickets'),
 
     path('agencies/', AgencyCreateView.as_view(), name='agency_create'),
+    path('clients/cities/', CityCreateView.as_view(), name='client_cities'),
 
     path('clients/', ClientsView.as_view(), name='clients'),
     path('clients/list/', ClientListView.as_view(), name='client_list'),
+    path('clients/replace/', ClientDeleteMatchedView.as_view(), name='client_delete_matched'),
     path('clients/<int:client_id>/', ClientDetailView.as_view(), name='client_detail'),
     path('clients/<int:client_id>/update/', ClientUpdateView.as_view(), name='client_update'),
     path('clients/<int:client_id>/delete/', ClientDeleteView.as_view(), name='client_delete'),
