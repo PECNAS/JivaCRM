@@ -57,7 +57,7 @@
                 <td>{{ client.full_name }}</td>
                 <td>{{ client.phone }}</td>
                 <td>{{ client.agency.name|default:"—" }}</td>
-                <td>{{ client.get_cities_display|default:"—" }}</td>
+                <td class="clients-table__cities" title="{{ client.get_cities_display }}">{{ client.get_cities_display|default:"—" }}</td>
                 <td>
                     <span class="rating-badge rating-badge--{{ client.rating }}">
                         {{ client.get_rating_display }}
@@ -137,21 +137,26 @@
                         <p class="orders-empty">Нет заказов</p>
                     </div>
                 </div>
-                <div class="modal-actions">
-                    <button class="btn btn-primary" id="editClientBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 20h9"/>
-                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                        </svg>
-                        Редактировать
-                    </button>
-                    <button class="btn btn-danger" id="deleteClientBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        </svg>
-                        Удалить
-                    </button>
+                <div class="modal__footer modal-footer-actions" id="clientViewFooter">
+                    <div class="modal-footer-actions__left">
+                        <button class="btn btn-danger btn-sm" id="deleteClientBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                            Удалить
+                        </button>
+                    </div>
+                    <div class="modal-footer-actions__right">
+                        <button class="btn btn-outline" id="clientViewCloseBtn">Закрыть</button>
+                        <button class="btn btn-primary" id="editClientBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 20h9"/>
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                            </svg>
+                            Редактировать
+                        </button>
+                    </div>
                 </div>
             </div>
             <div id="editMode" style="display:none;">
@@ -172,22 +177,14 @@
                         </select>
                     </div>
                     <div class="form-group" id="editAgencyGroup">
-                        <label class="form-label" for="editAgency">Агентство</label>
-                        <div class="select-with-button">
-                            <select class="form-select" id="editAgency">
-                                <option value="">Не выбрано</option>
-                                {% for agency in agencies %}
-                                <option value="{{ agency.id }}">{{ agency.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="button" class="btn-add-agency" id="editAddAgencyBtn">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <line x1="12" y1="8" x2="12" y2="16"/>
-                                    <line x1="8" y1="12" x2="16" y2="12"/>
-                                </svg>
-                            </button>
-                        </div>
+                        <label class="form-label" for="editAgencySearch">Агентство</label>
+                        <input type="text" class="form-input" id="editAgencySearch" placeholder="Начните вводить название" autocomplete="off">
+                        <select class="form-select" id="editAgency" style="display:none;">
+                            <option value="">Не выбрано</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="editTelegram">Телеграм</label>
@@ -214,16 +211,21 @@
                         <label class="form-label" for="editComment">Комментарий</label>
                         <textarea class="form-textarea" id="editComment" rows="3"></textarea>
                     </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
-                        <button type="submit" class="btn btn-primary">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                <polyline points="17 21 17 13 7 13 7 21"/>
-                                <polyline points="7 3 7 8 15 8"/>
-                            </svg>
-                            Сохранить
-                        </button>
+                    <div class="modal__footer modal-footer-actions">
+                        <div class="modal-footer-actions__left">
+                            <button type="button" class="btn btn-danger btn-sm" id="editDeleteBtn">Удалить</button>
+                        </div>
+                        <div class="modal-footer-actions__right">
+                            <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
+                            <button type="submit" class="btn btn-primary">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                Сохранить
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -261,22 +263,14 @@
                     </select>
                 </div>
                 <div class="form-group" id="addAgencyGroup" style="display:none;">
-                    <label class="form-label" for="addAgency">Агентство</label>
-                    <div class="select-with-button">
-                        <select class="form-select" id="addAgency">
-                            <option value="">Не выбрано</option>
-                            {% for agency in agencies %}
-                            <option value="{{ agency.id }}">{{ agency.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" class="btn-add-agency" id="addAddAgencyBtn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"/>
-                                <line x1="12" y1="8" x2="12" y2="16"/>
-                                <line x1="8" y1="12" x2="16" y2="12"/>
-                            </svg>
-                        </button>
-                    </div>
+                    <label class="form-label" for="addAgencySearch">Агентство</label>
+                    <input type="text" class="form-input" id="addAgencySearch" placeholder="Начните вводить название" autocomplete="off">
+                    <select class="form-select" id="addAgency" style="display:none;">
+                        <option value="">Не выбрано</option>
+                        {% for agency in agencies %}
+                        <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="addTelegram">Телеграм</label>
@@ -366,22 +360,14 @@
                                 </select>
                             </div>
                             <div class="form-group" id="dupAgencyGroup" style="display:none;">
-                                <label class="form-label" for="dupAgency">Агентство</label>
-                                <div class="select-with-button">
-                                    <select class="form-select" id="dupAgency">
-                                        <option value="">Не выбрано</option>
-                                        {% for agency in agencies %}
-                                        <option value="{{ agency.id }}">{{ agency.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <button type="button" class="btn-add-agency" id="dupAddAgencyBtn">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <circle cx="12" cy="12" r="10"/>
-                                            <line x1="12" y1="8" x2="12" y2="16"/>
-                                            <line x1="8" y1="12" x2="16" y2="12"/>
-                                        </svg>
-                                    </button>
-                                </div>
+                                <label class="form-label" for="dupAgencySearch">Агентство</label>
+                                <input type="text" class="form-input" id="dupAgencySearch" placeholder="Начните вводить название" autocomplete="off">
+                                <select class="form-select" id="dupAgency" style="display:none;">
+                                    <option value="">Не выбрано</option>
+                                    {% for agency in agencies %}
+                                    <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="dupTelegram">Телеграм</label>
@@ -417,40 +403,6 @@
                 <button type="button" class="btn btn-danger" id="dupDeleteOldBtn">Удалить</button>
                 <button type="button" class="btn btn-outline" id="dupCancelBtn">Отмена</button>
             </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal-overlay" id="addAgencyModal">
-    <div class="modal modal--add">
-        <div class="modal__header">
-            <h2 class="modal__title">Добавление агентства</h2>
-            <button class="modal__close" id="addAgencyModalCloseBtn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal__body">
-            <form id="addAgencyForm" class="add-agency-form">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label class="form-label" for="addAgencyName">Название агентства *</label>
-                    <input type="text" class="form-input" id="addAgencyName" placeholder="Введите название агентства" required>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" id="addAgencyCancelBtn">Отмена</button>
-                    <button type="submit" class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="16"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                        </svg>
-                        Добавить
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 </div>

@@ -3,7 +3,7 @@ from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db.models import Q, ProtectedError
+from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
 from ..models import Employee, Role, Service, ArtistCard, OrderEmployee
@@ -36,7 +36,7 @@ class EmployeesView(View):
         except:
             return redirect('logout')
 
-        employees = Employee.objects.select_related('user').order_by('full_name')
+        employees = Employee.objects.filter(is_active=True, user__is_active=True).select_related('user').order_by('full_name')
 
         search_query = request.GET.get('search', '')
         role_filter = request.GET.get('role', 'all')
@@ -313,23 +313,16 @@ class EmployeeDeleteView(View):
             user = employee_obj.user
 
             if user.is_superuser:
-                return JsonResponse({'error': 'Нельзя удалить суперпользователя'}, status=400)
+                return JsonResponse({'error': 'Нельзя деактивировать суперпользователя'}, status=400)
 
-            OrderEmployee.objects.filter(employee=employee_obj).delete()
+            employee_obj.is_active = False
+            employee_obj.save(update_fields=['is_active'])
 
-            try:
-                employee_obj.delete()
-            except ProtectedError:
-                return JsonResponse({
-                    'error': 'Невозможно удалить сотрудника: он используется в критичных объектах системы'
-                }, status=400)
+            if not user.is_superuser:
+                user.is_active = False
+                user.save(update_fields=['is_active'])
 
-            try:
-                user.delete()
-            except ProtectedError:
-                pass
-
-            return JsonResponse({'success': True})
+            return JsonResponse({'success': True, 'deactivated': True})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
@@ -339,7 +332,7 @@ class EmployeeListView(View):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
 
-        employees = Employee.objects.all().values('id', 'full_name', 'user__username', 'role')
+        employees = Employee.objects.filter(is_active=True, user__is_active=True).values('id', 'full_name', 'user__username', 'role')
         result = []
         for emp in employees:
             result.append({

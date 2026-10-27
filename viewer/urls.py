@@ -2,15 +2,15 @@ from django.urls import path
 from .views import (
     IndexView, LoginView, LogoutView,
     ClientsView, ClientDetailView, ClientUpdateView, ClientDeleteView, ClientListView,
-    ClientDeleteMatchedView, AgencyCreateView, CityCreateView,
+    ClientDeleteMatchedView, AgencyCreateView, CityCatalogView, AgencyCatalogView,
     EmployeesView, EmployeeDetailView, EmployeeUpdateView, EmployeeDeleteView, EmployeeListView,
     ArtistCardDetailView, ArtistCardUpdateView, ServicesForArtistCardView,
-    OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView,
+    OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView, OrderCopyView,
     ScheduleView, MyOrdersListView,
     ServicesView, ServiceTreeView, ServiceCreateView, ServiceDetailView,
     ServiceUpdateView, ServiceDeleteView,
     CityListView,
-    ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView,
+    ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView, PricePeriodView,
     ProfileView, ProfileDetailView, ProfileScheduleView, ProfileTicketsView,
 )
 
@@ -28,7 +28,8 @@ urlpatterns = [
     path('profile/tickets/', ProfileTicketsView.as_view(), name='profile_tickets'),
 
     path('agencies/', AgencyCreateView.as_view(), name='agency_create'),
-    path('clients/cities/', CityCreateView.as_view(), name='client_cities'),
+    path('agencies/catalog/', AgencyCatalogView.as_view(), name='agency_catalog'),
+    path('clients/cities/', CityCatalogView.as_view(), name='client_cities'),
 
     path('clients/', ClientsView.as_view(), name='clients'),
     path('clients/list/', ClientListView.as_view(), name='client_list'),
@@ -49,9 +50,11 @@ urlpatterns = [
     path('orders/', OrdersView.as_view(), name='orders'),
     path('orders/list/', OrderListView.as_view(), name='order_list'),
     path('orders/cities/', CityListView.as_view(), name='order_cities'),
+    path('orders/price-period/', PricePeriodView.as_view(), name='order_price_period'),
     path('orders/services/', ServicesFlatListView.as_view(), name='order_services'),
     path('orders/<int:order_id>/', OrderDetailView.as_view(), name='order_detail'),
     path('orders/<int:order_id>/update/', OrderUpdateView.as_view(), name='order_update'),
+    path('orders/<int:order_id>/copy/', OrderCopyView.as_view(), name='order_copy'),
     path('orders/<int:order_id>/delete/', OrderDeleteView.as_view(), name='order_delete'),
     path('orders/services/<int:service_id>/price/', ServicePriceForOrderView.as_view(), name='order_service_price'),
     path('orders/services/<int:service_id>/employees/', ServiceEmployeesForOrderView.as_view(), name='order_service_employees'),

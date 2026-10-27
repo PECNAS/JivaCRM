@@ -4,6 +4,7 @@
 {% block title %}Заказы{% endblock %}
 
 {% block css %}
+<link rel="stylesheet" href="{% static 'css/clients.css' %}">
 <link rel="stylesheet" href="{% static 'css/orders.css' %}">
 <link rel="stylesheet" href="{% static 'css/orders-editor.css' %}">
 {% endblock %}
@@ -69,21 +70,24 @@
                     <input type="text" class="form-input" id="createOrderName" placeholder="Например: Новогодний корпоратив" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="createOrderClient">Заказчик *</label>
-                    <div class="form-input-with-button">
-                        <select class="form-select" id="createOrderClient" required></select>
-                        <button type="button" class="btn-inline-add" id="createClientFromCreateBtn" title="Создать нового клиента">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <label class="form-label" for="createOrderClientSearch">Заказчик *</label>
+                    <div class="client-combobox">
+                        <input type="text" class="form-input" id="createOrderClientSearch" placeholder="Начните вводить ФИО, телефон или агентство" autocomplete="off">
+                        <button type="button" class="client-combobox__add" id="createClientFromCreateBtn" title="Создать нового клиента">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="10"/>
                                 <line x1="12" y1="8" x2="12" y2="16"/>
                                 <line x1="8" y1="12" x2="16" y2="12"/>
                             </svg>
                         </button>
+                        <div class="client-combobox__dropdown"></div>
+                        <select class="form-select" id="createOrderClient" style="display:none;"></select>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="createOrderDate">Дата заказа *</label>
-                    <input type="date" class="form-input" id="createOrderDate" required>
+                    <label class="form-label" for="createOrderDate">Дата заказа</label>
+                    <input type="date" class="form-input" id="createOrderDate">
+                    <span class="form-hint">Можно оставить пустым — заказ попадёт в начало списка</span>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" id="createModalCancelBtn">Отмена</button>
@@ -102,9 +106,9 @@
 </div>
 
 <div class="modal-overlay" id="createClientModal">
-    <div class="modal modal--create-client">
+    <div class="modal modal--add modal--create-client">
         <div class="modal__header">
-            <h2 class="modal__title">Создание клиента</h2>
+            <h2 class="modal__title">Добавление клиента</h2>
             <button class="modal__close" id="createClientModalCloseBtn">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"/>
@@ -113,7 +117,8 @@
             </button>
         </div>
         <div class="modal__body">
-            <form id="createClientForm" class="create-client-form">
+            <form id="createClientForm" class="add-client-form add-client-form--grid">
+                {% csrf_token %}
                 <div class="form-group">
                     <label class="form-label" for="newClientFullName">ФИО *</label>
                     <input type="text" class="form-input" id="newClientFullName" placeholder="Иванов Иван Иванович" required>
@@ -123,10 +128,48 @@
                     <input type="tel" class="form-input" id="newClientPhone" placeholder="+7 (999) 123-45-67" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="newClientCity">Город</label>
-                    <input type="text" class="form-input" id="newClientCity" placeholder="Москва">
+                    <label class="form-label" for="newClientType">Тип клиента *</label>
+                    <select class="form-select" id="newClientType" required>
+                        <option value="organizer">Организатор</option>
+                        <option value="agency">Агентство</option>
+                    </select>
                 </div>
-                <div class="form-actions">
+                <div class="form-group" id="newClientAgencyGroup" style="display:none;">
+                    <label class="form-label" for="newClientAgencySearch">Агентство</label>
+                    <input type="text" class="form-input" id="newClientAgencySearch" placeholder="Начните вводить название" autocomplete="off">
+                    <select class="form-select" id="newClientAgency" style="display:none;">
+                        <option value="">Не выбрано</option>
+                        {% for agency in agencies %}
+                        <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newClientTelegram">Телеграм</label>
+                    <input type="text" class="form-input" id="newClientTelegram" placeholder="@username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newClientEmail">Email</label>
+                    <input type="email" class="form-input" id="newClientEmail" placeholder="client@example.ru">
+                </div>
+                <div class="form-group form-group--wide">
+                    <label class="form-label">Города</label>
+                    <div class="city-selector" id="newClientCitySelector"></div>
+                    <input type="hidden" id="newClientCities" name="city_names">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newClientRating">Рейтинг *</label>
+                    <select class="form-select" id="newClientRating" required>
+                        <option value="high">Высокий</option>
+                        <option value="medium" selected>Средний</option>
+                        <option value="low">Низкий</option>
+                    </select>
+                </div>
+                <div class="form-group form-group--wide">
+                    <label class="form-label" for="newClientComment">Комментарий</label>
+                    <textarea class="form-textarea" id="newClientComment" rows="2"></textarea>
+                </div>
+                <div class="form-actions form-actions--wide">
                     <button type="button" class="btn btn-outline" id="createClientModalCancelBtn">Отмена</button>
                     <button type="submit" class="btn btn-primary">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -147,13 +190,6 @@
         <div class="modal__header">
             <h2 class="modal__title" id="editorOrderTitle">Заказ</h2>
             <div class="modal__header-actions">
-                <button class="btn btn-danger" id="deleteOrderBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                    Удалить заказ
-                </button>
                 <button class="modal__close" id="editorModalCloseBtn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -180,16 +216,18 @@
                                 <input type="text" class="form-input" id="editOrderName" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="editOrderClient">Клиент *</label>
-                                <div class="form-input-with-button">
-                                    <select class="form-select" id="editOrderClient" required></select>
-                                    <button type="button" class="btn-inline-add" id="createClientBtn" title="Создать нового клиента">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <label class="form-label" for="editOrderClientSearch">Клиент *</label>
+                                <div class="client-combobox">
+                                    <input type="text" class="form-input" id="editOrderClientSearch" placeholder="Начните вводить ФИО, телефон или агентство" autocomplete="off">
+                                    <button type="button" class="client-combobox__add" id="createClientBtn" title="Создать нового клиента">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <circle cx="12" cy="12" r="10"/>
                                             <line x1="12" y1="8" x2="12" y2="16"/>
                                             <line x1="8" y1="12" x2="16" y2="12"/>
                                         </svg>
                                     </button>
+                                    <div class="client-combobox__dropdown"></div>
+                                    <select class="form-select" id="editOrderClient" style="display:none;"></select>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -206,9 +244,11 @@
                                     <option value="">Не выбран (Казань по умолчанию)</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label" for="editOrderDate">Дата проведения *</label>
-                                <input type="date" class="form-input" id="editOrderDate" required>
+                            <div class="form-group detail-item--full">
+                                <label class="form-label" for="editOrderDate">Дата проведения</label>
+                                <input type="date" class="form-input" id="editOrderDate">
+                                <span class="form-hint">Можно оставить пустым</span>
+                                <div class="price-period-notice" id="pricePeriodNotice" style="display:none;"></div>
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="editOrderSetupTime">Время чека/установки</label>
@@ -262,7 +302,7 @@
                                 </select>
                             </div>
                             <div class="form-group detail-item--full">
-                                <label class="form-label" for="editOrderCost">Стоимость шоу</label>
+                                <label class="form-label" for="editOrderCost">Общая стоимость</label>
                                 <div class="form-input-wrapper">
                                     <input type="text" class="form-input form-input--readonly" id="editOrderCost" readonly>
                                     <button type="button" class="btn-override" id="overrideCostBtn" title="Изменить стоимость вручную">
@@ -272,7 +312,7 @@
                                         </svg>
                                     </button>
                                 </div>
-                                <span class="form-hint">Рассчитывается автоматически: услуги + оплата сотрудников</span>
+                                <span class="form-hint">Рассчитывается автоматически: сумма стоимости услуг</span>
                             </div>
                         </div>
                     </div>
@@ -402,21 +442,71 @@
             </div>
         </div>
         <div class="editor-footer editor-footer--global">
-            <button type="button" class="btn btn-outline" id="cancelEditBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div class="modal-footer-actions">
+                <div class="modal-footer-actions__left">
+                    <button type="button" class="btn btn-danger btn-sm" id="deleteOrderBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        Удалить
+                    </button>
+                </div>
+                <div class="modal-footer-actions__right">
+                    <button type="button" class="btn btn-outline" id="copyOrderBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        Копировать
+                    </button>
+                    <button type="button" class="btn btn-outline" id="cancelEditBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        Отменить
+                    </button>
+                    <button type="submit" form="orderInfoForm" class="btn btn-primary" id="globalSaveBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="copyOrderModal">
+    <div class="modal modal--copy-order">
+        <div class="modal__header">
+            <h2 class="modal__title">Копирование заказа</h2>
+            <button class="modal__close" id="copyOrderModalCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
-                Отменить
             </button>
-            <button type="submit" form="orderInfoForm" class="btn btn-primary" id="globalSaveBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                    <polyline points="17 21 17 13 7 13 7 21"/>
-                    <polyline points="7 3 7 8 15 8"/>
-                </svg>
-                Сохранить
-            </button>
+        </div>
+        <div class="modal__body">
+            <p class="copy-order-hint" id="copyOrderHint">Все данные заказа будут скопированы, кроме даты.</p>
+            <div class="form-group">
+                <label class="form-label" for="copyOrderDate">Дата копии</label>
+                <input type="date" class="form-input" id="copyOrderDate">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="copyOrderKeepDate"> Оставить ту же дату
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" id="copyOrderCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-primary" id="copyOrderConfirmBtn">Копировать</button>
+            </div>
         </div>
     </div>
 </div>

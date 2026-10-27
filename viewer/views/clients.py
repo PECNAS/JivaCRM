@@ -6,6 +6,9 @@ from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db.models import ProtectedError
+from django.conf import settings
+from pathlib import Path
+import json
 from ..models import Client, Agency, City, Order, Employee, Role
 
 
@@ -17,11 +20,127 @@ def telegram_handle(value):
     return (value or '').strip().lstrip('@').strip().lower()
 
 
-def split_words(value):
-    return [word for word in (value or '').lower().replace('ё', 'е').split() if len(word) >= 3]
+def normalize_name(value):
+    return ' '.join((value or '').lower().replace('ё', 'е').split())
+
+
+def name_keys(value):
+    words = [word for word in normalize_name(value).split() if word]
+
+    if len(words) < 2:
+        return set()
+
+    return {' '.join(sorted(words))}
 
 
 def parse_city_ids(request):
+    raw_values = request.POST.getlist('city_ids')
+    if not raw_values:
+        raw_values = request.POST.get('city_ids', '').split(',')
+
+    city_ids = []
+
+    for raw_value in raw_values:
+        for part in str(raw_value).split(','):
+            part = part.strip()
+            if part.isdigit() and int(part) not in city_ids:
+                city_ids.append(int(part))
+
+    return city_ids
+
+
+def parse_city_names(request):
+    raw_values = request.POST.getlist('city_names')
+    if not raw_values:
+        raw_values = request.POST.get('city_names', '').split(',')
+
+    city_names = []
+
+    for raw_value in raw_values:
+        for part in str(raw_value).split(','):
+            part = ' '.join(part.split())
+            if part and part.lower() not in [name.lower() for name in city_names]:
+                city_names.append(part)
+
+    return city_names
+
+
+def resolve_cities(request):
+    cities = []
+
+    for city_id in parse_city_ids(request):
+        city = City.objects.filter(id=city_id).first()
+        if city and city.name.lower() not in [item.name.lower() for item in cities]:
+            cities.append(city)
+
+    for city_name in parse_city_names(request):
+        city = City.objects.filter(name__iexact=city_name).first()
+        if city is None:
+            city = City.objects.create(name=city_name)
+        if city.name.lower() not in [item.name.lower() for item in cities]:
+            cities.append(city)
+
+    return cities
+
+
+def find_client_matches(full_name, phone, telegram, email, exclude_id=None):
+    digits = phone_digits(phone)
+    handle = telegram_handle(telegram)
+    email_value = (email or '').strip().lower()
+    name_key = next(iter(name_keys(full_name)), '')
+
+    same_phone = Q(phone_normalized__endswith=digits[-10:]) if len(digits) >= 10 else Q(pk__in=[])
+    same_email = Q(email__iexact=email_value) if email_value else Q(pk__in=[])
+
+    same_name = Q(pk__in=[])
+
+    if name_key:
+        first_word = name_key.split()[0]
+        exact_ids = [
+            client.pk
+            for client in Client.objects.filter(full_name_normalized__contains=first_word).only('id', 'full_name')
+            if name_keys(client.full_name) == {name_key}
+        ]
+
+        if exact_ids:
+            same_name = Q(pk__in=exact_ids)
+
+    same_telegram = Q(pk__in=[])
+
+    if handle:
+        same_telegram = Q(telegram_username__iexact=handle) | Q(telegram_username__iexact='@' + handle)
+
+    candidates = Client.objects.filter(
+        same_phone | same_email | same_name | same_telegram
+    ).prefetch_related('cities').select_related('agency', 'created_by__user')
+
+    if exclude_id:
+        candidates = candidates.exclude(id=exclude_id)
+
+    matches = []
+
+    for client in candidates:
+        fields = []
+
+        client_digits = phone_digits(client.phone)
+        if len(digits) >= 10 and len(client_digits) >= 10 and client_digits[-10:] == digits[-10:]:
+            fields.append('phone')
+
+        if email_value and (client.email or '').strip().lower() == email_value:
+            fields.append('email')
+
+        if name_key and name_keys(client.full_name) == {name_key}:
+            fields.append('full_name')
+
+        if handle and telegram_handle(client.telegram_username) == handle:
+            fields.append('telegram')
+
+        if fields:
+            matches.append(serialize_client_match(client, fields))
+
+    matches.sort(key=lambda item: (len(item['matched_fields']), item['orders_count']), reverse=True)
+    return matches
+
     raw_values = request.POST.getlist('city_ids')
     if not raw_values:
         raw_values = request.POST.get('city_ids', '').split(',')
@@ -99,61 +218,58 @@ def serialize_client_match(client, fields):
 
 CLIENT_MATCH_LABELS = {
     'phone': 'Телефон',
-    'telegram': 'Телеграм',
-    'full_name': 'ФИО',
-    'agency': 'Агентство',
     'email': 'Email',
-    'city': 'Город',
+    'full_name': 'ФИО',
+    'telegram': 'Телеграм',
 }
 
 
-def find_client_matches(full_name, phone, telegram, email, city, agency, cities=None, exclude_id=None):
-    candidates = Client.objects.prefetch_related('cities').select_related('agency', 'created_by__user')
+def find_client_matches(full_name, phone, telegram, email, exclude_id=None):
+    digits = phone_digits(phone)
+    handle = telegram_handle(telegram)
+    email_value = (email or '').strip().lower()
+    requested_name_keys = name_keys(full_name)
+
+    query = Q()
+
+    if len(digits) >= 10:
+        query |= Q(phone_normalized__endswith=digits[-10:])
+
+    if email_value:
+        query |= Q(email__iexact=email_value)
+
+    for key in requested_name_keys:
+        query |= Q(full_name_normalized=key)
+
+    if handle:
+        query |= Q(telegram_username__iexact=handle)
+        query |= Q(telegram_username__iexact='@' + handle)
+
+    if not query:
+        return []
+
+    candidates = Client.objects.filter(query).prefetch_related('cities').select_related('agency', 'created_by__user')
+
     if exclude_id:
         candidates = candidates.exclude(id=exclude_id)
 
-    candidates = list(candidates)
     matches = []
-
-    digits = phone_digits(phone)
-    handle = telegram_handle(telegram)
-    name_key = ' '.join(split_words(full_name))
-    name_words = set(split_words(full_name))
-    email_value = (email or '').strip().lower()
 
     for client in candidates:
         fields = []
 
         client_digits = phone_digits(client.phone)
-        if digits and len(digits) >= 10 and client_digits[-10:] == digits[-10:]:
+        if len(digits) >= 10 and len(client_digits) >= 10 and client_digits[-10:] == digits[-10:]:
             fields.append('phone')
-
-        if handle and telegram_handle(client.telegram_username) == handle:
-            fields.append('telegram')
-
-        candidate_key = ' '.join(split_words(client.full_name))
-        if name_key and candidate_key == name_key:
-            fields.append('full_name')
-        elif len(name_words) >= 2:
-            candidate_words = set(split_words(client.full_name))
-            if len(name_words & candidate_words) >= 2:
-                fields.append('full_name')
-
-        if agency and client.agency_id == agency.id:
-            fields.append('agency')
 
         if email_value and (client.email or '').strip().lower() == email_value:
             fields.append('email')
 
-        if cities:
-            client_city_names = {city.name.lower() for city in client.cities.all()}
-            requested_city_names = {name.lower() for name in cities}
+        if requested_name_keys and name_keys(client.full_name) & requested_name_keys:
+            fields.append('full_name')
 
-            if client.city:
-                client_city_names.add(client.city.lower())
-
-            if client_city_names & requested_city_names:
-                fields.append('city')
+        if handle and telegram_handle(client.telegram_username) == handle:
+            fields.append('telegram')
 
         if fields:
             matches.append(serialize_client_match(client, fields))
@@ -340,9 +456,6 @@ class ClientsView(View):
                 payload['phone'],
                 payload['telegram'],
                 payload['email'],
-                payload['city'],
-                payload['agency'],
-                cities=payload['city_names'],
             )
 
             if matches and not force_create:
@@ -549,20 +662,75 @@ class ClientListView(View):
         return JsonResponse({'clients': clients_list})
 
 
-class CityCreateView(View):
+class CityCatalogView(View):
+    URL_NAME = 'client_cities'
+
+    dataset = None
+    dataset_by_name = None
+
+    @classmethod
+    def load_dataset(cls):
+        if cls.dataset is not None:
+            return cls.dataset
+
+        path = Path(settings.BASE_DIR) / 'viewer' / 'data' / 'russian_cities.json'
+
+        try:
+            with open(path, encoding='utf-8') as handle:
+                cls.dataset = json.load(handle)
+        except (OSError, ValueError):
+            cls.dataset = []
+
+        cls.dataset_by_name = {}
+
+        for item in cls.dataset:
+            key = item['name'].strip().lower().replace('ё', 'е')
+            cls.dataset_by_name.setdefault(key, item)
+
+        return cls.dataset
+
+    @staticmethod
+    def rank(name, query):
+        normalized_name = name.strip().lower().replace('ё', 'е')
+        normalized_query = query.strip().lower().replace('ё', 'е')
+
+        if not normalized_query:
+            return (3, 0, name)
+
+        if normalized_name == normalized_query:
+            score = 0
+        elif normalized_name.startswith(normalized_query):
+            score = 1
+        else:
+            position = normalized_name.find(normalized_query)
+            score = 2 if position >= 0 else 3
+
+        return (score, len(normalized_name), name)
+
     def get(self, request):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
 
-        search = request.GET.get('search', '').strip()
+        query = request.GET.get('search', '').strip()
+        limit = request.GET.get('limit', '40')
 
-        cities = City.objects.all().order_by('name')
+        try:
+            limit = max(1, min(int(limit), 200))
+        except (TypeError, ValueError):
+            limit = 40
 
-        if search:
-            cities = cities.filter(name__icontains=search)
+        dataset = self.load_dataset()
+
+        if query:
+            matches = [item for item in dataset if query.strip().lower().replace('ё', 'е') in item['name'].strip().lower().replace('ё', 'е')]
+        else:
+            matches = list(dataset)
+
+        matches.sort(key=lambda item: self.rank(item['name'], query))
+        matches = matches[:limit]
 
         return JsonResponse({
-            'cities': [{'id': city.id, 'name': city.name} for city in cities[:50]]
+            'cities': [{'name': item['name'], 'subject': item['subject']} for item in matches],
         })
 
     def post(self, request):
@@ -577,7 +745,7 @@ class CityCreateView(View):
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
         try:
-            name = request.POST.get('name', '').strip()
+            name = ' '.join(request.POST.get('name', '').split())
 
             if not name:
                 return JsonResponse({'error': 'Название города обязательно для заполнения'}, status=400)
@@ -600,6 +768,46 @@ class CityCreateView(View):
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
+
+class AgencyCatalogView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        query = request.GET.get('search', '').strip()
+
+        agencies = list(Agency.objects.all())
+
+        if query:
+            normalized_query = query.lower().replace('ё', 'е')
+
+            ranked = []
+
+            for agency in agencies:
+                normalized_name = agency.name.strip().lower().replace('ё', 'е')
+                position = normalized_name.find(normalized_query)
+
+                if position < 0:
+                    continue
+
+                if normalized_name == normalized_query:
+                    score = 0
+                elif position == 0:
+                    score = 1
+                else:
+                    score = 2
+
+                ranked.append((score, position, len(normalized_name), agency))
+
+            ranked.sort(key=lambda item: item[:3])
+            agencies = [item[3] for item in ranked]
+
+        agencies = agencies[:40]
+
+        return JsonResponse({
+            'agencies': [{'id': agency.id, 'name': agency.name} for agency in agencies],
+        })
 
 
 class ClientDeleteMatchedView(View):

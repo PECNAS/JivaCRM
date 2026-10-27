@@ -3,6 +3,7 @@
     let currentArtistCard = null;
     let allServices = [];
     let isEditMode = false;
+    let formSnapshot = null;
 
     const tableBody = document.getElementById('employeesTableBody');
     const searchInput = document.getElementById('searchInput');
@@ -270,12 +271,53 @@
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
         isEditMode = false;
+        formSnapshot = null;
+    }
+
+    function isEmployeeFormDirty() {
+        if (!isEditMode) return false;
+        return window.UI.isDirtyFromSnapshot(editForm, formSnapshot);
+    }
+
+    function requestCloseModal() {
+        if (!isEmployeeFormDirty()) {
+            closeModal();
+            return;
+        }
+
+        window.UI.confirm({
+            title: 'Завершить редактирование?',
+            text: 'Вы действительно хотите завершить редактирование? Изменения не сохранятся.',
+            okText: 'Завершить',
+            cancelText: 'Остаться',
+            danger: true
+        }).then(confirmed => {
+            if (confirmed) closeModal();
+        });
+    }
+
+    function requestCloseAddModal() {
+        if (window.UI.isEmptyForm(addForm)) {
+            closeAddModal();
+            return;
+        }
+
+        window.UI.confirm({
+            title: 'Завершить редактирование?',
+            text: 'Вы действительно хотите закрыть окно? Введённые данные не сохранятся.',
+            okText: 'Закрыть',
+            cancelText: 'Остаться',
+            danger: true
+        }).then(confirmed => {
+            if (confirmed) closeAddModal();
+        });
     }
 
     function openEditMode() {
         isEditMode = true;
         viewMode.style.display = 'none';
         editMode.style.display = 'block';
+        formSnapshot = window.UI.snapshot(editForm);
     }
 
     function cancelEdit() {
@@ -299,12 +341,18 @@
     }
 
     if (modalCloseBtn) {
-        modalCloseBtn.addEventListener('click', closeModal);
+        modalCloseBtn.addEventListener('click', requestCloseModal);
     }
     if (modal) {
         modal.addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
+            if (e.target === this) requestCloseModal();
         });
+    }
+
+    const closeEmployeeBtn = document.getElementById('closeEmployeeBtn');
+
+    if (closeEmployeeBtn) {
+        closeEmployeeBtn.addEventListener('click', requestCloseModal);
     }
 
     if (editEmployeeBtn) {
@@ -369,9 +417,17 @@
         });
     }
 
-    if (deleteEmployeeBtn) {
-        deleteEmployeeBtn.addEventListener('click', function() {
-            if (!confirm('Вы уверены, что хотите удалить этого сотрудника?')) return;
+    function deactivateCurrentEmployee(sourceButton) {
+        if (!currentEmployeeId) return;
+
+        window.UI.confirm({
+            title: 'Деактивировать сотрудника?',
+            text: 'Сотрудник перестанет отображаться во всех списках и не будет доступен для назначения. В уже существующих заказах он останется.',
+            okText: 'Деактивировать',
+            cancelText: 'Отмена',
+            danger: true
+        }).then(confirmed => {
+            if (!confirmed) return;
 
             fetch(`/employees/${currentEmployeeId}/delete/`, {
                 method: 'POST',
@@ -383,16 +439,31 @@
                     showToast(data.error);
                     return;
                 }
+
                 if (data.success) {
-                    showToast('Сотрудник успешно удалён');
+                    showToast('Сотрудник деактивирован');
                     closeModal();
                     renderEmployees();
                 }
             })
             .catch(error => {
-                showToast('Ошибка при удалении сотрудника');
+                showToast('Ошибка при деактивации сотрудника');
                 console.error(error);
             });
+        });
+    }
+
+    if (deleteEmployeeBtn) {
+        deleteEmployeeBtn.addEventListener('click', function() {
+            deactivateCurrentEmployee(this);
+        });
+    }
+
+    const editDeactivateBtn = document.getElementById('editDeactivateBtn');
+
+    if (editDeactivateBtn) {
+        editDeactivateBtn.addEventListener('click', function() {
+            deactivateCurrentEmployee(this);
         });
     }
 
@@ -702,16 +773,20 @@
     }
 
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            if (artistCardModal && artistCardModal.classList.contains('active')) {
-                closeArtistCardModal();
-            } else if (modal && modal.classList.contains('active')) {
-                closeModal();
-            } else if (addModal && addModal.classList.contains('active')) {
-                closeAddModal();
-            }
+        if (e.key !== 'Escape') return;
+        if (document.getElementById('uiConfirmModal')) return;
+
+        if (artistCardModal && artistCardModal.classList.contains('active')) {
+            e.preventDefault();
+            closeArtistCardModal();
+        } else if (modal && modal.classList.contains('active')) {
+            e.preventDefault();
+            requestCloseModal();
+        } else if (addModal && addModal.classList.contains('active')) {
+            e.preventDefault();
+            requestCloseAddModal();
         }
-    });
+    }, true);
 
     loadServices();
     attachRowEvents();

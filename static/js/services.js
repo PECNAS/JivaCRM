@@ -526,30 +526,45 @@
     }
 
     function deleteNode(id) {
-        if (!confirm('Удалить элемент?')) return;
-        showLoading();
-        fetch(`/services/${id}/delete/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken() }
-        })
-        .then(r => r.json())
-        .then(data => {
-            hideLoading();
-            if (data.error) { showToast(data.error); return; }
-            if (data.success) {
-                showToast('Элемент удалён');
-                contentBody.innerHTML = '<div class="empty-state"><p>Выберите каталог или услугу для просмотра</p></div>';
-                contentTitle.textContent = 'Выберите элемент';
-                saveServiceBtn.style.display = 'none';
-                deleteServiceBtn.style.display = 'none';
-                selectedNodeId = null;
-                selectedNodeType = null;
-                currentServiceData = null;
-                staffRows = [];
-                fetchTree();
-            }
-        })
-        .catch(err => { hideLoading(); showToast('Ошибка удаления'); console.error(err); });
+        const isCategory = selectedNodeType === 'category';
+        const elementLabel = isCategory ? 'каталог вместе со всем содержимым' : 'услугу';
+
+        window.UI.confirm({
+            title: 'Удалить элемент?',
+            text: `Будет удалён ${elementLabel}. Действие необратимо.`,
+            okText: 'Удалить',
+            cancelText: 'Отмена',
+            danger: true
+        }).then(confirmed => {
+            if (!confirmed) return;
+
+            showLoading();
+
+            fetch(`/services/${id}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCSRFToken() }
+            })
+            .then(r => r.json())
+            .then(data => {
+                hideLoading();
+
+                if (data.error) { showToast(data.error); return; }
+
+                if (data.success) {
+                    showToast('Элемент удалён');
+                    contentBody.innerHTML = '<div class="empty-state"><p>Выберите каталог или услугу для просмотра</p></div>';
+                    contentTitle.textContent = 'Выберите элемент';
+                    saveServiceBtn.style.display = 'none';
+                    deleteServiceBtn.style.display = 'none';
+                    selectedNodeId = null;
+                    selectedNodeType = null;
+                    currentServiceData = null;
+                    staffRows = [];
+                    fetchTree();
+                }
+            })
+            .catch(err => { hideLoading(); showToast('Ошибка удаления'); console.error(err); });
+        });
     }
 
     document.querySelectorAll('.context-menu-item').forEach(item => {
@@ -579,7 +594,60 @@
     }
 
     if (saveServiceBtn) {
-        saveServiceBtn.addEventListener('click', saveStaffRows);
+        saveServiceBtn.addEventListener('click', function() {
+            saveServiceCard();
+        });
+    }
+
+    function saveServiceCard() {
+        if (!selectedNodeId || isSaving) return;
+
+        const rows = collectStaffRows();
+
+        if (rows === null) return;
+
+        isSaving = true;
+        showLoading();
+        const scrollPositions = getScrollableContainers();
+
+        const payload = { staff_rows: JSON.stringify(rows) };
+        const nameInput = document.querySelector('[data-field="name"]');
+
+        if (nameInput && nameInput.tagName === 'INPUT') {
+            payload.name = nameInput.value.trim();
+        }
+
+        fetch(`/services/${selectedNodeId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: new URLSearchParams(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            hideLoading();
+            isSaving = false;
+
+            if (data.error) {
+                showToast(data.error);
+                restoreScroll(scrollPositions);
+                return;
+            }
+
+            currentServiceData = data.service;
+            fetchTree();
+            renderServiceCard(currentServiceData);
+            restoreScroll(scrollPositions);
+            showToast('Изменения сохранены');
+        })
+        .catch(err => {
+            hideLoading();
+            isSaving = false;
+            showToast('Ошибка сохранения');
+            console.error(err);
+        });
     }
 
     if (deleteServiceBtn) {

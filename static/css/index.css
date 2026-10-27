@@ -213,6 +213,33 @@
     box-shadow: 0 0 0 1px #f0a868, 0 0 15px rgba(240, 168, 104, 0.12);
 }
 
+.order-row--incomplete {
+    background: rgba(240, 168, 104, 0.07);
+}
+
+.order-row--incomplete .order-row__id {
+    color: #ffbe7a;
+}
+
+.order-row--no-date {
+    opacity: 0.55;
+}
+
+.order-row--no-date .order-row__date {
+    color: #e05252;
+    font-style: italic;
+}
+
+.order-row__dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 0.3rem;
+    border-radius: 50%;
+    background: #f0a868;
+    vertical-align: middle;
+}
+
 .order-row__cell {
     color: #ddd4c7;
     white-space: nowrap;

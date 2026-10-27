@@ -10,6 +10,55 @@
     let collapsedCats = new Set();
     let costOverride = false;
     let manualCost = '';
+    let pricePeriodPercent = 0;
+    let pricePeriodInfo = null;
+    let formSnapshot = null;
+    let itemsSnapshot = '[]';
+
+    function getPriceMultiplier() {
+        return 1 + (parseFloat(pricePeriodPercent) || 0) / 100;
+    }
+
+    function applyPricePeriod(value) {
+        return Math.round((parseFloat(value) || 0) * getPriceMultiplier() * 100) / 100;
+    }
+
+    function loadPricePeriod() {
+        const dateValue = editOrderDate && editOrderDate.value ? editOrderDate.value : '';
+
+        fetch('/orders/price-period/?date=' + encodeURIComponent(dateValue))
+            .then(r => r.json())
+            .then(data => {
+                pricePeriodPercent = parseFloat(data.percent) || 0;
+                pricePeriodInfo = data.period || null;
+                renderPricePeriodNotice();
+                renderServicesCatalogPanel();
+
+                if (estimateItems.length) {
+                    renderServices();
+                }
+            })
+            .catch(err => console.error('Ошибка загрузки периода цен:', err));
+    }
+
+    function renderPricePeriodNotice() {
+        const container = document.getElementById('pricePeriodNotice');
+
+        if (!container) return;
+
+        if (!pricePeriodPercent) {
+            container.style.display = 'none';
+            container.innerHTML = '';
+            return;
+        }
+
+        const period = pricePeriodInfo || {};
+        const from = period.start_date ? period.start_date.split('-').reverse().join('.') : '';
+        const to = period.end_date ? period.end_date.split('-').reverse().join('.') : '';
+
+        container.style.display = 'block';
+        container.innerHTML = `Действует сезонное повышение цен: +${pricePeriodPercent}% (${escapeHtml(from)} — ${escapeHtml(to)}). Стоимость услуг пересчитана.`;
+    }
 
     const editorModal = document.getElementById('orderEditorModal');
     const editorOrderTitle = document.getElementById('editorOrderTitle');
@@ -127,9 +176,9 @@
         const first = rows[0];
         const last = rows[rows.length - 1];
         if (first.artist_count === last.artist_count) {
-            return `${formatPrice(first.cost)} (${first.artist_count})`;
+            return `${formatPrice(applyPricePeriod(first.cost))} (${first.artist_count})`;
         }
-        return `${formatPrice(first.cost)} (${first.artist_count}) - ${formatPrice(last.cost)} (${last.artist_count})`;
+        return `${formatPrice(applyPricePeriod(first.cost))} (${first.artist_count}) - ${formatPrice(applyPricePeriod(last.cost))} (${last.artist_count})`;
     }
 
     function getDefaultPaymentByRole(rawRole) {
@@ -167,6 +216,8 @@
         currentOrderId = orderId;
         costOverride = false;
         manualCost = '';
+        pricePeriodPercent = 0;
+        pricePeriodInfo = null;
         if (overrideCostBtn) overrideCostBtn.classList.remove('active');
         if (editOrderCost) {
             editOrderCost.readOnly = true;
@@ -183,8 +234,11 @@
                 editorModal.classList.add('active');
                 document.body.style.overflow = 'hidden';
                 switchTab('info');
+                loadPricePeriod();
                 loadServicesList();
                 loadEmployeesList();
+                formSnapshot = window.UI.snapshot(orderInfoForm);
+                itemsSnapshot = JSON.stringify(estimateItems);
             })
             .catch(err => { showToast('Ошибка загрузки заказа'); console.error(err); });
     }
@@ -194,6 +248,140 @@
         document.body.style.overflow = '';
         currentOrderId = null;
         currentOrderData = null;
+        formSnapshot = null;
+    }
+
+    function hasUnsavedChanges() {
+        if (!currentOrderData) return false;
+
+        const formChanged = window.UI.isDirtyFromSnapshot(orderInfoForm, formSnapshot);
+        const itemsChanged = JSON.stringify(estimateItems) !== itemsSnapshot;
+
+        return formChanged || itemsChanged;
+    }
+
+    function requestClose() {
+        if (!hasUnsavedChanges()) {
+            close();
+            return;
+        }
+
+        window.UI.confirm({
+            title: 'Завершить редактирование?',
+            text: 'Вы действительно хотите завершить редактирование? Изменения не сохранятся.',
+            okText: 'Завершить',
+            cancelText: 'Остаться',
+            danger: true
+        }).then(confirmed => {
+            if (confirmed) close();
+        });
+    }
+
+    const copyOrderBtn = document.getElementById('copyOrderBtn');
+    const copyOrderModal = document.getElementById('copyOrderModal');
+    const copyOrderModalCloseBtn = document.getElementById('copyOrderModalCloseBtn');
+    const copyOrderCancelBtn = document.getElementById('copyOrderCancelBtn');
+    const copyOrderConfirmBtn = document.getElementById('copyOrderConfirmBtn');
+    const copyOrderDate = document.getElementById('copyOrderDate');
+    const copyOrderKeepDate = document.getElementById('copyOrderKeepDate');
+    const copyOrderHint = document.getElementById('copyOrderHint');
+
+    function openCopyModal() {
+        if (!currentOrderId || !copyOrderModal) return;
+
+        copyOrderModal.classList.add('active');
+        copyOrderDate.value = '';
+        copyOrderKeepDate.checked = false;
+        copyOrderDate.disabled = false;
+
+        if (copyOrderHint) {
+            const sourceDate = currentOrderData && currentOrderData.date
+                ? 'Текущая дата заказа: ' + currentOrderData.date.split('-').reverse().join('.') + '.'
+                : 'У заказа дата не указана.';
+            copyOrderHint.textContent = sourceDate + ' Все данные будут скопированы, кроме даты.';
+        }
+
+        const base = currentOrderData && currentOrderData.date ? new Date(currentOrderData.date) : new Date();
+
+        if (isNaN(base.getTime())) {
+            copyOrderDate.value = '';
+        } else {
+            base.setDate(base.getDate() + 1);
+            copyOrderDate.value = base.toISOString().split('T')[0];
+        }
+
+        setTimeout(() => copyOrderDate.focus(), 100);
+    }
+
+    function closeCopyModal() {
+        if (copyOrderModal) copyOrderModal.classList.remove('active');
+    }
+
+    if (copyOrderBtn) {
+        copyOrderBtn.addEventListener('click', openCopyModal);
+    }
+
+    if (copyOrderModalCloseBtn) {
+        copyOrderModalCloseBtn.addEventListener('click', closeCopyModal);
+    }
+
+    if (copyOrderCancelBtn) {
+        copyOrderCancelBtn.addEventListener('click', closeCopyModal);
+    }
+
+    if (copyOrderModal) {
+        copyOrderModal.addEventListener('click', function(e) {
+            if (e.target === this) closeCopyModal();
+        });
+    }
+
+    if (copyOrderKeepDate) {
+        copyOrderKeepDate.addEventListener('change', function() {
+            copyOrderDate.disabled = this.checked;
+        });
+    }
+
+    if (editOrderDate) {
+        editOrderDate.addEventListener('change', function() {
+            loadPricePeriod();
+        });
+    }
+
+    if (copyOrderConfirmBtn) {
+        copyOrderConfirmBtn.addEventListener('click', function() {
+            if (!currentOrderId) return;
+
+            const keepDate = copyOrderKeepDate && copyOrderKeepDate.checked;
+            const dateValue = keepDate ? (currentOrderData && currentOrderData.date ? currentOrderData.date : '') : copyOrderDate.value;
+
+            if (!keepDate && !dateValue) {
+                showToast('Выберите дату копии или включите сохранение текущей даты');
+                return;
+            }
+
+            fetch(`/orders/${currentOrderId}/copy/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: new URLSearchParams({
+                    date: dateValue,
+                    date_mode: keepDate ? 'keep' : 'set'
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { showToast(data.error); return; }
+
+                if (data.success) {
+                    showToast('Заказ скопирован');
+                    closeCopyModal();
+                    if (window.renderOrders) window.renderOrders(); else location.reload();
+                }
+            })
+            .catch(err => { showToast('Ошибка копирования'); console.error(err); });
+        });
     }
 
     function resetForm() {
@@ -206,6 +394,11 @@
         editOrderName.value = data.name || '';
         editOrderDate.value = data.date || '';
         editOrderClient.value = data.client_id || '';
+
+        if (window.getOrderClientPicker) {
+            const picker = window.getOrderClientPicker();
+            if (picker) picker.setClient(data.client_id || '');
+        }
         editOrderStatus.value = data.status || 'request';
         editOrderAddress.value = data.address || '';
         editOrderContactPhone.value = data.contact_phone || '';
@@ -231,9 +424,20 @@
         estimateItems = (data.estimate_items || []).map(i => ({...i}));
         employeeItems = (data.employee_items || []).map(i => ({...i}));
 
+        const activeIds = new Set(allEmployees.filter(emp => emp.is_active !== false).map(emp => emp.id));
+
+        employeeItems.forEach(item => {
+            if (item.employee_id && allEmployees.length && !activeIds.has(item.employee_id)) {
+                item.inactive = true;
+            }
+        });
+
         renderServices();
         renderEmployees();
         updateCostField();
+
+        itemsSnapshot = JSON.stringify(estimateItems);
+        formSnapshot = window.UI.snapshot(orderInfoForm);
     }
 
     function loadClientsForSelect(selectedId) {
@@ -246,10 +450,19 @@
                     ).join('');
                     editOrderClient.innerHTML = '<option value="">Выберите клиента</option>' + options;
 
+                    let targetId = '';
+
                     if (selectedId !== undefined && selectedId !== null) {
-                        editOrderClient.value = selectedId;
+                        targetId = selectedId;
                     } else if (currentOrderData) {
-                        editOrderClient.value = currentOrderData.client_id || '';
+                        targetId = currentOrderData.client_id || '';
+                    }
+
+                    editOrderClient.value = targetId;
+
+                    if (window.getOrderClientPicker) {
+                        const picker = window.getOrderClientPicker();
+                        if (picker) picker.setClient(targetId);
                     }
                 }
             })
@@ -406,7 +619,7 @@
             name: service.name,
             people_count: minRow ? minRow.artist_count : 0,
             coefficient: 1,
-            price: minRow ? minRow.cost : 0,
+            price: minRow ? applyPricePeriod(minRow.cost) : 0,
             comment: '',
             overridden: false,
         });
@@ -421,7 +634,7 @@
         if (!item || !item.service_id) return;
         const service = allServices.find(s => s.id === item.service_id);
         const row = pickRow(service, item.people_count);
-        item.price = row ? row.cost : 0;
+        item.price = row ? applyPricePeriod(row.cost) : 0;
         item.overridden = false;
     }
 
@@ -515,6 +728,7 @@
     function renderEmployeesListPanel() {
         const search = (employeeSearchInput.value || '').toLowerCase().trim();
         filteredEmployees = allEmployees.filter(emp => {
+            if (emp.is_active === false) return false;
             if (!search) return true;
             const label = (roleLabels[emp.role] || emp.role || '').toLowerCase();
             return emp.full_name.toLowerCase().includes(search) || label.includes(search);
@@ -592,11 +806,13 @@
             const title = item.overridden && def !== null
                 ? `Ставка изменена вручную. Ставка по шоу: ${formatPrice(def)}`
                 : '';
+            const isInactive = item.inactive === true;
             return `
-            <tr data-index="${index}" class="${item.overridden ? 'row-overridden' : ''}">
+            <tr data-index="${index}" class="${item.overridden ? 'row-overridden' : ''} ${isInactive ? 'row-inactive-employee' : ''}">
                 <td>
                     ${escapeHtml(item.name)}
                     ${item.overridden ? '<span class="override-badge">Ставка изменена</span>' : ''}
+                    ${isInactive ? '<span class="inactive-badge">Деактивирован</span>' : ''}
                 </td>
                 <td>${escapeHtml(item.role)}</td>
                 <td>
@@ -663,7 +879,7 @@
     }
 
     function getCalculatedCost() {
-        return getServicesTotal() + getEmployeesTotal();
+        return getServicesTotal();
     }
 
     function updateCostField() {
@@ -705,32 +921,66 @@
 
     if (cancelEditBtn) {
         cancelEditBtn.addEventListener('click', function() {
-            if (currentOrderData) {
+            if (!currentOrderData) return;
+
+            window.UI.confirm({
+                title: 'Отменить изменения?',
+                text: 'Все несохранённые изменения будут отменены.',
+                okText: 'Отменить изменения',
+                cancelText: 'Остаться',
+                danger: true
+            }).then(confirmed => {
+                if (!confirmed) return;
+
+                costOverride = false;
+                manualCost = '';
+
+                if (overrideCostBtn) overrideCostBtn.classList.remove('active');
+                if (editOrderCost) {
+                    editOrderCost.readOnly = true;
+                    editOrderCost.classList.add('form-input--readonly');
+                }
+
                 resetForm();
                 showToast('Изменения отменены');
-            }
+            });
         });
     }
 
     if (deleteOrderBtn) {
         deleteOrderBtn.addEventListener('click', function() {
             if (!currentOrderId) return;
-            if (!confirm('Вы уверены, что хотите удалить этот заказ?')) return;
 
-            fetch(`/orders/${currentOrderId}/delete/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCSRFToken() }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) { showToast(data.error); return; }
-                if (data.success) {
-                    showToast('Заказ удалён');
-                    close();
-                    if (window.renderOrders) window.renderOrders(); else location.reload();
-                }
-            })
-            .catch(err => { showToast('Ошибка удаления'); console.error(err); });
+            window.UI.confirm({
+                title: 'Удалить заказ?',
+                text: 'Заказ будет удалён из расписания и списка заказов. Действие необратимо.',
+                okText: 'Удалить',
+                cancelText: 'Отмена',
+                danger: true
+            }).then(confirmed => {
+                if (!confirmed) return;
+
+                fetch(`/orders/${currentOrderId}/delete/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCSRFToken() }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) { showToast(data.error); return; }
+
+                    if (data.success) {
+                        showToast('Заказ удалён');
+                        close();
+
+                        if (window.renderOrders) {
+                            window.renderOrders();
+                        } else {
+                            location.reload();
+                        }
+                    }
+                })
+                .catch(err => { showToast('Ошибка удаления'); console.error(err); });
+            });
         });
     }
 
@@ -799,6 +1049,14 @@
                 if (res.error) { showToast(res.error); return; }
                 if (res.success) {
                     showToast('Заказ сохранён');
+
+                    formSnapshot = window.UI.snapshot(orderInfoForm);
+                    itemsSnapshot = JSON.stringify(estimateItems);
+
+                    if (currentOrderData) {
+                        currentOrderData = Object.assign({}, currentOrderData, res.order || {});
+                    }
+
                     if (window.renderOrders) window.renderOrders(); else location.reload();
                 }
             })
@@ -820,6 +1078,30 @@
     });
 
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && editorModal.classList.contains('active')) close();
-    });
+        if (e.key !== 'Escape') return;
+        if (document.getElementById('uiConfirmModal')) return;
+
+        if (copyOrderModal && copyOrderModal.classList.contains('active')) {
+            e.preventDefault();
+            closeCopyModal();
+            return;
+        }
+
+        if (editorModal.classList.contains('active')) {
+            e.preventDefault();
+            requestClose();
+        }
+    }, true);
+
+    const editorCloseBtn = document.getElementById('editorModalCloseBtn');
+
+    if (editorCloseBtn) {
+        editorCloseBtn.addEventListener('click', requestClose);
+    }
+
+    if (editorModal) {
+        editorModal.addEventListener('click', function(e) {
+            if (e.target === this) requestClose();
+        });
+    }
 })();

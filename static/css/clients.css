@@ -126,6 +126,15 @@
   padding: 0.7rem 0.75rem;
   border-bottom: 1px solid #1f1b17;
   color: #ddd4c7;
+  height: 2.6rem;
+}
+
+.clients-table__cities {
+  max-width: 220px;
+  width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clients-table tbody tr {
@@ -784,6 +793,45 @@
 
 .city-selector__option--create.active {
   color: #f0a868;
+}
+
+.city-selector__option-name {
+  display: block;
+}
+
+.city-selector__option-subject {
+  display: block;
+  font-size: 0.72rem;
+  color: #7a7267;
+  margin-top: 0.05rem;
+}
+
+.city-selector__option.active .city-selector__option-subject,
+.city-selector__option:hover .city-selector__option-subject {
+  color: #b0a69a;
+}
+
+.agency-combobox {
+  position: relative;
+}
+
+.modal--confirm {
+  max-width: 440px;
+}
+
+.modal-overlay#confirmModal {
+  z-index: 1200;
+}
+
+.confirm-text {
+  color: #ddd4c7;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin-bottom: 0.25rem;
+}
+
+.confirm-text + .form-actions {
+  margin-top: 1rem;
 }
 
 .detail-row--wide {

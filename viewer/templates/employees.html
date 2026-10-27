@@ -176,21 +176,20 @@
                         </button>
                     </div>
                 </div>
-                <div class="modal-actions">
-                    <button class="btn btn-primary" id="editEmployeeBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 20h9"/>
-                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                        </svg>
-                        Редактировать
-                    </button>
-                    <button class="btn btn-danger" id="deleteEmployeeBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        </svg>
-                        Удалить
-                    </button>
+                <div class="modal__footer modal-footer-actions">
+                    <div class="modal-footer-actions__left">
+                        <button class="btn btn-danger btn-sm" id="deleteEmployeeBtn">Деактивировать</button>
+                    </div>
+                    <div class="modal-footer-actions__right">
+                        <button class="btn btn-outline" id="closeEmployeeBtn">Закрыть</button>
+                        <button class="btn btn-primary" id="editEmployeeBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 20h9"/>
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                            </svg>
+                            Редактировать
+                        </button>
+                    </div>
                 </div>
             </div>
             <div id="editMode" style="display:none;">
@@ -269,16 +268,21 @@
                             </div>
                         </div>
                     </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
-                        <button type="submit" class="btn btn-primary">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                <polyline points="17 21 17 13 7 13 7 21"/>
-                                <polyline points="7 3 7 8 15 8"/>
-                            </svg>
-                            Сохранить
-                        </button>
+                    <div class="modal__footer modal-footer-actions">
+                        <div class="modal-footer-actions__left">
+                            <button type="button" class="btn btn-danger btn-sm" id="editDeactivateBtn">Деактивировать</button>
+                        </div>
+                        <div class="modal-footer-actions__right">
+                            <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
+                            <button type="submit" class="btn btn-primary">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                Сохранить
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

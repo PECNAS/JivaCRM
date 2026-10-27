@@ -2,11 +2,12 @@ from django.http import HttpResponse, JsonResponse
 from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
 import json
-from ..models import Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City, CalendarColor
+from ..models import Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City, CalendarColor, PriceRisePeriod, Agency
 
 
 def format_date(date_value):
@@ -29,10 +30,91 @@ def serialize_calendar_colors():
     return colors
 
 
+def order_common_fields(order):
+    return {
+        'id': order.id,
+        'name': order.name or '—',
+        'name_display': (order.name or '—').upper() if order.status == 'confirmed' else (order.name or '—'),
+        'address': order.address or '',
+        'date': format_date(order.date),
+        'has_date': bool(order.date),
+        'client': order.client.full_name,
+        'client_id': order.client.id,
+        'city_id': order.city.id if order.city else None,
+        'city_name': order.city.name if order.city else '',
+        'cost': order.cost or '—',
+        'status': order.status,
+        'status_display': order.get_status_display(),
+        'manager': order.manager.full_name if order.manager else '',
+        'manager_id': order.manager.id if order.manager else None,
+        'updated_at': order.updated_at.isoformat() if order.updated_at else None,
+        'content_changed': bool(order.content_changed_at),
+        'content_changed_at': order.content_changed_at.isoformat() if order.content_changed_at else None,
+        'is_incomplete': order.is_incomplete(),
+        'missing_fields': order.get_missing_fields(),
+    }
+
+
+def serialize_order_line(order):
+    data = order_common_fields(order)
+    data['services'] = [item.service_name for item in order.estimate_items.all() if item.service_name]
+    return data
+
+
 def get_city_salary_bonus(city):
     if city and city.group:
         return float(city.group.salary_bonus)
     return 0.0
+
+
+def order_queryset():
+    return Order.objects.prefetch_related('estimate_items').select_related('client', 'city', 'manager__user')
+
+
+def parse_order_filters(request):
+    search = request.GET.get('search', '')
+    status = request.GET.get('status', 'all')
+
+    return search, status
+
+
+def apply_order_filters(orders, search, status):
+    if search:
+        orders = orders.filter(
+            Q(name__icontains=search) |
+            Q(address__icontains=search) |
+            Q(client__full_name__icontains=search) |
+            Q(manager__full_name__icontains=search)
+        )
+
+    if status != 'all':
+        orders = orders.filter(status=status)
+
+    return orders
+
+
+def order_list_response(orders, extra_keys=None):
+    def sort_key(order):
+        if order.date:
+            return (1, order.date.toordinal(), order.created_at.timestamp())
+        return (0, 0, order.created_at.timestamp())
+
+    ordered = sorted(list(orders), key=sort_key)
+
+    result = []
+    for order in ordered:
+        item = serialize_order_line(order)
+        if extra_keys:
+            item.update(extra_keys(order))
+        result.append(item)
+
+    undated = [item for item in result if not item['has_date']]
+    dated = [item for item in result if item['has_date']]
+
+    undated.sort(key=lambda item: item['id'], reverse=True)
+    dated.reverse()
+
+    return JsonResponse({'orders': undated + dated, 'colors': serialize_calendar_colors()})
 
 
 class OrdersView(View):
@@ -47,7 +129,7 @@ class OrdersView(View):
         except:
             return redirect('logout')
 
-        orders = Order.objects.select_related('client', 'city', 'manager__user').order_by('-date', '-created_at')
+        orders = order_queryset().order_by('-date', '-created_at')
 
         search_query = request.GET.get('search', '')
         status_filter = request.GET.get('status', 'all')
@@ -69,6 +151,7 @@ class OrdersView(View):
             'orders': page_obj,
             'search_query': search_query,
             'status_filter': status_filter,
+            'agencies': Agency.objects.all(),
         }
         return render(request, "orders.html", context)
 
@@ -91,13 +174,14 @@ class OrdersView(View):
                 return JsonResponse({'error': 'Название заказа обязательно для заполнения'}, status=400)
             if not client_id:
                 return JsonResponse({'error': 'Заказчик обязателен для заполнения'}, status=400)
-            if not date_str:
-                return JsonResponse({'error': 'Дата обязательна для заполнения'}, status=400)
 
-            try:
-                date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-            except ValueError:
-                return JsonResponse({'error': 'Неверный формат даты'}, status=400)
+            date_obj = None
+
+            if date_str:
+                try:
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    return JsonResponse({'error': 'Неверный формат даты'}, status=400)
 
             client = get_object_or_404(Client, id=client_id)
             default_city = City.objects.filter(name__iexact='Казань').first()
@@ -110,6 +194,9 @@ class OrdersView(View):
                 manager=employee,
                 status='request'
             )
+
+            order.content_hash = order.compute_content_hash()
+            order.save(update_fields=['content_hash'])
 
             return JsonResponse({
                 'success': True,
@@ -233,6 +320,8 @@ class OrderUpdateView(View):
                     order.date = datetime.strptime(date_str, '%Y-%m-%d').date()
                 except ValueError:
                     return JsonResponse({'error': 'Неверный формат даты'}, status=400)
+            else:
+                order.date = None
 
             order.name = name
             order.client = get_object_or_404(Client, id=client_id)
@@ -323,6 +412,9 @@ class OrderUpdateView(View):
                 except (json.JSONDecodeError, TypeError):
                     pass
 
+            if order.touch_content_change():
+                order.save(update_fields=['content_hash', 'content_changed_at'])
+
             return JsonResponse({
                 'success': True,
                 'order': {
@@ -338,7 +430,11 @@ class OrderUpdateView(View):
                     'status': order.status,
                     'status_display': order.get_status_display(),
                     'manager': order.manager.full_name if order.manager else '',
-                    'manager_id': order.manager.id if order.manager else None
+                    'manager_id': order.manager.id if order.manager else None,
+                    'content_changed': bool(order.content_changed_at),
+                    'content_changed_at': order.content_changed_at.isoformat() if order.content_changed_at else None,
+                    'is_incomplete': order.is_incomplete(),
+                    'missing_fields': order.get_missing_fields(),
                 }
             })
         except Exception as e:
@@ -375,50 +471,12 @@ class OrderListView(View):
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
-        orders = Order.objects.select_related('client', 'city', 'manager__user').order_by('-date', '-created_at')
+        orders = order_queryset().order_by('-date', '-created_at')
 
-        search = request.GET.get('search', '')
-        status = request.GET.get('status', 'all')
+        search, status = parse_order_filters(request)
+        orders = apply_order_filters(orders, search, status)
 
-        if search:
-            orders = orders.filter(
-                Q(name__icontains=search) |
-                Q(address__icontains=search) |
-                Q(client__full_name__icontains=search) |
-                Q(manager__full_name__icontains=search)
-            )
-        if status != 'all':
-            orders = orders.filter(status=status)
-
-        orders_list = []
-        for order in orders:
-            services_list = []
-            for item in order.estimate_items.all():
-                if item.service_name:
-                    services_list.append(item.service_name)
-
-            orders_list.append({
-                'id': order.id,
-                'name': order.name or '—',
-                'address': order.address or '',
-                'date': format_date(order.date),
-                'client': order.client.full_name,
-                'client_id': order.client.id,
-                'city_id': order.city.id if order.city else None,
-                'city_name': order.city.name if order.city else '',
-                'cost': order.cost or '—',
-                'status': order.status,
-                'status_display': order.get_status_display(),
-                'manager': order.manager.full_name if order.manager else '',
-                'manager_id': order.manager.id if order.manager else None,
-                'services': services_list,
-                'updated_at': order.updated_at.isoformat() if order.updated_at else None,
-            })
-
-        return JsonResponse({
-            'orders': orders_list,
-            'colors': serialize_calendar_colors(),
-        })
+        return order_list_response(orders)
 
 
 class MyOrdersListView(View):
@@ -430,60 +488,119 @@ class MyOrdersListView(View):
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
-        orders = Order.objects.filter(
+        orders = order_queryset().filter(
             employee_items__employee=employee
-        ).select_related('client', 'city', 'manager__user').distinct().order_by('-date', '-created_at')
+        ).distinct().order_by('-date', '-created_at')
 
-        search = request.GET.get('search', '')
-        status = request.GET.get('status', 'all')
+        search, status = parse_order_filters(request)
+        orders = apply_order_filters(orders, search, status)
 
-        if search:
-            orders = orders.filter(
-                Q(name__icontains=search) |
-                Q(address__icontains=search) |
-                Q(client__full_name__icontains=search) |
-                Q(manager__full_name__icontains=search)
-            )
-        if status != 'all':
-            orders = orders.filter(status=status)
+        def extra(order):
+            payment = 0
 
-        orders_list = []
-        for order in orders:
-            my_payment = 0
-            try:
-                item = order.employee_items.get(employee=employee)
-                my_payment = float(item.payment)
-            except OrderEmployee.DoesNotExist:
-                pass
+            for item in order.employee_items.all():
+                if item.employee_id == employee.id:
+                    payment = float(item.payment)
+                    break
 
-            services_list = []
-            for item in order.estimate_items.all():
-                if item.service_name:
-                    services_list.append(item.service_name)
+            return {'my_payment': payment}
 
-            orders_list.append({
-                'id': order.id,
-                'name': order.name or '—',
-                'address': order.address or '',
-                'date': format_date(order.date),
-                'client': order.client.full_name,
-                'client_id': order.client.id,
-                'city_id': order.city.id if order.city else None,
-                'city_name': order.city.name if order.city else '',
-                'cost': order.cost or '—',
-                'status': order.status,
-                'status_display': order.get_status_display(),
-                'manager': order.manager.full_name if order.manager else '',
-                'manager_id': order.manager.id if order.manager else None,
-                'my_payment': my_payment,
-                'services': services_list,
-                'updated_at': order.updated_at.isoformat() if order.updated_at else None,
+        return order_list_response(orders, extra)
+
+
+class OrderCopyView(View):
+    def post(self, request, order_id):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_orders():
+                return JsonResponse({'error': 'У вас недостаточно прав для копирования заказов'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+
+        try:
+            source = get_object_or_404(Order, id=order_id)
+
+            date_str = request.POST.get('date', '').strip()
+            copy_mode = request.POST.get('date_mode', 'set')
+            new_date = None
+
+            if copy_mode == 'keep':
+                new_date = source.date
+            elif date_str:
+                try:
+                    new_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    return JsonResponse({'error': 'Неверный формат даты'}, status=400)
+
+            with transaction.atomic():
+                copy = Order.objects.create(
+                    name=source.name,
+                    client=source.client,
+                    city=source.city,
+                    date=new_date,
+                    address=source.address,
+                    contact_phone=source.contact_phone,
+                    contact_telegram=source.contact_telegram,
+                    setup_time=source.setup_time,
+                    dressing_room_comment=source.dressing_room_comment,
+                    meal_comment=source.meal_comment,
+                    concept=source.concept,
+                    tech_lamps=source.tech_lamps,
+                    tech_laser=source.tech_laser,
+                    tech_hazer=source.tech_hazer,
+                    tech_grid=source.tech_grid,
+                    tech_projection=source.tech_projection,
+                    tech_comment=source.tech_comment,
+                    venue_comment=source.venue_comment,
+                    props_comment=source.props_comment,
+                    manager=source.manager,
+                    story_manager=source.story_manager,
+                    cost=source.cost,
+                    payment_method=source.payment_method,
+                    status=source.status,
+                    duration=source.duration,
+                )
+
+                for item in source.estimate_items.all():
+                    OrderEstimate.objects.create(
+                        order=copy,
+                        service=item.service,
+                        service_name=item.service_name,
+                        people_count=item.people_count,
+                        coefficient=item.coefficient,
+                        price=item.price,
+                        comment=item.comment,
+                        is_overridden=item.is_overridden,
+                    )
+
+                for item in source.employee_items.all():
+                    OrderEmployee.objects.create(
+                        order=copy,
+                        employee=item.employee,
+                        employee_name=item.employee_name,
+                        employee_role=item.employee_role,
+                        payment=item.payment,
+                        is_overridden=item.is_overridden,
+                        comment=item.comment,
+                    )
+
+                copy.content_hash = copy.compute_content_hash()
+                copy.save(update_fields=['content_hash'])
+
+            return JsonResponse({
+                'success': True,
+                'order': {
+                    'id': copy.id,
+                    'name': copy.name,
+                    'date': format_date(copy.date),
+                    'has_date': bool(copy.date),
+                }
             })
-
-        return JsonResponse({
-            'orders': orders_list,
-            'colors': serialize_calendar_colors(),
-        })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
 
 
 class CityListView(View):
@@ -524,6 +641,47 @@ class ServicesFlatListView(View):
                 ]
             data.append(item)
         return JsonResponse({'services': data})
+
+
+def serialize_price_period(period):
+    if not period:
+        return None
+
+    return {
+        'id': period.id,
+        'start_date': period.start_date.strftime('%Y-%m-%d'),
+        'end_date': period.end_date.strftime('%Y-%m-%d'),
+        'percent': float(period.percent),
+    }
+
+
+def parse_request_date(value):
+    if not value:
+        return None
+
+    try:
+        return datetime.strptime(value, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
+
+
+class PricePeriodView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        period_date = parse_request_date(request.GET.get('date'))
+
+        if not period_date:
+            return JsonResponse({'success': True, 'percent': 0, 'period': None})
+
+        period = PriceRisePeriod.find_for_date(period_date)
+
+        return JsonResponse({
+            'success': True,
+            'percent': float(period.percent) if period else 0,
+            'period': serialize_price_period(period),
+        })
 
 
 class ServicePriceForOrderView(View):

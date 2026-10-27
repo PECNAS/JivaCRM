@@ -1,16 +1,47 @@
 (function() {
     const VIEW_STORAGE_KEY = 'jiva_schedule_view';
+    const PAST_STORAGE_KEY = 'jiva_schedule_show_past';
 
     let currentView = localStorage.getItem(VIEW_STORAGE_KEY) === 'list' ? 'list' : 'calendar';
     let currentOrders = [];
     let calendarDate = new Date();
     let activeOrderId = null;
     let statusColors = {};
+    let showPastCompleted = false;
+
+    function getTodayIso() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function isPastCompleted(order) {
+        if (order.status !== 'completed') return false;
+        if (!order.has_date) return false;
+        return order.date < getTodayIso();
+    }
+
+    function getShowPastPreference() {
+        try {
+            return localStorage.getItem(PAST_STORAGE_KEY) === '1';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function setShowPastPreference(value) {
+        try {
+            localStorage.setItem(PAST_STORAGE_KEY, value ? '1' : '0');
+        } catch (error) {}
+    }
 
     const myOrdersOnlyToggle = document.getElementById('myOrdersOnly');
     const searchInput = document.getElementById('dashboardSearch');
     const sortSelect = document.getElementById('dashboardSort');
     const statusSelect = document.getElementById('dashboardStatus');
+    const pastCompletedToggle = document.getElementById('pastCompletedToggle');
     const dashboardList = document.getElementById('dashboardList');
     const dashboardCalendar = document.getElementById('dashboardCalendar');
     const calendarGrid = document.getElementById('calendarGrid');
@@ -80,11 +111,30 @@
     }
 
     function isOrderChanged(order) {
-        if (!order.updated_at) return false;
-        const viewed = getViewedOrders();
-        const prev = viewed[order.id];
-        if (!prev) return false;
-        return prev !== order.updated_at;
+        return !!order.content_changed;
+    }
+
+    function isOrderIncomplete(order) {
+        return !!order.is_incomplete;
+    }
+
+    function getOrderName(order) {
+        return order.name_display || order.name || 'Без названия';
+    }
+
+    function getRowClasses(order, extra) {
+        let classes = `order-row order-row--${order.status}`;
+
+        if (extra) classes += ' ' + extra;
+        if (!order.has_date) classes += ' order-row--no-date';
+        if (isOrderChanged(order)) classes += ' order-row--changed';
+        if (isOrderIncomplete(order)) classes += ' order-row--incomplete';
+
+        return classes;
+    }
+    function getMissingTitle(order) {
+        if (!isOrderIncomplete(order) || !order.missing_fields || !order.missing_fields.length) return '';
+        return 'Не заполнено: ' + order.missing_fields.join(', ');
     }
 
     function getServicesLabel(order) {
@@ -127,14 +177,24 @@
             : '<li class="event-modal__empty">Услуги не указаны</li>';
 
         const costRow = canSeeCost() && order.cost && order.cost !== '—'
-            ? `<div class="event-modal__row"><span class="event-modal__label">Стоимость шоу</span><span class="event-modal__value event-modal__value--cost">${escapeHtml(order.cost)}</span></div>`
+            ? `<div class="event-modal__row"><span class="event-modal__label">Общая стоимость</span><span class="event-modal__value event-modal__value--cost">${escapeHtml(order.cost)}</span></div>`
             : '';
 
         const paymentRow = (order.my_payment !== undefined && order.my_payment > 0)
             ? `<div class="event-modal__row"><span class="event-modal__label">Моя оплата</span><span class="event-modal__value event-modal__value--cost">${formatPrice(order.my_payment)}</span></div>`
             : '';
 
+        const changedBanner = isOrderChanged(order)
+            ? '<div class="event-modal__banner event-modal__banner--changed">Информация о заказе изменена</div>'
+            : '';
+
+        const incompleteBanner = isOrderIncomplete(order)
+            ? `<div class="event-modal__banner event-modal__banner--incomplete">Заказ заполнен не полностью: ${escapeHtml((order.missing_fields || []).join(', '))}</div>`
+            : '';
+
         eventModalBody.innerHTML = `
+            ${changedBanner}
+            ${incompleteBanner}
             <div class="event-modal__section">
                 <div class="event-modal__row">
                     <span class="event-modal__label">Название</span>
@@ -148,7 +208,7 @@
                 </div>
                 <div class="event-modal__row">
                     <span class="event-modal__label">Дата</span>
-                    <span class="event-modal__value">${formatDate(order.date)}</span>
+                    <span class="event-modal__value">${order.has_date ? formatDate(order.date) : 'Дата не указана'}</span>
                 </div>
                 <div class="event-modal__row">
                     <span class="event-modal__label">Заказчик</span>
@@ -197,6 +257,10 @@
 
         let result = orders.slice();
 
+        if (!showPastCompleted) {
+            result = result.filter(o => !isPastCompleted(o));
+        }
+
         if (search) {
             result = result.filter(o =>
                 (o.name && o.name.toLowerCase().includes(search)) ||
@@ -210,6 +274,13 @@
         }
 
         result.sort((a, b) => {
+            const aHasDate = !!a.has_date;
+            const bHasDate = !!b.has_date;
+
+            if (aHasDate !== bHasDate) {
+                return aHasDate ? 1 : -1;
+            }
+
             if (sort === 'date_desc') {
                 return (b.date || '').localeCompare(a.date || '');
             } else if (sort === 'date_asc') {
@@ -231,9 +302,40 @@
         const filtered = applyFiltersAndSort(currentOrders);
 
         if (filtered.length === 0) {
-            dashboardList.innerHTML = '<div class="dashboard-empty">Заказы не найдены</div>';
+            const message = showPastCompleted
+                ? 'Выполненных ранее заказов нет'
+                : 'Заказы не найдены';
+            dashboardList.innerHTML = `<div class="dashboard-empty">${message}</div>`;
             return;
         }
+
+        if (showPastCompleted) {
+            const sorted = filtered.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+            let pastHtml = `<div class="order-list-note">Выполненные ранее — ${sorted.length}. Фильтр по статусу не применяется.</div>`;
+
+            pastHtml += `
+                <div class="order-list-header">
+                    <span>ID</span>
+                    <span>Название</span>
+                    <span>Клиент</span>
+                    <span>Адрес</span>
+                    <span>Дата</span>
+                    <span>Стоимость</span>
+                    <span>Статус</span>
+                </div>
+            `;
+
+            pastHtml += sorted.map(order => renderOrderRow(order, 'order-row--past')).join('');
+
+            dashboardList.innerHTML = pastHtml;
+
+            attachOrderRowEvents();
+            return;
+        }
+
+        const withoutDate = filtered.filter(o => !o.has_date);
+        const withDate = filtered.filter(o => o.has_date);
 
         let html = `
             <div class="order-list-header">
@@ -247,53 +349,68 @@
             </div>
         `;
 
-        html += filtered.map(order => {
-            const changedClass = isOrderChanged(order) ? 'order-row--changed' : '';
-            const isArtistView = myOrdersOnlyToggle && myOrdersOnlyToggle.checked;
-
-            const costCell = isArtistView && order.my_payment !== undefined
-                ? formatPrice(order.my_payment)
-                : (order.cost || '—');
-
-            return `
-                <div class="order-row order-row--${order.status} ${changedClass}" data-order-id="${order.id}">
-                    <span class="order-row__cell order-row__id">#${order.id}</span>
-                    <span class="order-row__cell order-row__name">
-                        <span class="order-row__label">Название: </span>
-                        ${escapeHtml(order.name || 'Без названия')}
-                    </span>
-                    <span class="order-row__cell order-row__client">
-                        <span class="order-row__label">Клиент: </span>
-                        ${escapeHtml(order.client || '—')}
-                    </span>
-                    <span class="order-row__cell order-row__address">
-                        <span class="order-row__label">Адрес: </span>
-                        ${escapeHtml(order.address || '—')}
-                    </span>
-                    <span class="order-row__cell order-row__date">
-                        <span class="order-row__label">Дата: </span>
-                        ${formatDate(order.date)}
-                    </span>
-                    <span class="order-row__cell order-row__cost">${costCell}</span>
-                    <span class="order-row__cell">
-                        ${isOrderChanged(order) ? '<span class="order-row__badge">Обновлено</span>' : `<span class="order-row__status order-row__status--${order.status}">${getStatusLabel(order.status)}</span>`}
-                    </span>
-                </div>
-            `;
-        }).join('');
+        html += withoutDate.map(order => renderOrderRow(order, 'order-row--no-date-zone')).join('');
+        html += withDate.map(order => renderOrderRow(order, '')).join('');
 
         dashboardList.innerHTML = html;
 
+        attachOrderRowEvents();
+    }
+
+    function attachOrderRowEvents() {
         dashboardList.querySelectorAll('.order-row').forEach(row => {
             row.addEventListener('click', function() {
                 const id = parseInt(this.getAttribute('data-order-id'));
                 const order = currentOrders.find(o => o.id === id);
+
                 if (order) {
                     markOrderViewed(order.id, order.updated_at);
                     renderEventModal(order);
                 }
             });
         });
+    }
+
+    function renderOrderRow(order, extra) {
+        const isArtistView = myOrdersOnlyToggle && myOrdersOnlyToggle.checked;
+
+        const costCell = isArtistView && order.my_payment !== undefined
+            ? formatPrice(order.my_payment)
+            : (order.cost || '—');
+
+        const statusHtml = isOrderChanged(order)
+            ? '<span class="order-row__badge">Обновлено</span>'
+            : `<span class="order-row__status order-row__status--${order.status}">${getStatusLabel(order.status)}</span>`;
+
+        const incompleteBadge = isOrderIncomplete(order)
+            ? '<span class="order-row__dot" title="Заполнено не полностью"></span>'
+            : '';
+
+        const missingTitle = getMissingTitle(order);
+
+        return `
+            <div class="${getRowClasses(order, extra)}" data-order-id="${order.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
+                <span class="order-row__cell order-row__id">#${order.id}${incompleteBadge}</span>
+                <span class="order-row__cell order-row__name">
+                    <span class="order-row__label">Название: </span>
+                    ${escapeHtml(getOrderName(order))}
+                </span>
+                <span class="order-row__cell order-row__client">
+                    <span class="order-row__label">Клиент: </span>
+                    ${escapeHtml(order.client || '—')}
+                </span>
+                <span class="order-row__cell order-row__address">
+                    <span class="order-row__label">Адрес: </span>
+                    ${escapeHtml(order.address || '—')}
+                </span>
+                <span class="order-row__cell order-row__date">
+                    <span class="order-row__label">Дата: </span>
+                    ${order.has_date ? formatDate(order.date) : 'Не указана'}
+                </span>
+                <span class="order-row__cell order-row__cost">${costCell}</span>
+                <span class="order-row__cell">${statusHtml}</span>
+            </div>
+        `;
     }
 
     function renderCalendar() {
@@ -333,6 +450,7 @@
             if (isCurrentMonth) {
                 const cellDate = new Date(year, month, dayNumber);
                 const events = filtered.filter(o => {
+                    if (!o.has_date) return false;
                     const start = parseDate(o.date);
                     const end = new Date(start);
                     end.setDate(end.getDate() + (o.duration || 1) - 1);
@@ -347,10 +465,18 @@
                                 ? `<div class="calendar-event__cost">${escapeHtml(e.cost)}</div>`
                                 : '';
                             const style = getEventStyle(e.status);
+
+                            let eventClass = 'calendar-event';
+
+                            if (isOrderChanged(e)) eventClass += ' calendar-event--changed';
+                            if (isOrderIncomplete(e)) eventClass += ' calendar-event--incomplete';
+
+                            const missingTitle = getMissingTitle(e);
+
                             return `
-                                <div class="calendar-event" style="${style}" data-order-id="${e.id}">
+                                <div class="${eventClass}" style="${style}" data-order-id="${e.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
                                     <div class="calendar-event__id">#${e.id}</div>
-                                    <div class="calendar-event__name">${escapeHtml(e.name || 'Без названия')}</div>
+                                    <div class="calendar-event__name">${escapeHtml(getOrderName(e))}</div>
                                     <div class="calendar-event__client">${escapeHtml(e.client || '—')}</div>
                                     ${servicesLabel ? `<div class="calendar-event__service">${escapeHtml(servicesLabel)}</div>` : ''}
                                     ${costHtml}
@@ -479,6 +605,17 @@
             });
     }
 
+    if (pastCompletedToggle) {
+        pastCompletedToggle.checked = getShowPastPreference();
+        showPastCompleted = pastCompletedToggle.checked;
+
+        pastCompletedToggle.addEventListener('change', function() {
+            showPastCompleted = this.checked;
+            setShowPastPreference(this.checked);
+            render();
+        });
+    }
+
     document.querySelectorAll('.view-switch__btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.view-switch__btn').forEach(b => b.classList.remove('active'));
@@ -528,9 +665,9 @@
                     if (dateStr) params.set('create_date', dateStr);
                     window.location.href = '/orders/' + (params.toString() ? '?' + params.toString() : '');
                 } else if (action === 'create-training') {
-                    alert('Создание тренировки — функция в разработке');
+                    window.UI.showToast('Создание тренировки — функция в разработке');
                 } else if (action === 'create-event') {
-                    alert('Создание события — функция в разработке');
+                    window.UI.showToast('Создание события — функция в разработке');
                 }
             });
         });

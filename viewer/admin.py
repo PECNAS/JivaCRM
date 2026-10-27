@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Agency, Role, Skill, Employee, Client, Order,
     OrderEstimate, OrderEmployee, Service, ServiceStaffRow, ArtistSchedule,
-    City, CityGroup, ArtistCard, CalendarColor,
+    City, CityGroup, ArtistCard, CalendarColor, PriceRisePeriod,
 )
 
 
@@ -52,6 +52,43 @@ class CalendarColorAdmin(admin.ModelAdmin):
             'description': 'Укажите цвет в формате HEX (например, #2164c8) или RGB (например, rgb(33, 100, 200)).'
         }),
     )
+
+
+@admin.register(PriceRisePeriod)
+class PriceRisePeriodAdmin(admin.ModelAdmin):
+    list_display = ['id', 'start_date', 'end_date', 'percent', 'is_active', 'comment']
+    list_filter = ['is_active', 'start_date', 'end_date']
+    search_fields = ['comment']
+    list_editable = ['is_active']
+    readonly_fields = ['created_at', 'updated_at']
+    fieldsets = (
+        ('Период', {
+            'fields': ('start_date', 'end_date', 'percent'),
+            'description': 'Даты учитываются включительно. Процент вводится дробным числом, например 10.5.'
+        }),
+        ('Дополнительно', {
+            'fields': ('is_active', 'comment'),
+        }),
+        ('Системные', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
 
 
 @admin.register(Employee)
