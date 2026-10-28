@@ -1401,5 +1401,5 @@ if __name__ == '__main__':
     create_default_services()
     create_default_artists()
 
-    if ask_yes_no('Создать заказы и клиентов?'):
-        create_demo_events()
+    # if ask_yes_no('Создать заказы и клиентов?'):
+    create_demo_events()
