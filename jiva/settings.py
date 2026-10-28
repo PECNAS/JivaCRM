@@ -34,7 +34,7 @@ SECRET_KEY = 'django-insecure-#seg67=h8_xxud+t^$ibo3n45kjedavkq_-3tvxex+o2+**-97
 DEBUG = True
 
 CSRF_TRUSTED_ORIGINS = ['https://jiva-crm.ru']
-ALLOWED_HOSTS = ["jiva-crm.ru", "158.160.116.199", "127.0.0.1"]
+ALLOWED_HOSTS = ["jiva-crm.ru", "185.147.26.234", "127.0.0.1"]
 
 
 # Application definition
