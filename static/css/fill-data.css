@@ -1,0 +1,139 @@
+.fill-header {
+  padding: 1.5rem 0 1.25rem;
+}
+
+.fill-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #f5efe7;
+  margin-bottom: 0.35rem;
+}
+
+.fill-subtitle {
+  color: #9e9487;
+  font-size: 0.92rem;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+.fill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.fill-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: #13110e;
+  border: 1px solid #2b2620;
+  border-radius: 20px;
+  padding: 1.35rem;
+  transition: border-color 0.2s, transform 0.15s;
+}
+
+.fill-card:hover {
+  border-color: rgba(240, 168, 104, 0.35);
+}
+
+.fill-card--loading {
+  opacity: 0.7;
+}
+
+.fill-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(240, 168, 104, 0.12);
+  color: #f0a868;
+}
+
+.fill-card__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f5efe7;
+}
+
+.fill-card__text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #9e9487;
+  flex: 1;
+}
+
+.fill-card__btn {
+  width: 100%;
+}
+
+.fill-card__status {
+  min-height: 1.1rem;
+  font-size: 0.8rem;
+  color: #a5d6a7;
+}
+
+.fill-card__status--error {
+  color: #ef9a9a;
+}
+
+.fill-danger {
+  background: rgba(224, 82, 82, 0.05);
+  border: 1px solid rgba(224, 82, 82, 0.3);
+  border-radius: 20px;
+  padding: 1.35rem;
+  margin-bottom: 1.5rem;
+}
+
+.fill-danger__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ef9a9a;
+  margin-bottom: 0.35rem;
+}
+
+.fill-danger__text {
+  font-size: 0.85rem;
+  color: #9e9487;
+  margin-bottom: 0.9rem;
+}
+
+.fill-danger__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.fill-card__text code {
+  color: #f0a868;
+  font-size: 0.8rem;
+}
+
+.fill-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 3rem;
+}
+
+.fill-log__row {
+  padding: 0.5rem 0.9rem;
+  border-radius: 12px;
+  background: #14120f;
+  border: 1px solid #23201b;
+  color: #ddd4c7;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .fill-title {
+    font-size: 1.4rem;
+  }
+
+  .fill-grid {
+    grid-template-columns: 1fr;
+  }
+}

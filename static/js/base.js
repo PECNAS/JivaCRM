@@ -47,4 +47,38 @@
   syncNavbarHeight();
   window.addEventListener('resize', syncNavbarHeight);
   window.addEventListener('load', syncNavbarHeight);
+
+  const SEARCH_FIELDS = ['searchInput', 'moneySearchInput'];
+
+  function findSearchField() {
+    for (const id of SEARCH_FIELDS) {
+      const field = document.getElementById(id);
+
+      if (field && field.offsetParent !== null) {
+        return field;
+      }
+    }
+
+    const visible = Array.from(document.querySelectorAll('input.search-input, input[type="search"]'))
+      .filter(field => field.offsetParent !== null);
+
+    return visible.length ? visible[0] : null;
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+
+    if (String(e.key).toLowerCase() !== 'f') return;
+
+    const field = findSearchField();
+
+    if (!field) return;
+
+    e.preventDefault();
+    field.focus();
+
+    if (typeof field.select === 'function') {
+      field.select();
+    }
+  });
 })();

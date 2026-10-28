@@ -604,6 +604,22 @@ body {
   transform: translateY(-6px) rotate(-45deg);
 }
 
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem 0 3rem;
+}
+
+.load-more--done {
+  display: none;
+}
+
+.load-more__empty {
+  text-align: center;
+  padding: 2rem;
+  color: #7a7267;
+}
+
 .menu__item--logout,
 .menu__item--profile {
   display: none;

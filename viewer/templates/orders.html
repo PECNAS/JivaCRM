@@ -30,6 +30,22 @@
             <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Подтвержденный</option>
             <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Выполненный</option>
         </select>
+        <div class="orders-date-range">
+            <label class="orders-date-range__field">
+                <span>с</span>
+                <input type="date" class="filter-date" id="dateFromInput">
+            </label>
+            <label class="orders-date-range__field">
+                <span>по</span>
+                <input type="date" class="filter-date" id="dateToInput">
+            </label>
+            <button type="button" class="orders-date-range__reset" id="dateResetBtn" title="Сбросить даты" aria-label="Сбросить даты">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
     </div>
 </section>
 
@@ -49,6 +65,10 @@
         <tbody id="ordersTableBody"></tbody>
     </table>
 </section>
+
+<div class="load-more" id="ordersLoadMore">
+    <button type="button" class="btn btn-outline" id="ordersLoadMoreBtn">Загрузить ещё</button>
+</div>
 
 <div class="notification-container" id="notificationContainer"></div>
 
@@ -227,7 +247,7 @@
                                         </svg>
                                     </button>
                                     <div class="client-combobox__dropdown"></div>
-                                    <select class="form-select" id="editOrderClient" style="display:none;"></select>
+                                    <select class="form-select" id="editOrderClient" required style="display:none;"></select>
                                 </div>
                             </div>
                             <div class="form-group">

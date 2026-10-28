@@ -8,6 +8,9 @@
     const tableBody = document.getElementById('ordersTableBody');
     const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
+    const dateFromInput = document.getElementById('dateFromInput');
+    const dateToInput = document.getElementById('dateToInput');
+    const dateResetBtn = document.getElementById('dateResetBtn');
     const addOrderBtn = document.getElementById('addOrderBtn');
     const createModal = document.getElementById('createOrderModal');
     const createModalCloseBtn = document.getElementById('createModalCloseBtn');
@@ -32,6 +35,33 @@
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
         return cookieValue ? cookieValue[2] : '';
+    }
+
+    const ORDERS_PAGE = 50;
+    const CLIENTS_PAGE = 200;
+    const COMBOBOX_LIMIT = 300;
+    const ordersLoadMore = document.getElementById('ordersLoadMore');
+    const ordersLoadMoreBtn = document.getElementById('ordersLoadMoreBtn');
+
+    const DATE_STORAGE_KEY = 'jiva_orders_date_filter';
+
+    function restoreDateFilter() {
+        try {
+            const raw = localStorage.getItem(DATE_STORAGE_KEY);
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            if (dateFromInput && data.from) dateFromInput.value = data.from;
+            if (dateToInput && data.to) dateToInput.value = data.to;
+        } catch (error) {}
+    }
+
+    function saveDateFilter() {
+        try {
+            localStorage.setItem(DATE_STORAGE_KEY, JSON.stringify({
+                from: dateFromInput ? dateFromInput.value : '',
+                to: dateToInput ? dateToInput.value : ''
+            }));
+        } catch (error) {}
     }
 
     function showToast(message) {
@@ -148,15 +178,31 @@
         return 'Не заполнено: ' + order.missing_fields.join(', ');
     }
 
-    function loadClients(selectedId) {
-        fetch('/clients/list/')
+    function loadClients(selectedId, offset) {
+        const start = offset || 0;
+        const params = new URLSearchParams();
+        params.set('offset', String(start));
+        params.set('limit', String(CLIENTS_PAGE));
+
+        fetch(`/clients/list/?${params.toString()}`)
             .then(response => response.json())
             .then(data => {
                 if (!data.clients) return;
 
-                allClients = data.clients;
+                if (start === 0) {
+                    allClients = data.clients;
+                } else {
+                    const known = new Set(allClients.map(item => String(item.id)));
+                    data.clients.forEach(client => {
+                        if (!known.has(String(client.id))) {
+                            allClients.push(client);
+                        }
+                    });
+                }
 
-                const options = data.clients.map(c =>
+                window.allOrderClients = allClients;
+
+                const options = allClients.map(c =>
                     `<option value="${c.id}">${escapeHtml(c.full_name)}${c.agency ? ' (' + escapeHtml(c.agency) + ')' : ''}</option>`
                 ).join('');
 
@@ -170,6 +216,10 @@
 
                 if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
                     createOrderClient.value = selectedId;
+
+                    if (editClientSelect) {
+                        editClientSelect.value = selectedId;
+                    }
                 }
 
                 if (createClientPicker) {
@@ -178,6 +228,10 @@
 
                 if (editClientPicker) {
                     editClientPicker.refresh();
+                }
+
+                if (data.has_more) {
+                    loadClients(undefined, start + data.clients.length);
                 }
             })
             .catch(error => console.error('Ошибка загрузки клиентов:', error));
@@ -243,7 +297,7 @@
                 });
             }
 
-            return result.slice(0, 40);
+            return result.slice(0, COMBOBOX_LIMIT);
         }
 
         function pick(client) {
@@ -364,9 +418,11 @@
 
                 if (exact) {
                     select.value = exact.id;
+                    this.dataset.clientId = exact.id;
                     this.value = exact.full_name + (exact.agency ? ' (' + exact.agency + ')' : '');
-                } else {
-                    select.value = '';
+                } else if (!select.value) {
+                    this.value = '';
+                    this.dataset.clientId = '';
                 }
 
                 close();
@@ -415,70 +471,116 @@
         };
     }
 
-    function renderOrders() {
-        const search = searchInput.value.trim();
-        const status = statusFilter.value;
+    let orderRowsShown = 0;
 
-        fetch(`/orders/list/?search=${encodeURIComponent(search)}&status=${status}`)
+    function orderRow(order) {
+        const statusClass = `status-badge--${order.status}`;
+        const badge = order.content_changed
+            ? '<span class="orders-row__badge">Обновлено</span>'
+            : '';
+        const incompleteDot = order.is_incomplete
+            ? '<span class="orders-row__dot" title="Заполнено не полностью"></span>'
+            : '';
+        const missingTitle = getMissingTitle(order);
+
+        return `
+            <tr class="${getRowClassNames(order)}" data-order-id="${order.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
+                <td><span class="orders-row__name">${escapeHtml(getOrderName(order))}</span>${badge}${incompleteDot}</td>
+                <td>${order.has_date ? order.date : 'Не указана'}</td>
+                <td>${escapeHtml(order.client)}</td>
+                <td>${escapeHtml(order.city_name || '—')}</td>
+                <td><span class="status-badge ${statusClass}">${getStatusLabel(order.status)}</span></td>
+                <td>${order.cost || '—'}</td>
+                <td><button class="view-link" data-id="${order.id}">Открыть</button></td>
+            </tr>
+        `;
+    }
+
+    function attachOrderRowEvents() {
+        tableBody.querySelectorAll('[data-id]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = parseInt(this.getAttribute('data-id'));
+                openEditor(id);
+            });
+        });
+
+        tableBody.querySelectorAll('tr[data-order-id]').forEach(row => {
+            row.addEventListener('click', function() {
+                const id = parseInt(row.getAttribute('data-order-id'));
+                openEditor(id);
+            });
+        });
+    }
+
+    function buildOrderParams(limit) {
+        const params = new URLSearchParams();
+
+        params.set('search', searchInput.value.trim());
+        params.set('status', statusFilter.value);
+        params.set('limit', String(limit));
+
+        if (dateFromInput && dateFromInput.value) params.set('date_from', dateFromInput.value);
+        if (dateToInput && dateToInput.value) params.set('date_to', dateToInput.value);
+
+        return params;
+    }
+
+    function fetchOrdersPage(limit, reset) {
+        if (ordersLoadMoreBtn) ordersLoadMoreBtn.disabled = true;
+
+        fetch(`/orders/list/?${buildOrderParams(limit).toString()}`)
             .then(response => response.json())
             .then(data => {
-                if (data.orders && data.orders.length > 0) {
-                    const sorted = data.orders.slice().sort((a, b) => {
-                        if (!!a.has_date !== !!b.has_date) return a.has_date ? 1 : -1;
-                        return 0;
-                    });
+                if (ordersLoadMoreBtn) ordersLoadMoreBtn.disabled = false;
 
-                    tableBody.innerHTML = sorted.map(order => {
-                        const statusClass = `status-badge--${order.status}`;
-                        const badge = order.content_changed
-                            ? '<span class="orders-row__badge">Обновлено</span>'
-                            : '';
-                        const incompleteDot = order.is_incomplete
-                            ? '<span class="orders-row__dot" title="Заполнено не полностью"></span>'
-                            : '';
-                        const missingTitle = getMissingTitle(order);
+                const rows = (data.orders || []).slice().sort((a, b) => {
+                    if (!!a.has_date !== !!b.has_date) return a.has_date ? 1 : -1;
+                    return 0;
+                });
 
-                        return `
-                            <tr class="${getRowClassNames(order)}" data-order-id="${order.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
-                                <td><span class="orders-row__name">${escapeHtml(getOrderName(order))}</span>${badge}${incompleteDot}</td>
-                                <td>${order.has_date ? order.date : 'Не указана'}</td>
-                                <td>${escapeHtml(order.client)}</td>
-                                <td>${escapeHtml(order.city_name || '—')}</td>
-                                <td><span class="status-badge ${statusClass}">${getStatusLabel(order.status)}</span></td>
-                                <td>${order.cost || '—'}</td>
-                                <td><button class="view-link" data-id="${order.id}">Открыть</button></td>
-                            </tr>
-                        `;
-                    }).join('');
-
-                    tableBody.querySelectorAll('[data-id]').forEach(btn => {
-                        btn.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            const id = parseInt(this.getAttribute('data-id'));
-                            openEditor(id);
-                        });
-                    });
-
-                    tableBody.querySelectorAll('tr[data-order-id]').forEach(row => {
-                        row.addEventListener('click', function() {
-                            const id = parseInt(this.getAttribute('data-order-id'));
-                            openEditor(id);
-                        });
-                    });
-                } else {
-                    tableBody.innerHTML = `
+                if (reset) {
+                    tableBody.innerHTML = rows.length ? rows.map(orderRow).join('') : `
                         <tr>
                             <td colspan="7" style="text-align:center; padding: 2rem; color: #7a7267;">
                                 Заказы не найдены
                             </td>
                         </tr>
                     `;
+                } else {
+                    const existing = new Set(
+                        Array.from(tableBody.querySelectorAll('tr[data-order-id]'))
+                            .map(row => row.getAttribute('data-order-id'))
+                    );
+
+                    const fresh = rows.filter(order => !existing.has(String(order.id)));
+
+                    tableBody.insertAdjacentHTML('beforeend', fresh.map(orderRow).join(''));
                 }
+
+                orderRowsShown = tableBody.querySelectorAll('tr[data-order-id]').length;
+
+                if (ordersLoadMore) {
+                    ordersLoadMore.classList.toggle('load-more--done', !data.has_more);
+                }
+
+                attachOrderRowEvents();
             })
             .catch(error => {
+                if (ordersLoadMoreBtn) ordersLoadMoreBtn.disabled = false;
                 console.error('Ошибка загрузки заказов:', error);
                 showToast('Ошибка загрузки заказов');
             });
+    }
+
+    function renderOrders() {
+        saveDateFilter();
+        orderRowsShown = 0;
+        fetchOrdersPage(ORDERS_PAGE, true);
+    }
+
+    function loadMoreOrders() {
+        fetchOrdersPage(orderRowsShown + ORDERS_PAGE, false);
     }
 
     function openCreateModal(prefillDate) {
@@ -1128,6 +1230,21 @@
 
     statusFilter.addEventListener('change', renderOrders);
 
+    if (ordersLoadMoreBtn) {
+        ordersLoadMoreBtn.addEventListener('click', loadMoreOrders);
+    }
+
+    if (dateFromInput) dateFromInput.addEventListener('change', renderOrders);
+    if (dateToInput) dateToInput.addEventListener('change', renderOrders);
+
+    if (dateResetBtn) {
+        dateResetBtn.addEventListener('click', function() {
+            if (dateFromInput) dateFromInput.value = '';
+            if (dateToInput) dateToInput.value = '';
+            renderOrders();
+        });
+    }
+
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         if (document.getElementById('uiConfirmModal')) return;
@@ -1151,6 +1268,7 @@
     }
 
     loadClients();
+    restoreDateFilter();
     renderOrders();
 
     const urlParams = new URLSearchParams(window.location.search);

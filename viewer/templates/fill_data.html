@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Заполнение данных{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/clients.css' %}">
+<link rel="stylesheet" href="{% static 'css/fill-data.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="fill-header">
+    <h1 class="fill-title">Заполнение данных</h1>
+    <p class="fill-subtitle">Импорт данных из JSON-файлов, подготовленных из Excel. Каждый шаг можно запускать повторно — уже созданное не дублируется.</p>
+</section>
+
+<section class="fill-grid">
+    <div class="fill-card" data-action="users">
+        <div class="fill-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        </div>
+        <h2 class="fill-card__title">Сотрудники</h2>
+        <p class="fill-card__text">Импорт из файла <code>employees_import.json</code>: аккаунты, роли, навыки и карточки артистов.</p>
+        <button type="button" class="btn btn-primary fill-card__btn" data-fill="users">Импортировать сотрудников</button>
+        <div class="fill-card__status"></div>
+    </div>
+
+    <div class="fill-card" data-action="services">
+        <div class="fill-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+        </div>
+        <h2 class="fill-card__title">Услуги</h2>
+        <p class="fill-card__text">Импорт из файла <code>services_import.json</code>: каталоги, услуги, ставки и длительность.</p>
+        <button type="button" class="btn btn-primary fill-card__btn" data-fill="services">Импортировать услуги</button>
+        <div class="fill-card__status"></div>
+    </div>
+
+    <div class="fill-card" data-action="clients">
+        <div class="fill-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="22" y1="11" x2="16" y2="11"/>
+            </svg>
+        </div>
+        <h2 class="fill-card__title">Клиенты</h2>
+        <p class="fill-card__text">Импорт из файла <code>clients_import.json</code>: организаторы и агентства с контактами, городами и рейтингом.</p>
+        <button type="button" class="btn btn-primary fill-card__btn" data-fill="clients">Импортировать клиентов</button>
+        <div class="fill-card__status"></div>
+    </div>
+
+    <div class="fill-card" data-action="orders">
+        <div class="fill-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+        </div>
+        <h2 class="fill-card__title">Заказы</h2>
+        <p class="fill-card__text">Импорт из файла <code>orders_import.json</code>: заказы с услугами, сотрудниками, ставками и стоимостью.</p>
+        <button type="button" class="btn btn-primary fill-card__btn" data-fill="orders">Импортировать заказы</button>
+        <div class="fill-card__status"></div>
+    </div>
+</section>
+
+<section class="fill-danger">
+    <h2 class="fill-danger__title">Удаление данных</h2>
+    <p class="fill-danger__text">Удаление необратимо. Суперпользователь и настройки системы не затрагиваются.</p>
+    <div class="fill-danger__grid">
+        <button type="button" class="btn btn-danger btn-sm" data-delete="delete_orders">Удалить все заказы</button>
+        <button type="button" class="btn btn-danger btn-sm" data-delete="delete_clients">Удалить всех клиентов</button>
+        <button type="button" class="btn btn-danger btn-sm" data-delete="delete_employees">Удалить всех сотрудников</button>
+        <button type="button" class="btn btn-danger btn-sm" data-delete="delete_services">Удалить все услуги</button>
+    </div>
+</section>
+
+<div class="fill-log" id="fillLog"></div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/fill-data.js' %}"></script>
+{% endblock %}

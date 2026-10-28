@@ -25,3 +25,4 @@ from .money import (
     MoneyView, MoneyDataView, MoneyOrderPaymentView, MoneyOrderPayView,
     MoneyAccrualView, MoneyPayoutView, MoneyMonthPreviewView, MoneyMonthPayView,
 )
+from .fill_data import FillDataView

@@ -731,12 +731,7 @@
             document.getElementById(focusPrefix + 'FullName').focus();
             return false;
         }
-        if (!payload.phone || payload.phone === '+7') {
-            showToast('Пожалуйста, введите номер телефона');
-            document.getElementById(focusPrefix + 'Phone').focus();
-            return false;
-        }
-        if (!validatePhone(payload.phone)) {
+        if (payload.phone && payload.phone !== '+7' && !validatePhone(payload.phone)) {
             showToast('Пожалуйста, введите корректный номер телефона (11 цифр)');
             document.getElementById(focusPrefix + 'Phone').focus();
             return false;
@@ -847,7 +842,7 @@
 
     function updateDeleteButtonLabel() {
         const match = duplicateMatches.find(item => item.id === selectedMatchId);
-        duplicateDeleteOldBtn.textContent = match ? `Удалить выбранного (${match.orders_count})` : 'Удалить выбранного';
+        duplicateDeleteOldBtn.textContent = 'Удалить выбранного';
         duplicateDeleteOldBtn.disabled = !match;
     }
 
@@ -1008,7 +1003,7 @@
 
         window.UI.confirm({
             title: 'Удалить клиента?',
-            text: 'Клиент будет удалён. Если у него есть заказы, удаление будет отменено.',
+            text: 'Если у клиента есть заказы, он будет деактивирован: исчезнет из списка, но заказы сохранятся.',
             okText: 'Удалить',
             cancelText: 'Отмена',
             danger: true
@@ -1026,7 +1021,7 @@
                 return;
             }
             if (data.success) {
-                showToast('Клиент успешно удалён');
+                showToast(data.deactivated ? 'Клиент деактивирован, заказы сохранены' : 'Клиент успешно удалён');
                 closeModal();
                 setTimeout(() => location.reload(), 500);
             }
@@ -1057,13 +1052,7 @@
             return;
         }
 
-        if (!phone || phone === '+7') {
-            showToast('Пожалуйста, введите номер телефона');
-            document.getElementById('editPhone').focus();
-            return;
-        }
-
-        if (!validatePhone(phone)) {
+        if (phone && phone !== '+7' && !validatePhone(phone)) {
             showToast('Пожалуйста, введите корректный номер телефона (11 цифр)');
             document.getElementById('editPhone').focus();
             return;
@@ -1264,8 +1253,8 @@
             }
 
             if (data.success) {
-                showToast(data.deleted_orders
-                    ? `Клиент удалён, вместе с ним удалено заказов: ${data.deleted_orders}. Новый клиент не создан.`
+                showToast(data.deactivated
+                    ? 'Клиент деактивирован, заказы сохранены. Новый клиент не создан.'
                     : 'Клиент удалён. Новый клиент не создан.');
 
                 duplicateMatches = duplicateMatches.filter(item => item.id !== data.deleted_id);
@@ -1307,28 +1296,125 @@
         }
     });
 
-    function filterClients() {
+    const CLIENTS_PAGE = 50;
+
+    const clientsLoadMore = document.getElementById('clientsLoadMore');
+    const clientsLoadMoreBtn = document.getElementById('clientsLoadMoreBtn');
+    let clientsOffset = document.querySelectorAll('#clientsTableBody tr[data-client-id]').length;
+
+    function loadClientsLive(reset) {
         const search = searchInput.value.trim();
         const rating = ratingFilter.value;
         const city = cityFilter ? cityFilter.value : 'all';
         const params = new URLSearchParams();
+
+        if (reset !== false) {
+            clientsOffset = 0;
+        }
+
         if (search) params.append('search', search);
         if (rating && rating !== 'all') params.append('rating', rating);
         if (city && city !== 'all') params.append('city', city);
-        window.location.href = `/clients/?${params.toString()}`;
+        params.append('offset', String(clientsOffset));
+        params.append('limit', String(CLIENTS_PAGE));
+
+        if (clientsLoadMoreBtn) clientsLoadMoreBtn.disabled = true;
+        tableBody.style.opacity = '0.5';
+
+        fetch(`/clients/list/?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                tableBody.style.opacity = '';
+
+                if (clientsLoadMoreBtn) clientsLoadMoreBtn.disabled = false;
+
+                if (data.error) {
+                    showToast(data.error);
+                    return;
+                }
+
+                const rows = data.clients || [];
+
+                if (clientsOffset === 0) {
+                    if (!rows.length) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="8" class="load-more__empty">Клиенты не найдены</td>
+                            </tr>
+                        `;
+                    } else {
+                        tableBody.innerHTML = rows.map(clientRow).join('');
+                    }
+                } else if (rows.length) {
+                    tableBody.insertAdjacentHTML('beforeend', rows.map(clientRow).join(''));
+                }
+
+                clientsOffset += rows.length;
+
+                if (clientsLoadMore) {
+                    clientsLoadMore.classList.toggle('load-more--done', !data.has_more);
+                }
+
+                const filterParams = new URLSearchParams();
+
+                if (search) filterParams.append('search', search);
+                if (rating && rating !== 'all') filterParams.append('rating', rating);
+                if (city && city !== 'all') filterParams.append('city', city);
+
+                const url = filterParams.toString() ? `/clients/?${filterParams.toString()}` : '/clients/';
+                window.history.replaceState({}, '', url);
+            })
+            .catch(error => {
+                tableBody.style.opacity = '';
+
+                if (clientsLoadMoreBtn) clientsLoadMoreBtn.disabled = false;
+
+                console.error(error);
+            });
+    }
+
+    function clientRow(client) {
+        return `
+            <tr data-client-id="${client.id}">
+                <td>${escapeHtml(client.full_name)}</td>
+                <td>${escapeHtml(client.phone || '—')}</td>
+                <td>${escapeHtml(client.agency || '—')}</td>
+                <td class="clients-table__cities" title="${escapeHtml(client.city || '')}">${escapeHtml(client.city || '—')}</td>
+                <td>
+                    <span class="rating-badge rating-badge--${client.rating}">${escapeHtml(client.rating_display)}</span>
+                </td>
+                <td>${client.requests_count || 0}</td>
+                <td>${client.orders_count || 0}</td>
+                <td><button class="view-link" data-id="${client.id}">Подробнее</button></td>
+            </tr>
+        `;
+    }
+
+    if (clientsLoadMoreBtn) {
+        clientsLoadMoreBtn.addEventListener('click', function() {
+            loadClientsLive(false);
+        });
+    }
+
+    if (clientsLoadMore) {
+        clientsLoadMore.classList.toggle('load-more--done', clientsLoadMore.dataset.hasMore !== '1');
+    }
+
+    ratingFilter.addEventListener('change', function() {
+        loadClientsLive();
+    });
+
+    if (cityFilter) {
+        cityFilter.addEventListener('change', function() {
+            loadClientsLive();
+        });
     }
 
     let searchTimeout;
     searchInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(filterClients, 500);
+        searchTimeout = setTimeout(loadClientsLive, 400);
     });
-
-    ratingFilter.addEventListener('change', filterClients);
-
-    if (cityFilter) {
-        cityFilter.addEventListener('change', filterClients);
-    }
 
     function isFormDirty(form) {
         if (!form) return false;

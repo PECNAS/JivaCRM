@@ -80,6 +80,10 @@
     </table>
 </section>
 
+<div class="load-more" id="clientsLoadMore" data-has-more="{% if has_more %}1{% else %}0{% endif %}">
+    <button type="button" class="btn btn-outline" id="clientsLoadMoreBtn">Загрузить ещё</button>
+</div>
+
 <div class="modal-overlay" id="clientModal">
     <div class="modal modal--client">
         <div class="modal__header">
@@ -166,8 +170,8 @@
                         <input type="text" class="form-input" id="editFullName" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="editPhone">Телефон *</label>
-                        <input type="tel" class="form-input" id="editPhone" placeholder="+7 (999) 123-45-67" required>
+                        <label class="form-label" for="editPhone">Телефон</label>
+                        <input type="tel" class="form-input" id="editPhone" placeholder="+7 (999) 123-45-67">
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="editClientType">Тип клиента *</label>
@@ -252,8 +256,8 @@
                     <input type="text" class="form-input" id="addFullName" placeholder="Иванов Иван Иванович" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="addPhone">Телефон *</label>
-                    <input type="tel" class="form-input" id="addPhone" placeholder="+7 (999) 123-45-67" required>
+                    <label class="form-label" for="addPhone">Телефон</label>
+                    <input type="tel" class="form-input" id="addPhone" placeholder="+7 (999) 123-45-67">
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="addClientType">Тип клиента *</label>
@@ -349,8 +353,8 @@
                                 <input type="text" class="form-input" id="dupFullName" placeholder="Иванов Иван Иванович" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="dupPhone">Телефон *</label>
-                                <input type="tel" class="form-input" id="dupPhone" placeholder="+7 (999) 123-45-67" required>
+                                <label class="form-label" for="dupPhone">Телефон</label>
+                                <input type="tel" class="form-input" id="dupPhone" placeholder="+7 (999) 123-45-67">
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="dupClientType">Тип клиента *</label>

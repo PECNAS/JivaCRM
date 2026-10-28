@@ -1,0 +1,1283 @@
+[
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 3,
+    "agency": "Башня",
+    "clients": [
+      {
+        "full_name": "Анна",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79196421881",
+        "telegram": null
+      },
+      {
+        "full_name": "Оля",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79063225068",
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 4,
+    "agency": "ПРО Ивент",
+    "clients": [
+      {
+        "full_name": "Юлия",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79872147979",
+        "telegram": "JuliaPROevent"
+      },
+      {
+        "full_name": "Белла",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79028565008",
+        "telegram": "Bella_Sono"
+      },
+      {
+        "full_name": "Лиза",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79600440274",
+        "telegram": "Lisa_Kalchenko"
+      },
+      {
+        "full_name": "Яна",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79872080624",
+        "telegram": "Yana_Khauss"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 5,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Юлия Уразбай",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79196235242",
+        "telegram": "urazbay_org"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 6,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Инесса Гноевых",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79266410592",
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 7,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Алия Конфетная",
+        "client_type": "organizer",
+        "comment": "очень мелкие заказы, делает какую-то колхозанскую премию человек года",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79272465389",
+        "telegram": "Konfetnaya_Aliya"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 8,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Елена Когенман",
+        "client_type": "organizer",
+        "comment": "постоянница, частые запросы",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79172578721",
+        "telegram": "lenityE"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 9,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Анна Гаспар",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79600369383",
+        "telegram": "anna_herstory"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 10,
+    "agency": "Зажигай",
+    "clients": [
+      {
+        "full_name": "Марина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Киров",
+        "phone": "+79536729934",
+        "telegram": "MarinaPetrova90"
+      },
+      {
+        "full_name": "Елена",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Киров",
+        "phone": "+79635518505",
+        "telegram": null
+      },
+      {
+        "full_name": "Виктория",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Киров",
+        "phone": "+79513482705",
+        "telegram": "volkova_victoria"
+      },
+      {
+        "full_name": "Женя",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Киров",
+        "phone": null,
+        "telegram": "EvgeniyaBaboshina"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 11,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Доманский Андрей",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "medium",
+        "city": "Набережные Челны",
+        "phone": "+79375894510",
+        "telegram": "domanskiy_andrey"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 12,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Анна Волкова",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79372760292",
+        "telegram": "an_volkova_wedding"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 13,
+    "agency": "Имейджин Групп",
+    "clients": [
+      {
+        "full_name": "Никита Морозов",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79274230703",
+        "telegram": "morozovnk"
+      },
+      {
+        "full_name": "Саша",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79991576617",
+        "telegram": "toroshylik"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 14,
+    "agency": "Концепто",
+    "clients": [
+      {
+        "full_name": "Марсель",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79656070094",
+        "telegram": "Balivia_off"
+      },
+      {
+        "full_name": "Ольга",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79179111117",
+        "telegram": null
+      },
+      {
+        "full_name": "Диана1",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79503227837",
+        "telegram": null
+      },
+      {
+        "full_name": "Диана2",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 15,
+    "agency": "Лайм / Даже Если",
+    "clients": [
+      {
+        "full_name": "Фиби",
+        "client_type": "agency",
+        "comment": "с виленой был скандал с балеринами, потом фиби забронировала на лето сразу. подарок: стилусы для рисования на планшете, она их вечно теряет. Купила дачу в 25ом, можно что-то для дачи подарить",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79872266426",
+        "telegram": "Fibi_n"
+      },
+      {
+        "full_name": "Айгуль (помощница Вилены)",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79872907757",
+        "telegram": "fibikidskzn"
+      },
+      {
+        "full_name": "Севара",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79539992124",
+        "telegram": "Sevara_Faizullina"
+      },
+      {
+        "full_name": "Юля",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79872251577",
+        "telegram": "yuliaartlime"
+      },
+      {
+        "full_name": "Ася",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": "pr_evenif"
+      },
+      {
+        "full_name": "Настя",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      },
+      {
+        "full_name": "Ксения",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      },
+      {
+        "full_name": "Аня",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": "Anechka_B_A"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 16,
+    "agency": "Ин Блек",
+    "clients": [
+      {
+        "full_name": "Ксения",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79047606663",
+        "telegram": "ksenlip"
+      },
+      {
+        "full_name": "Женя Макарова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": "evamakton"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 17,
+    "agency": "Топ Эвент",
+    "clients": [
+      {
+        "full_name": "Игорь",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79600489664",
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 18,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Алекс Рожков",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79376231075",
+        "telegram": "Uranus1991"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 19,
+    "agency": "Светский",
+    "clients": [
+      {
+        "full_name": "Эльвира",
+        "client_type": "agency",
+        "comment": "очень нравимся им, кристал заебал, нужно выйти на встречу",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79179167963",
+        "telegram": "go_shhh"
+      },
+      {
+        "full_name": "Эль",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      },
+      {
+        "full_name": "Гульшат",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 20,
+    "agency": "Простые радости",
+    "clients": [
+      {
+        "full_name": "Катя Давлетшина",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79503106842",
+        "telegram": "mahonyami16"
+      },
+      {
+        "full_name": "Мария",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79503222237",
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 21,
+    "agency": "Фиеста",
+    "clients": [
+      {
+        "full_name": "Эльмира",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79376152610",
+        "telegram": "elmiragaripova1"
+      },
+      {
+        "full_name": "Максим",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79655906985",
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 22,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Вероника",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79053168895",
+        "telegram": null
+      },
+      {
+        "full_name": "Алёна",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      },
+      {
+        "full_name": "Галия Версаль",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 23,
+    "agency": "Макс шоу Групп",
+    "clients": [
+      {
+        "full_name": "Елена",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Чебоксары",
+        "phone": "+79051982257",
+        "telegram": null
+      },
+      {
+        "full_name": "Ирина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Чебоксары",
+        "phone": "+79278476183",
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 24,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Камила Кей",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79869192440",
+        "telegram": "kamila_key"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 25,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Мария Двинских",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79810510712",
+        "telegram": "Mari_KznKreml"
+      },
+      {
+        "full_name": "Анастасия",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": "Anastasiyarasvet"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 26,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Алена Маркелова",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79209112789",
+        "telegram": "markelovalova"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 27,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Лилия Федорова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79851113854",
+        "telegram": "FedorovaLiliya"
+      },
+      {
+        "full_name": "Мария Орлова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79166108066",
+        "telegram": null
+      },
+      {
+        "full_name": "Анна Абрамочкина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "AbramochkinaAnna"
+      },
+      {
+        "full_name": "Виктория Девечка",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "Dewe4ka"
+      },
+      {
+        "full_name": "Максим Авантаж",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "Maks1kod"
+      },
+      {
+        "full_name": "Анастасия Стрельникова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": null
+      },
+      {
+        "full_name": "Марианна Панчехина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "Marianna_Panch"
+      },
+      {
+        "full_name": "Виктория Юдакова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 28,
+    "agency": "Просто Вместе",
+    "clients": [
+      {
+        "full_name": "Диляра",
+        "client_type": "agency",
+        "comment": "ЗАР",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79274659797",
+        "telegram": "dilyara_07"
+      },
+      {
+        "full_name": "Мария",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79053164566",
+        "telegram": "mahonyami16"
+      },
+      {
+        "full_name": "Арина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79196416961",
+        "telegram": null
+      },
+      {
+        "full_name": "Яна Суслопарова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      },
+      {
+        "full_name": "Айгуль",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": null,
+        "telegram": "f_aigull"
+      },
+      {
+        "full_name": "Диана",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": null,
+        "telegram": "its_diiiiiiiii"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 29,
+    "agency": "Добро Эвент",
+    "clients": [
+      {
+        "full_name": "Екатерина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Нижний Новгород",
+        "phone": "+79879879877",
+        "telegram": "krodio"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 30,
+    "agency": "Гранд лайн",
+    "clients": [
+      {
+        "full_name": "Сергей Чурин",
+        "client_type": "organizer",
+        "comment": "постоянник. Компания гранд лайн. Сам инженер, отвечает корпораты в компании. Виделись на сцене 25 поставил бронь",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79158929870",
+        "telegram": "churin_sv"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 31,
+    "agency": "Богема",
+    "clients": [
+      {
+        "full_name": "Рамир",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79061178966",
+        "telegram": "ramircezar"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 32,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Валерия Гудковская",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "valeriagud"
+      },
+      {
+        "full_name": "Ирина Федотова",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "fedotio"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 33,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Алсу",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79856100419",
+        "telegram": "A_A_KHA"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 34,
+    "agency": "А1 Ё-ивень",
+    "clients": [
+      {
+        "full_name": "Касимова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79274143743",
+        "telegram": null
+      },
+      {
+        "full_name": "Настя Шадрина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79172425215",
+        "telegram": "Shadrinaa1"
+      },
+      {
+        "full_name": "Ирина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 35,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Мандариновая Лиса",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79688155173",
+        "telegram": "Liseycheva"
+      },
+      {
+        "full_name": "Катя",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79104521806",
+        "telegram": null
+      },
+      {
+        "full_name": "Татьяна",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79858154481",
+        "telegram": null
+      },
+      {
+        "full_name": "Алексей",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "alex_priehali"
+      },
+      {
+        "full_name": "Дана",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "Dana_Volosenkova"
+      },
+      {
+        "full_name": "Стёпа",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "stepanforfun"
+      },
+      {
+        "full_name": "Лиза",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "elskvo"
+      },
+      {
+        "full_name": "Дарья",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "repushka95"
+      },
+      {
+        "full_name": "Сабина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": null,
+        "telegram": "ryufowl"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 36,
+    "agency": "Эвент Тим",
+    "clients": [
+      {
+        "full_name": "Алена Гарифзянова",
+        "client_type": "agency",
+        "comment": "был созвон 14.05.25 с Региной, думали, что мы работаем только на банкетах, нужно переубедить что нет",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79178828939",
+        "telegram": "event_organizator"
+      },
+      {
+        "full_name": "Наталья Каримова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79033889065",
+        "telegram": "Natalya_Karimova"
+      },
+      {
+        "full_name": "Регина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79172426693",
+        "telegram": "reginaduarte"
+      },
+      {
+        "full_name": "Валя Асафова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79030304122",
+        "telegram": "repushka95"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 37,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Алексей Железняков",
+        "client_type": "organizer",
+        "comment": "входящий в 24м",
+        "rating": "high",
+        "city": "Ульяновск",
+        "phone": "+79374599336",
+        "telegram": "Zhelezniakov"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 38,
+    "agency": "3д Продакшн",
+    "clients": [
+      {
+        "full_name": "Ксения",
+        "client_type": "agency",
+        "comment": "был обсёр с глубиной в 2024м",
+        "rating": "high",
+        "city": "Ульяновск",
+        "phone": "+79371000059",
+        "telegram": "kseneya33"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 39,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Ярослав Башаринов",
+        "client_type": "organizer",
+        "comment": "работали Эмпатию 6 разбили люстру, но всё оплатили, в целом понравилось",
+        "rating": "high",
+        "city": "Ульяновск",
+        "phone": "+79170636181",
+        "telegram": "basharinoff_event"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 40,
+    "agency": "Проперти",
+    "clients": [
+      {
+        "full_name": "Анастасия",
+        "client_type": "agency",
+        "comment": "последний раз работали с Элей в частной школе, очень странная анимация, Аня возможно главная кроме эли, с ней переписка",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79509596727",
+        "telegram": "anastasia_3131"
+      },
+      {
+        "full_name": "Анна",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79162688966",
+        "telegram": "AnnaNez"
+      },
+      {
+        "full_name": "Эля Джафарова",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79267260073",
+        "telegram": "elyadzhafarova"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 41,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Ирина Бодрова",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "medium",
+        "city": "Москва",
+        "phone": "+79263624015",
+        "telegram": "BodrovaEvent"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 42,
+    "agency": "Лазер-Групп",
+    "clients": [
+      {
+        "full_name": "Наталья",
+        "client_type": "agency",
+        "comment": "работали огонь для байкеров, потом пришёл запрос после сцены на большую активность",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79172730090",
+        "telegram": "NataliaShtin"
+      },
+      {
+        "full_name": "Ольга Штин",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79274583220",
+        "telegram": "OlgaPr04"
+      },
+      {
+        "full_name": "Альбина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": null,
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 43,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Купцов Андрей",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "medium",
+        "city": "Саранск",
+        "phone": "+79375129911",
+        "telegram": "akuptsov"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 44,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Эльмира Гильмутдинова",
+        "client_type": "organizer",
+        "comment": "постоянница, частые запросы",
+        "rating": "high",
+        "city": "Казань",
+        "phone": "+79047640800",
+        "telegram": "Gilmutdinova_Elmira"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 45,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Софья Ахметзина",
+        "client_type": "organizer",
+        "comment": "пришла как будто от Даманского",
+        "rating": "medium",
+        "city": "Набережные Челны",
+        "phone": "+79600708308",
+        "telegram": "Sofia_sovenok"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 46,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Лилия",
+        "client_type": "organizer",
+        "comment": "работали ходулистов и сразу потом заказали на огонь",
+        "rating": "low",
+        "city": "Пестрецы",
+        "phone": "+79510634542",
+        "telegram": null
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 47,
+    "agency": "Арт Спейс",
+    "clients": [
+      {
+        "full_name": "Екатерина",
+        "client_type": "agency",
+        "comment": "",
+        "rating": "medium",
+        "city": "Киров",
+        "phone": "+79229136811",
+        "telegram": "licisina"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 48,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Яна Аксанова",
+        "client_type": "organizer",
+        "comment": "пришла за прологом, отдельно от фиби уже",
+        "rating": "medium",
+        "city": "Казань",
+        "phone": "+79871895027",
+        "telegram": "yancheshe"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 49,
+    "agency": null,
+    "clients": [
+      {
+        "full_name": "Александра Бабикова",
+        "client_type": "organizer",
+        "comment": "",
+        "rating": "high",
+        "city": "Киров",
+        "phone": "+79229912121",
+        "telegram": "babikova27"
+      }
+    ]
+  },
+  {
+    "source_sheet": "Работаем, постоянники",
+    "row_number": 50,
+    "agency": "Профессионалы праздника",
+    "clients": [
+      {
+        "full_name": "Ольга",
+        "client_type": "agency",
+        "comment": "чат Бигфингер, делала декор для ёлок, взрослая такая",
+        "rating": "high",
+        "city": "Москва",
+        "phone": "+79013479078",
+        "telegram": "Oluschkaprazdnik"
+      }
+    ]
+  }
+]

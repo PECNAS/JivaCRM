@@ -1,0 +1,427 @@
+{
+  "source": "ПРАЙС 2026.xlsx / Лист1",
+  "currency": "RUB",
+  "city": "Казань",
+  "price_basis": "Клиентская (P)",
+  "artist_rate_basis": "ЗП артиста (D) на одного артиста",
+  "catalogs": [
+    {
+      "name": "ЧБ / ЭМПАТИЯ / ГЛУБИНА / РУССКОЕ ГИРО-СКАЛКИ / ГЕТСБИ / ЦИРК / ЕД И ПР / ТАТАРСКОЕ / ГРАВИТАЦИЯ",
+      "services": [
+        {
+          "show": "ЧБ",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        },
+        {
+          "show": "ЭМПАТИЯ",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        },
+        {
+          "show": "ГЛУБИНА",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        },
+        {
+          "show": "РУССКОЕ ГИРО/СКАЛКИ",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        },
+        {
+          "show": "ГЕТСБИ",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        },
+        {
+          "show": "ЦИРК",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        },
+        {
+          "show": "ЕД И ПР",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        },
+        {
+          "show": "ТАТАРСКОЕ",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        },
+        {
+          "show": "ГРАВИТАЦИЯ",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 37000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 59000 },
+            { "artists": 5, "cost": 79000 },
+            { "artists": 6, "cost": 99000 },
+            { "artists": 7, "cost": 112000 },
+            { "artists": 8, "cost": 131000 },
+            { "artists": 9, "cost": 145000 },
+            { "artists": 10, "cost": 164000 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "КОСМОС С СИРА / СЛАВЯНСКОЕ С СИРА / СИРА (отдельный номер)",
+      "services": [
+        {
+          "show": "КОСМОС С СИРА",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 3, "cost": 48000 },
+            { "artists": 5, "cost": 66000 },
+            { "artists": 6, "cost": 78000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 101000 }
+          ]
+        },
+        {
+          "show": "СЛАВЯНСКОЕ С СИРА",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 3, "cost": 48000 },
+            { "artists": 5, "cost": 66000 },
+            { "artists": 6, "cost": 78000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 101000 }
+          ]
+        },
+        {
+          "show": "СИРА (отдельный номер)",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 3, "cost": 48000 },
+            { "artists": 5, "cost": 66000 },
+            { "artists": 6, "cost": 78000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 101000 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "СВЕТ МОЙ + 3 лазера + адаптация",
+      "services": [
+        {
+          "show": "СВЕТ МОЙ (+3 лазера, +адаптация)",
+          "artist_rate": 3500,
+          "prices": [
+            { "artists": 2, "cost": 95000 },
+            { "artists": 3, "cost": 100000 },
+            { "artists": 4, "cost": 108000 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ДУХ ФЕНИКСА / РИТУАЛ",
+      "services": [
+        {
+          "show": "ДУХ ФЕНИКСА",
+          "artist_rate": 3500,
+          "prices": [
+            { "artists": 4, "cost": 51000 },
+            { "artists": 5, "cost": 62000 },
+            { "artists": 6, "cost": 73000 },
+            { "artists": 7, "cost": 83000 },
+            { "artists": 8, "cost": 95000 },
+            { "artists": 9, "cost": 114000 },
+            { "artists": 10, "cost": 130000 },
+            { "artists": 11, "cost": 147000 },
+            { "artists": 12, "cost": 161000 },
+            { "artists": 13, "cost": 176000 }
+          ]
+        },
+        {
+          "show": "РИТУАЛ",
+          "artist_rate": 3500,
+          "prices": [
+            { "artists": 4, "cost": 51000 },
+            { "artists": 5, "cost": 62000 },
+            { "artists": 6, "cost": 73000 },
+            { "artists": 7, "cost": 83000 },
+            { "artists": 8, "cost": 95000 },
+            { "artists": 9, "cost": 114000 },
+            { "artists": 10, "cost": 130000 },
+            { "artists": 11, "cost": 147000 },
+            { "artists": 12, "cost": 161000 },
+            { "artists": 13, "cost": 176000 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ЧИР / Гимнастика",
+      "services": [
+        {
+          "show": "ЧИР",
+          "artist_rate": 3500,
+          "prices": [
+            { "artists": 4, "cost": 39000 },
+            { "artists": 5, "cost": 44000 },
+            { "artists": 6, "cost": 49000 }
+          ]
+        },
+        {
+          "show": "Гимнастика",
+          "artist_rate": 3500,
+          "prices": [
+            { "artists": 4, "cost": 39000 },
+            { "artists": 5, "cost": 44000 },
+            { "artists": 6, "cost": 49000 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ВЕЛКОМ",
+      "services": [
+        {
+          "show": "ХОДУЛИСТЫ",
+          "artist_rate": 2500,
+          "prices": [
+            { "artists": 1, "cost": 10000 },
+            { "artists": 2, "cost": 20000 },
+            { "artists": 3, "cost": 29000 },
+            { "artists": 4, "cost": 40000 },
+            { "artists": 5, "cost": 48000 },
+            { "artists": 6, "cost": 60000 },
+            { "artists": 7, "cost": 70000 },
+            { "artists": 8, "cost": 80000 },
+            { "artists": 9, "cost": 90000 },
+            { "artists": 10, "cost": 100000 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ПЕРФОМАНС",
+      "services": [
+        {
+          "show": "СЛАВ. ПЕРФОМАНС",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 1, "cost": 13000 },
+            { "artists": 2, "cost": 26000 },
+            { "artists": 3, "cost": 39000 },
+            { "artists": 4, "cost": 52000 },
+            { "artists": 5, "cost": 65000 },
+            { "artists": 6, "cost": 77000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 100000 }
+          ]
+        },
+        {
+          "show": "ПЕРФОМАНС \"СДВ\"",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 1, "cost": 13000 },
+            { "artists": 2, "cost": 26000 },
+            { "artists": 3, "cost": 39000 },
+            { "artists": 4, "cost": 52000 },
+            { "artists": 5, "cost": 65000 },
+            { "artists": 6, "cost": 77000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 100000 }
+          ]
+        },
+        {
+          "show": "ШАМАНКА (СТИХИИ)",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 1, "cost": 13000 },
+            { "artists": 2, "cost": 26000 },
+            { "artists": 3, "cost": 39000 },
+            { "artists": 4, "cost": 52000 },
+            { "artists": 5, "cost": 65000 },
+            { "artists": 6, "cost": 77000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 100000 }
+          ]
+        },
+        {
+          "show": "ЧЁРНЫЙ БРИЛЛИАНТ",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 1, "cost": 13000 },
+            { "artists": 2, "cost": 26000 },
+            { "artists": 3, "cost": 39000 },
+            { "artists": 4, "cost": 52000 },
+            { "artists": 5, "cost": 65000 },
+            { "artists": 6, "cost": 77000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 100000 }
+          ]
+        },
+        {
+          "show": "ГЛУБИНА (перфоманс)",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 1, "cost": 13000 },
+            { "artists": 2, "cost": 26000 },
+            { "artists": 3, "cost": 39000 },
+            { "artists": 4, "cost": 52000 },
+            { "artists": 5, "cost": 65000 },
+            { "artists": 6, "cost": 77000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 100000 }
+          ]
+        },
+        {
+          "show": "ЦИРЦ",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 1, "cost": 13000 },
+            { "artists": 2, "cost": 26000 },
+            { "artists": 3, "cost": 39000 },
+            { "artists": 4, "cost": 52000 },
+            { "artists": 5, "cost": 65000 },
+            { "artists": 6, "cost": 77000 },
+            { "artists": 7, "cost": 89000 },
+            { "artists": 8, "cost": 100000 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ОГОНЬ",
+      "services": [
+        {
+          "show": "ДУХ ФЕНИКСА (огонь)",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 4, "cost": 54000 },
+            { "artists": 5, "cost": 66000 },
+            { "artists": 6, "cost": 76000 },
+            { "artists": 7, "cost": 85000 },
+            { "artists": 8, "cost": 97000 },
+            { "artists": 9, "cost": 112000 }
+          ]
+        },
+        {
+          "show": "СЛАВЯНСКОЕ С СИРА (огонь)",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 4, "cost": 54000 },
+            { "artists": 5, "cost": 66000 },
+            { "artists": 6, "cost": 76000 },
+            { "artists": 7, "cost": 85000 },
+            { "artists": 8, "cost": 97000 },
+            { "artists": 9, "cost": 112000 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ЧАРОДЕЙКА / ТАМАША",
+      "services": [
+        {
+          "show": "ЧАРОДЕЙКА",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 39000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 64000 },
+            { "artists": 6, "cost": 89000 },
+            { "artists": 8, "cost": 111000 }
+          ]
+        },
+        {
+          "show": "ТАМАША",
+          "artist_rate": 4000,
+          "prices": [
+            { "artists": 2, "cost": 39000 },
+            { "artists": 3, "cost": 49000 },
+            { "artists": 4, "cost": 64000 },
+            { "artists": 6, "cost": 89000 },
+            { "artists": 8, "cost": 111000 }
+          ]
+        }
+      ]
+    }
+  ]
+}

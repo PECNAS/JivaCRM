@@ -15,6 +15,7 @@ from .views import (
     ProfilePaymentsView,
     MoneyView, MoneyDataView, MoneyOrderPaymentView, MoneyOrderPayView,
     MoneyAccrualView, MoneyPayoutView, MoneyMonthPreviewView, MoneyMonthPayView,
+    FillDataView,
 )
 
 urlpatterns = [
@@ -80,4 +81,6 @@ urlpatterns = [
     path('services/<int:service_id>/', ServiceDetailView.as_view(), name='service_detail'),
     path('services/<int:service_id>/update/', ServiceUpdateView.as_view(), name='service_update'),
     path('services/<int:service_id>/delete/', ServiceDeleteView.as_view(), name='service_delete'),
+
+    path('fill-data/', FillDataView.as_view(), name='fill_data'),
 ]

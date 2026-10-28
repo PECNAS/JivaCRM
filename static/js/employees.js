@@ -118,22 +118,7 @@
     });
 
     function renderEmployees() {
-        const search = searchInput.value.trim();
-        const role = roleFilter.value;
-        fetch(`/employees/?search=${encodeURIComponent(search)}&role=${role}`)
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newBody = doc.querySelector('#employeesTableBody');
-                if (newBody) {
-                    tableBody.innerHTML = newBody.innerHTML;
-                    attachRowEvents();
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка загрузки сотрудников:', error);
-            });
+        loadEmployees(true);
     }
 
     function attachRowEvents() {
@@ -746,29 +731,104 @@
         });
     }
 
+    const EMPLOYEES_PAGE = 50;
+    let employeesOffset = 0;
+
+    const loadMoreBox = document.getElementById('employeesLoadMore');
+    const loadMoreBtn = document.getElementById('employeesLoadMoreBtn');
+
+    function employeeRow(emp) {
+        return `
+            <tr data-employee-id="${emp.id}">
+                <td>${escapeHtml(emp.full_name)}</td>
+                <td>${escapeHtml(emp.username)}</td>
+                <td>${escapeHtml(emp.role_display)}</td>
+                <td>${escapeHtml(emp.phone || '—')}</td>
+                <td>
+                    <span class="status-badge status-badge--${emp.is_active ? 'active' : 'inactive'}">
+                        ${emp.is_active ? 'Активен' : 'Неактивен'}
+                    </span>
+                </td>
+                <td><button class="view-link" data-id="${emp.id}">Подробнее</button></td>
+            </tr>
+        `;
+    }
+
+    function loadEmployees(reset) {
+        const search = searchInput.value.trim();
+        const role = roleFilter.value;
+        const params = new URLSearchParams();
+
+        if (reset) {
+            employeesOffset = 0;
+            tableBody.innerHTML = '<tr><td colspan="6" class="load-more__empty">Загрузка...</td></tr>';
+        }
+
+        if (search) params.set('search', search);
+        if (role && role !== 'all') params.set('role', role);
+        params.set('limit', String(EMPLOYEES_PAGE));
+        params.set('offset', String(employeesOffset));
+
+        if (loadMoreBtn) loadMoreBtn.disabled = true;
+
+        fetch(`/employees/list/?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (loadMoreBtn) loadMoreBtn.disabled = false;
+
+                if (data.error) {
+                    window.UI.showToast(data.error);
+                    return;
+                }
+
+                const rows = data.employees || [];
+
+                if (reset) {
+                    tableBody.innerHTML = '';
+                }
+
+                if (!reset && !rows.length) {
+                    if (loadMoreBox) loadMoreBox.classList.add('load-more--done');
+                    return;
+                }
+
+                if (reset && !rows.length) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="load-more__empty">Сотрудники не найдены</td></tr>';
+                } else {
+                    tableBody.insertAdjacentHTML('beforeend', rows.map(employeeRow).join(''));
+                }
+
+                employeesOffset += rows.length;
+
+                if (loadMoreBox) {
+                    loadMoreBox.classList.toggle('load-more--done', !data.has_more);
+                }
+
+                attachRowEvents();
+            })
+            .catch(error => {
+                if (loadMoreBtn) loadMoreBtn.disabled = false;
+                console.error('Ошибка загрузки сотрудников:', error);
+            });
+    }
+
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function() {
+            loadEmployees(false);
+        });
+    }
+
     let searchTimeout;
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const search = searchInput.value.trim();
-                const role = roleFilter.value;
-                const params = new URLSearchParams();
-                if (search) params.append('search', search);
-                if (role && role !== 'all') params.append('role', role);
-                window.location.href = `/employees/?${params.toString()}`;
-            }, 500);
+            searchTimeout = setTimeout(() => loadEmployees(true), 400);
         });
     }
 
     if (roleFilter) {
         roleFilter.addEventListener('change', function() {
-            const search = searchInput.value.trim();
-            const role = roleFilter.value;
-            const params = new URLSearchParams();
-            if (search) params.append('search', search);
-            if (role && role !== 'all') params.append('role', role);
-            window.location.href = `/employees/?${params.toString()}`;
+            loadEmployees(true);
         });
     }
 
@@ -790,4 +850,10 @@
 
     loadServices();
     attachRowEvents();
+
+    if (loadMoreBox) {
+        loadMoreBox.classList.toggle('load-more--done', loadMoreBox.dataset.hasMore !== '1');
+    }
+
+    employeesOffset = tableBody.querySelectorAll('tr[data-employee-id]').length;
 })();

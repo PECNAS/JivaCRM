@@ -78,7 +78,26 @@ def parse_order_filters(request):
     return search, status
 
 
-def apply_order_filters(orders, search, status):
+def parse_date_filter(value):
+    if not value:
+        return None
+
+    try:
+        return datetime.strptime(str(value).strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_int(value):
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return None
+
+    return result if result > 0 else None
+
+
+def apply_order_filters(orders, search, status, date_from=None, date_to=None):
     if search:
         orders = orders.filter(
             Q(name__icontains=search) |
@@ -90,16 +109,29 @@ def apply_order_filters(orders, search, status):
     if status != 'all':
         orders = orders.filter(status=status)
 
+    start = parse_date_filter(date_from)
+    end = parse_date_filter(date_to)
+
+    if start:
+        orders = orders.filter(date__gte=start)
+
+    if end:
+        orders = orders.filter(date__lte=end)
+
     return orders
 
 
-def order_list_response(orders, extra_keys=None):
+def order_list_response(orders, extra_keys=None, limit=None):
     def sort_key(order):
         if order.date:
             return (1, order.date.toordinal(), order.created_at.timestamp())
         return (0, 0, order.created_at.timestamp())
 
     ordered = sorted(list(orders), key=sort_key)
+    total = len(ordered)
+
+    if limit:
+        ordered = ordered[:limit]
 
     result = []
     for order in ordered:
@@ -114,7 +146,12 @@ def order_list_response(orders, extra_keys=None):
     undated.sort(key=lambda item: item['id'], reverse=True)
     dated.reverse()
 
-    return JsonResponse({'orders': undated + dated, 'colors': serialize_calendar_colors()})
+    return JsonResponse({
+        'orders': undated + dated,
+        'total': total,
+        'has_more': total > len(result),
+        'colors': serialize_calendar_colors(),
+    })
 
 
 class OrdersView(View):
@@ -144,11 +181,8 @@ class OrdersView(View):
         if status_filter != 'all':
             orders = orders.filter(status=status_filter)
 
-        paginator = Paginator(orders, 20)
-        page_obj = paginator.get_page(request.GET.get('page', 1))
-
         context = {
-            'orders': page_obj,
+            'orders': orders,
             'search_query': search_query,
             'status_filter': status_filter,
             'agencies': Agency.objects.all(),
@@ -227,6 +261,10 @@ class OrderDetailView(View):
 
         try:
             order = Order.objects.select_related('client', 'city', 'manager__user', 'story_manager__user').get(id=order_id)
+
+            if order.content_changed_at and not request.GET.get('peek'):
+                order.content_changed_at = None
+                order.save(update_fields=['content_changed_at'])
 
             estimate_items = []
             for item in order.estimate_items.all():
@@ -474,9 +512,15 @@ class OrderListView(View):
         orders = order_queryset().order_by('-date', '-created_at')
 
         search, status = parse_order_filters(request)
-        orders = apply_order_filters(orders, search, status)
+        orders = apply_order_filters(
+            orders, search, status,
+            request.GET.get('date_from'),
+            request.GET.get('date_to'),
+        )
 
-        return order_list_response(orders)
+        limit = parse_int(request.GET.get('limit'))
+
+        return order_list_response(orders, limit=limit)
 
 
 class MyOrdersListView(View):
@@ -493,7 +537,11 @@ class MyOrdersListView(View):
         ).distinct().order_by('-date', '-created_at')
 
         search, status = parse_order_filters(request)
-        orders = apply_order_filters(orders, search, status)
+        orders = apply_order_filters(
+            orders, search, status,
+            request.GET.get('date_from'),
+            request.GET.get('date_to'),
+        )
 
         def extra(order):
             payment = 0

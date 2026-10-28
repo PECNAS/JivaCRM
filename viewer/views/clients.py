@@ -3,13 +3,26 @@ from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.db.models import Count, Q
-from django.core.paginator import Paginator
 from django.contrib import messages
 from django.db.models import ProtectedError
+from django.utils import timezone
 from django.conf import settings
 from pathlib import Path
 import json
 from ..models import Client, Agency, City, Order, Employee, Role
+
+
+CLIENTS_PAGE_SIZE = 50
+MAX_CLIENTS_LIMIT = 500
+
+
+def parse_int(value):
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return None
+
+    return result if result > 0 else None
 
 
 def phone_digits(value):
@@ -307,9 +320,7 @@ def collect_client_payload(request):
 def validate_client_payload(payload):
     if not payload['full_name']:
         return 'ФИО обязательно для заполнения'
-    if not payload['phone']:
-        return 'Телефон обязателен для заполнения'
-    if len(phone_digits(payload['phone'])) != 11:
+    if payload['phone'] and len(phone_digits(payload['phone'])) != 11:
         return 'Номер телефона должен содержать 11 цифр'
     if payload['client_type'] == 'agency' and not payload['agency']:
         return 'Для клиента типа "Агентство" необходимо выбрать агентство'
@@ -381,7 +392,7 @@ class ClientsView(View):
         except:
             return redirect('logout')
 
-        clients = Client.objects.annotate(
+        clients = Client.objects.filter(is_active=True).annotate(
             orders_count=Count('orders')
         ).prefetch_related('cities').select_related('agency', 'created_by__user').order_by('full_name')
 
@@ -394,6 +405,8 @@ class ClientsView(View):
                 Q(full_name__icontains=search_query) |
                 Q(phone__icontains=search_query) |
                 Q(agency__name__icontains=search_query) |
+                Q(telegram_username__icontains=search_query) |
+                Q(email__icontains=search_query) |
                 Q(cities__name__icontains=search_query) |
                 Q(city__icontains=search_query)
             ).distinct()
@@ -411,16 +424,14 @@ class ClientsView(View):
 
             clients = clients.filter(city_query).distinct()
 
-        paginator = Paginator(clients, 20)
-        page_obj = paginator.get_page(request.GET.get('page', 1))
-
-        agencies = Agency.objects.all()
-        cities = City.objects.all()
+        total = clients.count()
 
         context = {
-            'clients': page_obj,
-            'agencies': agencies,
-            'cities': cities,
+            'clients': clients[:CLIENTS_PAGE_SIZE],
+            'clients_total': total,
+            'has_more': total > CLIENTS_PAGE_SIZE,
+            'agencies': Agency.objects.all(),
+            'cities': City.objects.all(),
             'search_query': search_query,
             'rating_filter': rating_filter,
             'city_filter': city_filter,
@@ -596,12 +607,26 @@ class ClientDeleteView(View):
 
         try:
             client = get_object_or_404(Client, id=client_id)
+
+            if client.orders.exists():
+                client.is_active = False
+                client.deactivated_at = timezone.now()
+                client.save(update_fields=['is_active', 'deactivated_at', 'updated_at'])
+
+                return JsonResponse({'success': True, 'deactivated': True})
+
             client.delete()
-            return JsonResponse({'success': True})
+            return JsonResponse({'success': True, 'deactivated': False})
         except ProtectedError:
-            return JsonResponse({
-                'error': 'Невозможно удалить клиента: у него есть связанные заказы. Удалите сначала заказы.'
-            }, status=400)
+            client = Client.objects.filter(id=client_id).first()
+
+            if client:
+                client.is_active = False
+                client.deactivated_at = timezone.now()
+                client.save(update_fields=['is_active', 'deactivated_at', 'updated_at'])
+                return JsonResponse({'success': True, 'deactivated': True})
+
+            return JsonResponse({'error': 'Невозможно удалить клиента'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
@@ -618,7 +643,7 @@ class ClientListView(View):
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
-        clients = Client.objects.annotate(
+        clients = Client.objects.filter(is_active=True).annotate(
             orders_count=Count('orders')
         ).prefetch_related('cities').select_related('agency').order_by('full_name')
 
@@ -630,6 +655,8 @@ class ClientListView(View):
             clients = clients.filter(
                 Q(full_name__icontains=search) |
                 Q(phone__icontains=search) |
+                Q(telegram_username__icontains=search) |
+                Q(email__icontains=search) |
                 Q(agency__name__icontains=search)
             )
 
@@ -639,8 +666,12 @@ class ClientListView(View):
         if city != 'all' and city.isdigit():
             clients = clients.filter(cities__id=int(city)).distinct()
 
+        total = clients.count()
+        offset = parse_int(request.GET.get('offset')) or 0
+        limit = min(parse_int(request.GET.get('limit')) or CLIENTS_PAGE_SIZE, MAX_CLIENTS_LIMIT)
+
         clients_list = []
-        for client in clients:
+        for client in clients[offset:offset + limit]:
             clients_list.append({
                 'id': client.id,
                 'full_name': client.full_name,
@@ -659,7 +690,11 @@ class ClientListView(View):
                 'comment': client.comment,
             })
 
-        return JsonResponse({'clients': clients_list})
+        return JsonResponse({
+            'clients': clients_list,
+            'total': total,
+            'has_more': offset + len(clients_list) < total,
+        })
 
 
 class CityCatalogView(View):
@@ -832,14 +867,25 @@ class ClientDeleteMatchedView(View):
 
             orders_count = client.orders.count()
 
-            with transaction.atomic():
-                Order.objects.filter(client=client).delete()
-                client.delete()
+            if orders_count:
+                client.is_active = False
+                client.deactivated_at = timezone.now()
+                client.save(update_fields=['is_active', 'deactivated_at', 'updated_at'])
+
+                return JsonResponse({
+                    'success': True,
+                    'deactivated': True,
+                    'deleted_id': client_id,
+                    'deleted_orders': 0
+                })
+
+            client = Client.objects.get(id=client_id)
+            client.delete()
 
             return JsonResponse({
                 'success': True,
                 'deleted_id': client_id,
-                'deleted_orders': orders_count
+                'deleted_orders': 0
             })
         except ProtectedError:
             return JsonResponse({

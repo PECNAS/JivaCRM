@@ -2,11 +2,22 @@ from django.http import JsonResponse
 from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
-from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
 from ..models import Employee, Role, Service, ArtistCard, OrderEmployee
+
+
+EMPLOYEES_PAGE_SIZE = 50
+
+
+def parse_int(value):
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return None
+
+    return result if result > 0 else None
 
 
 def serialize_artist_card(card):
@@ -51,12 +62,13 @@ class EmployeesView(View):
         if role_filter != 'all':
             employees = employees.filter(role=role_filter)
 
-        paginator = Paginator(employees, 20)
-        page_obj = paginator.get_page(request.GET.get('page', 1))
+        total = employees.count()
 
         context = {
             'employee': employee,
-            'employees': page_obj,
+            'employees': employees[:EMPLOYEES_PAGE_SIZE],
+            'has_more': total > EMPLOYEES_PAGE_SIZE,
+            'employees_total': total,
             'search_query': search_query,
             'role_filter': role_filter,
         }
@@ -332,16 +344,53 @@ class EmployeeListView(View):
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'Не авторизован'}, status=401)
 
-        employees = Employee.objects.filter(is_active=True, user__is_active=True).values('id', 'full_name', 'user__username', 'role')
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_manage_employees():
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+
+        search = request.GET.get('search', '').strip()
+        role = request.GET.get('role', 'all')
+
+        employees = Employee.objects.filter(
+            is_active=True, user__is_active=True
+        ).select_related('user').order_by('full_name')
+
+        if search:
+            employees = employees.filter(
+                Q(full_name__icontains=search) |
+                Q(user__username__icontains=search) |
+                Q(phone__icontains=search)
+            )
+
+        if role != 'all':
+            employees = employees.filter(role=role)
+
+        total = employees.count()
+        limit = parse_int(request.GET.get('limit'))
+
+        if limit:
+            employees = employees[:limit]
+
         result = []
         for emp in employees:
             result.append({
-                'id': emp['id'],
-                'full_name': emp['full_name'],
-                'username': emp['user__username'],
-                'role': emp['role']
+                'id': emp.id,
+                'full_name': emp.full_name,
+                'username': emp.user.username,
+                'role': emp.role,
+                'role_display': emp.get_role_display(),
+                'phone': emp.phone or '',
+                'is_active': emp.is_active,
             })
-        return JsonResponse({'employees': result})
+
+        return JsonResponse({
+            'employees': result,
+            'total': total,
+            'has_more': total > len(result),
+        })
 
 
 class ArtistCardUpdateView(View):

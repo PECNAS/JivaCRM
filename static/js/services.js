@@ -103,7 +103,7 @@
             html += `<li data-id="${node.id}" data-type="${node.type}">`;
             html += `<div class="tree-item" data-id="${node.id}">`;
             html += hasChildren
-                ? `<span class="toggle-icon expanded" data-toggle="1">▶</span>`
+                ? `<span class="toggle-icon" data-toggle="1">▶</span>`
                 : `<span class="toggle-icon" style="opacity:0;">▶</span>`;
             html += `<svg class="item-icon ${iconName}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`;
             html += isCategory
@@ -114,7 +114,7 @@
             html += `<span class="item-badge">${label}</span>`;
             html += `</div>`;
             if (hasChildren) {
-                html += `<ul class="tree-children">${buildTreeHtml(node.children)}</ul>`;
+                html += `<ul class="tree-children collapsed">${buildTreeHtml(node.children)}</ul>`;
             }
             html += `</li>`;
         });

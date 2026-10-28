@@ -393,7 +393,20 @@
     function populateForm(data) {
         editOrderName.value = data.name || '';
         editOrderDate.value = data.date || '';
-        editOrderClient.value = data.client_id || '';
+
+        if (data.client_id) {
+            let option = editOrderClient.querySelector(`option[value="${data.client_id}"]`);
+
+            if (!option) {
+                option = document.createElement('option');
+                option.value = data.client_id;
+                option.textContent = data.client_name || ('Клиент #' + data.client_id);
+                editOrderClient.appendChild(option);
+            }
+
+            option.selected = true;
+            editOrderClient.value = String(data.client_id);
+        }
 
         if (window.getOrderClientPicker) {
             const picker = window.getOrderClientPicker();
@@ -441,29 +454,87 @@
     }
 
     function loadClientsForSelect(selectedId) {
-        fetch('/clients/list/')
+        const params = new URLSearchParams();
+        params.set('offset', '0');
+        params.set('limit', '200');
+
+        fetch(`/clients/list/?${params.toString()}`)
             .then(r => r.json())
             .then(data => {
-                if (data.clients) {
-                    const options = data.clients.map(c =>
-                        `<option value="${c.id}">${escapeHtml(c.full_name)}${c.agency ? ' (' + escapeHtml(c.agency) + ')' : ''}</option>`
-                    ).join('');
-                    editOrderClient.innerHTML = '<option value="">Выберите клиента</option>' + options;
+                if (!data.clients) return;
 
-                    let targetId = '';
+                const known = new Set((window.allOrderClients || []).map(item => String(item.id)));
 
-                    if (selectedId !== undefined && selectedId !== null) {
-                        targetId = selectedId;
-                    } else if (currentOrderData) {
-                        targetId = currentOrderData.client_id || '';
+                const options = data.clients.map(c =>
+                    `<option value="${c.id}">${escapeHtml(c.full_name)}${c.agency ? ' (' + escapeHtml(c.agency) + ')' : ''}</option>`
+                ).join('');
+
+                editOrderClient.innerHTML = '<option value="">Выберите клиента</option>' + options;
+
+                let targetId = '';
+
+                if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
+                    targetId = selectedId;
+                } else if (currentOrderData) {
+                    targetId = currentOrderData.client_id || '';
+                }
+
+                if (targetId) {
+                    let option = editOrderClient.querySelector(`option[value="${targetId}"]`);
+
+                    if (!option) {
+                        const client = (window.allOrderClients || []).find(item => String(item.id) === String(targetId));
+
+                        if (client) {
+                            option = document.createElement('option');
+                            option.value = client.id;
+                            option.textContent = client.full_name + (client.agency ? ' (' + client.agency + ')' : '');
+                            editOrderClient.appendChild(option);
+                        }
                     }
 
-                    editOrderClient.value = targetId;
-
-                    if (window.getOrderClientPicker) {
-                        const picker = window.getOrderClientPicker();
-                        if (picker) picker.setClient(targetId);
+                    if (option) {
+                        option.selected = true;
+                        editOrderClient.value = String(targetId);
                     }
+                }
+
+                if (window.getOrderClientPicker) {
+                    const picker = window.getOrderClientPicker();
+                    if (picker) picker.setClient(targetId);
+                }
+
+                if (data.has_more) {
+                    loadClientsNextPage(data.clients.length, selectedId);
+                }
+            })
+            .catch(err => console.error('Ошибка загрузки клиентов:', err));
+    }
+
+    function loadClientsNextPage(offset, selectedId) {
+        const params = new URLSearchParams();
+        params.set('offset', String(offset));
+        params.set('limit', '200');
+
+        fetch(`/clients/list/?${params.toString()}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.clients || !data.clients.length) return;
+
+                const options = data.clients.map(c =>
+                    `<option value="${c.id}">${escapeHtml(c.full_name)}${c.agency ? ' (' + escapeHtml(c.agency) + ')' : ''}</option>`
+                ).join('');
+
+                editOrderClient.insertAdjacentHTML('beforeend', options);
+
+                const current = editOrderClient.value;
+
+                if (current) {
+                    editOrderClient.value = current;
+                }
+
+                if (data.has_more) {
+                    loadClientsNextPage(offset + data.clients.length, selectedId);
                 }
             })
             .catch(err => console.error('Ошибка загрузки клиентов:', err));
@@ -1035,6 +1106,7 @@
             };
 
             if (!data.name) { showToast('Введите название заказа'); return; }
+            if (!data.client_id) { showToast('Выберите клиента из списка'); return; }
 
             fetch(`/orders/${currentOrderId}/update/`, {
                 method: 'POST',

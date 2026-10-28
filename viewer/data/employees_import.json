@@ -1,0 +1,472 @@
+{
+  "source": "Артисты.xlsx",
+  "sheets": ["Артисты Основа", "Артисты Другие"],
+  "format_notes": {
+    "employee_role": "artist",
+    "skills": "массив строк (навыки/специальности)",
+    "telegram_username": "без @, без https://t.me/, без пробелов",
+    "phone": "только цифры, приведено к виду 7XXXXXXXXXX",
+    "comment": "свободный текст (характеристики, опыт, заметки)",
+    "artist_card": {
+      "height": "рост, если указан",
+      "weight": "вес, если указан",
+      "shoe_size": "размер обуви, если указан",
+      "skills_text": "исходный текст навыков (свободная форма)"
+    },
+    "city": "город, если указан"
+  },
+  "artists": [
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Роберт",
+      "telegram_username": "robbertay",
+      "phone": "",
+      "city": "",
+      "skills": [],
+      "comment": "Танцор-студент, ведёт свой танц-коллектив",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": ""
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Александр",
+      "telegram_username": "",
+      "phone": "79872381014",
+      "city": "",
+      "skills": ["акробатика", "жонглирование"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Акробатика жонглирование"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Ильгизар",
+      "telegram_username": "",
+      "phone": "79509474056",
+      "city": "",
+      "skills": ["ремнист", "баланс", "воздушные полотна"],
+      "comment": "https://vk.com/i.akbashev",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "ремнист баланс воздушные полоткно"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Руслан",
+      "telegram_username": "VariousMan",
+      "phone": "",
+      "city": "",
+      "skills": ["акробатика", "жонглирование", "тренер", "сира"],
+      "comment": "Тренер (есть ученики-акробаты)",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Акробатика жонглирование, тренер (есть ученики акробаты), сира"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Виктория",
+      "telegram_username": "Ice_vivi",
+      "phone": "79522213570",
+      "city": "",
+      "skills": ["ходулист", "аниматор", "мим", "танцор", "фаер-шоу", "живые статуи", "гироскутер"],
+      "comment": "Адекватная по работе, очень приятная, близкая подруга Бойки, цирковая с 16–17 лет",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Ходулист, аниматор, мим, танцор, фаершоу, жив статуи, гироскутер"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Света",
+      "telegram_username": "",
+      "phone": "79033261819",
+      "city": "",
+      "skills": ["танцы", "барабан", "аниматор", "пои"],
+      "comment": "Ездила на контракт по танцам, на контракт по малым барабанам, аниматором. Отлично может вписаться в любой движ, быстро учится; начала учиться крутить пои",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "танцы, барабан, аниматор, пои"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Александра",
+      "telegram_username": "suvorova_aleksandraa",
+      "phone": "",
+      "city": "Казань",
+      "skills": ["музыка", "танцы"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Музыка, танцы"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Ринат из Аркадии",
+      "telegram_username": "Grimm01000",
+      "phone": "79274189765",
+      "city": "",
+      "skills": ["ходулист"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "ходулист"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Салават Бахаутдин",
+      "telegram_username": "tuagab",
+      "phone": "79030622542",
+      "city": "",
+      "skills": ["ходулист"],
+      "comment": "До 9 марта в Мск, с собой есть свои ходули",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "ходулист"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Саша Матурин",
+      "telegram_username": "San4ez444",
+      "phone": "79272461506",
+      "city": "",
+      "skills": ["ходулист"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "ходулист"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Алмаз танцор",
+      "telegram_username": "proalmaz",
+      "phone": "79222822436",
+      "city": "",
+      "skills": ["ходулист", "танцор"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "ходулист, танцор"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Шерзод",
+      "telegram_username": "coollsheriff",
+      "phone": "79063283188",
+      "city": "",
+      "skills": ["ходули", "брейк", "танцор"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "ходули, брейк, танцор"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Даниил Варламов",
+      "telegram_username": "VarlamovDan",
+      "phone": "79872099697",
+      "city": "",
+      "skills": ["ходули", "акробат", "танцор"],
+      "comment": "Ходули ненавидит",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "ходули ненавидит, акрбат, танор"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Шокир",
+      "telegram_username": "shokir000000",
+      "phone": "",
+      "city": "",
+      "skills": ["ходули", "танцор"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "ходули, танцор"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Игорь Плотников",
+      "telegram_username": "Ega_bw_show",
+      "phone": "79937370711",
+      "city": "",
+      "skills": ["огненное шоу", "световое шоу", "жонглирование", "ходули", "пайка светодиодки"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Огненное, световое, жонглирование, ходули, пайка светодиодки)"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Ильдар",
+      "telegram_username": "ildarmotion",
+      "phone": "79375276504",
+      "city": "",
+      "skills": [],
+      "comment": "Хз, Есения посоветовала, не общались",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": ""
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Саша",
+      "telegram_username": "apellsun",
+      "phone": "",
+      "city": "",
+      "skills": ["танцор"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "танцор"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "@jetstream Marimo",
+      "telegram_username": "jetstream_Marimo",
+      "phone": "",
+      "city": "",
+      "skills": ["танцор", "современка", "классика", "эстрадный", "народный", "акробатика"],
+      "comment": "Учится 1 курс в КазГИКе. Ни разу не работали.",
+      "artist_card": {
+        "height": "175-177",
+        "weight": "",
+        "shoe_size": "42",
+        "skills_text": "танцор, учится 1курс в Казгике. современка, классика, эстрадный, народный, акробатит. Ни разу не работали. Рост175-177, размер обуви 42"
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Лена Зиннатуллин",
+      "telegram_username": "ZiLenar",
+      "phone": "79274331976",
+      "city": "",
+      "skills": ["танцор"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "танцор."
+      }
+    },
+    {
+      "source_sheet": "Артисты Основа",
+      "full_name": "Руслан",
+      "telegram_username": "",
+      "phone": "",
+      "city": "",
+      "skills": ["акробатика", "жонглирование", "тренер"],
+      "comment": "Тренер (есть ученики). Дубликат записи выше — проверить при импорте.",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Акробатика, жонглирование, тренер (есть ученики)"
+      }
+    },
+
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Кощеева Наталья",
+      "telegram_username": "NatiNatika",
+      "phone": "79099713802",
+      "city": "Москва",
+      "skills": ["хостесс", "промо", "аниматор", "супервайзер", "работа с микрофонами", "навигация", "регистрация"],
+      "comment": "Опыт более 8 лет: хостесс, вынос подарков и награждение, работа с микрофонами, медицинский форум, форум «Территория СПб», примерки в посольстве, управление потоками, регистрация, навигация, хостесс и промо на футбольных матчах, упаковка подарков, сбор контактов, промо-консультант BioCode, конференция Яндекс, t2 промо, аниматор (персонаж) в театре, супервайзер Ice Fest. Портфолио: https://disk.yandex.ru/d/aq06jLFh880Apg",
+      "artist_card": {
+        "height": "172",
+        "weight": "",
+        "shoe_size": "38",
+        "skills_text": "Рост 172; параметры 88 68 94, одежда 42, обувь 38"
+      }
+    },
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Арсений",
+      "telegram_username": "Zarseniy",
+      "phone": "",
+      "city": "Москва",
+      "skills": ["ходулист"],
+      "comment": "Ходулист МСК",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Ходулист МСК"
+      }
+    },
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Алексей",
+      "telegram_username": "lexacappuccino",
+      "phone": "",
+      "city": "Москва",
+      "skills": ["танцор"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Танцор"
+      }
+    },
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Искандар",
+      "telegram_username": "",
+      "phone": "79292443722",
+      "city": "Москва",
+      "skills": ["огонь", "ходули", "аниматор"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Огонь, ходули, аниматор"
+      }
+    },
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Сергей Филипенко",
+      "telegram_username": "",
+      "phone": "79645197495",
+      "city": "Москва",
+      "skills": ["эмп (Эмпатия)", "стойка на руках на гирике", "шоу лазермены", "глубина", "Фениксы", "ходули"],
+      "comment": "Эмп 4 и Максим, стоит на руках на гирике. Было шоу лазермены с Алией, почти выучил до конца глубину и знает Фениксы 6, на ходулях ходит",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "эмп 4 и Максим, стоит на руках на гирике. было шоу лазермены с Алией, почти выучил до конца глубину и знает Фениксы6, на ходулях ходит"
+      }
+    },
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Оля",
+      "telegram_username": "olenka_shag",
+      "phone": "79253228329",
+      "city": "Москва",
+      "skills": ["ЧБ", "Космос", "народное", "Глубина", "световое", "свита шаманки"],
+      "comment": "Точно знает ЧБ, Космос, народное, Глубину, в красных костюмах (название не помнит), световое, свита шаманки",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Точно знаю чб, космос, народное, глубину, в красных костюмах не помню как называется, и световое, свита шаманки"
+      }
+    },
+
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Максим",
+      "telegram_username": "maqso1",
+      "phone": "",
+      "city": "Санкт-Петербург",
+      "skills": ["фаер", "ходули", "аниматор", "техник (пайка)"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Фаер, ходули, аниматор, техник(пайка)"
+      }
+    },
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Дмитрий",
+      "telegram_username": "DimaNesynov",
+      "phone": "",
+      "city": "Нижний Новгород",
+      "skills": ["барабанщик"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Барабанщик"
+      }
+    },
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Василий",
+      "telegram_username": "VasiliyIonov",
+      "phone": "",
+      "city": "Балаково, Саратовская область",
+      "skills": ["парная акробатика", "парный жонгляж булавами (8 булав)", "колесо сира", "танцор"],
+      "comment": "",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "парная акробатика, Парный жонгляж булавами (8 булав), Колесо сира, танцор"
+      }
+    },
+    {
+      "source_sheet": "Артисты Другие",
+      "full_name": "Александра",
+      "telegram_username": "beatuggai",
+      "phone": "",
+      "city": "Санкт-Петербург",
+      "skills": ["танцор", "ходули", "огонь", "гирики", "акро", "реквизит"],
+      "comment": "Владеет почти всем реквизитом",
+      "artist_card": {
+        "height": "",
+        "weight": "",
+        "shoe_size": "",
+        "skills_text": "Танцор, ходули, огонь, гирики, акро, реквизит весь почти"
+      }
+    }
+  ]
+}
