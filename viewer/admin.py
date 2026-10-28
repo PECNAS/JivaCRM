@@ -3,6 +3,7 @@ from .models import (
     Agency, Role, Skill, Employee, Client, Order,
     OrderEstimate, OrderEmployee, Service, ServiceStaffRow, ArtistSchedule,
     City, CityGroup, ArtistCard, CalendarColor, PriceRisePeriod,
+    MoneyAccrual, MoneyPayout,
 )
 
 
@@ -189,3 +190,19 @@ class ArtistScheduleAdmin(admin.ModelAdmin):
         return obj.order.date
     order_date.short_description = 'Дата мероприятия'
     order_date.admin_order_field = 'order__date'
+
+
+@admin.register(MoneyAccrual)
+class MoneyAccrualAdmin(admin.ModelAdmin):
+    list_display = ['id', 'employee', 'category', 'amount', 'period_date', 'order', 'status']
+    list_filter = ['category', 'status', 'period_date']
+    search_fields = ['employee__full_name', 'title', 'order__name']
+    readonly_fields = ['created_at', 'updated_at', 'cancelled_at']
+
+
+@admin.register(MoneyPayout)
+class MoneyPayoutAdmin(admin.ModelAdmin):
+    list_display = ['id', 'employee', 'amount', 'method', 'kind', 'period_date', 'is_reverted']
+    list_filter = ['method', 'kind', 'is_reverted', 'period_date']
+    search_fields = ['employee__full_name', 'comment']
+    readonly_fields = ['created_at', 'updated_at', 'reverted_at']

@@ -275,6 +275,9 @@ class Employee(models.Model):
     def can_manage_calendar_colors(self):
         return self.role == 'senior_admin'
 
+    def can_manage_money(self):
+        return self.role in ['senior_admin', 'manager']
+
     def can_view_own_profile(self):
         return True
 
@@ -665,3 +668,153 @@ class ArtistSchedule(models.Model):
 
     def __str__(self):
         return f'{self.employee.full_name} - {self.order}'
+
+
+class MoneyAccrual(models.Model):
+    CATEGORY_ORDER = 'order'
+    CATEGORY_SALARY = 'salary'
+    CATEGORY_HOURS = 'hours'
+    CATEGORY_DAILY = 'daily'
+    CATEGORY_BONUS = 'bonus'
+    CATEGORY_DEDUCTION = 'deduction'
+    CATEGORY_SOURCE = 'source'
+
+    CATEGORIES = [
+        (CATEGORY_ORDER, 'Ставка за заказ'),
+        (CATEGORY_SALARY, 'Оклад'),
+        (CATEGORY_HOURS, 'Часы и %'),
+        (CATEGORY_DAILY, 'Суточные'),
+        (CATEGORY_BONUS, 'Премия'),
+        (CATEGORY_DEDUCTION, 'Вычет'),
+        (CATEGORY_SOURCE, 'Откат начисления'),
+    ]
+
+    ORDER_CATEGORIES = [CATEGORY_ORDER]
+    MANUAL_CATEGORIES = [CATEGORY_SALARY, CATEGORY_HOURS, CATEGORY_DAILY, CATEGORY_BONUS, CATEGORY_DEDUCTION]
+    NEGATIVE_CATEGORIES = [CATEGORY_DEDUCTION]
+
+    STATUS_ACTIVE = 'active'
+    STATUS_CANCELLED = 'cancelled'
+
+    STATUSES = [
+        (STATUS_ACTIVE, 'Активно'),
+        (STATUS_CANCELLED, 'Отменено'),
+    ]
+
+    employee = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='money_accruals', verbose_name='Сотрудник')
+    category = models.CharField('Статья', max_length=20, choices=CATEGORIES, default=CATEGORY_ORDER)
+    amount = models.DecimalField('Сумма', max_digits=12, decimal_places=2, default=0)
+
+    period_date = models.DateField('Дата начисления')
+    order = models.ForeignKey(
+        Order, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='money_accruals', verbose_name='Заказ',
+    )
+    order_employee = models.ForeignKey(
+        OrderEmployee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='money_accruals', verbose_name='Строка заказа',
+    )
+
+    title = models.CharField('За что', max_length=300, blank=True, default='')
+    comment = models.TextField('Комментарий', blank=True)
+
+    status = models.CharField('Статус', max_length=20, choices=STATUSES, default=STATUS_ACTIVE)
+    cancelled_at = models.DateTimeField('Когда отменено', null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cancelled_money_accruals', verbose_name='Отменил',
+    )
+
+    created_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_money_accruals', verbose_name='Создал',
+    )
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Начисление'
+        verbose_name_plural = 'Деньги: начисления'
+        ordering = ['period_date', 'id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(amount__gte=0), name='money_accrual_amount_non_negative'),
+        ]
+        indexes = [
+            models.Index(fields=['employee', 'period_date']),
+            models.Index(fields=['order']),
+        ]
+
+    def __str__(self):
+        return f'{self.employee.full_name} - {self.get_category_display()} - {self.amount}'
+
+    @property
+    def is_active(self):
+        return self.status == self.STATUS_ACTIVE
+
+    def signed_amount(self):
+        if not self.is_active:
+            return Decimal('0')
+        if self.category in self.NEGATIVE_CATEGORIES:
+            return -self.amount
+        return self.amount
+
+
+class MoneyPayout(models.Model):
+    METHOD_CASH = 'cash'
+    METHOD_TRANSFER = 'transfer'
+
+    METHODS = [
+        (METHOD_CASH, 'Наличными'),
+        (METHOD_TRANSFER, 'Переводом'),
+    ]
+
+    KIND_ORDER = 'order'
+    KIND_MONTH = 'month'
+    KIND_MANUAL = 'manual'
+
+    KINDS = [
+        (KIND_ORDER, 'Выплата по заказу'),
+        (KIND_MONTH, 'Выплата по месяцам'),
+        (KIND_MANUAL, 'Выплата вручную'),
+    ]
+
+    employee = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='money_payouts', verbose_name='Сотрудник')
+    amount = models.DecimalField('Сумма', max_digits=12, decimal_places=2, default=0)
+    method = models.CharField('Способ', max_length=10, choices=METHODS, default=METHOD_CASH)
+    kind = models.CharField('Тип выплаты', max_length=20, choices=KINDS, default=KIND_MANUAL)
+    period_date = models.DateField('Дата выплаты')
+    period_start = models.DateField('Начало периода', null=True, blank=True)
+    period_end = models.DateField('Конец периода', null=True, blank=True)
+    comment = models.TextField('Комментарий', blank=True)
+
+    is_reverted = models.BooleanField('Отменена', default=False)
+    reverted_at = models.DateTimeField('Когда отменена', null=True, blank=True)
+    reverted_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='reverted_money_payouts', verbose_name='Отменил',
+    )
+
+    created_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_money_payouts', verbose_name='Создал',
+    )
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Выплата'
+        verbose_name_plural = 'Деньги: выплаты'
+        ordering = ['-period_date', '-id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(amount__gte=0), name='money_payout_amount_non_negative'),
+        ]
+        indexes = [
+            models.Index(fields=['employee', 'period_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.employee.full_name} - {self.amount} - {self.get_method_display()}'
+
+    @property
+    def is_active(self):
+        return not self.is_reverted

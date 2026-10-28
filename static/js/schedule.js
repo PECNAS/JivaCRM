@@ -8,6 +8,9 @@
     let activeOrderId = null;
     let statusColors = {};
     let showPastCompleted = false;
+    let myOrdersOnly = true;
+
+    const MY_ORDERS_STORAGE_KEY = 'jiva_schedule_my_orders';
 
     function getTodayIso() {
         const now = new Date();
@@ -372,7 +375,7 @@
     }
 
     function renderOrderRow(order, extra) {
-        const isArtistView = myOrdersOnlyToggle && myOrdersOnlyToggle.checked;
+        const isArtistView = isOnlyMyOrders();
 
         const costCell = isArtistView && order.my_payment !== undefined
             ? formatPrice(order.my_payment)
@@ -580,11 +583,15 @@
         });
     }
 
+    function isOnlyMyOrders() {
+        if (!myOrdersOnlyToggle) return false;
+        return myOrdersOnlyToggle.checked;
+    }
+
     function loadOrders() {
         let url = '/orders/list/?status=all';
-        const isArtistView = myOrdersOnlyToggle && myOrdersOnlyToggle.checked;
 
-        if (isArtistView) {
+        if (isOnlyMyOrders()) {
             url = '/schedule/my-orders/';
         }
 
@@ -629,7 +636,25 @@
     });
 
     if (myOrdersOnlyToggle) {
+        let storedPreference = null;
+
+        try {
+            storedPreference = localStorage.getItem(MY_ORDERS_STORAGE_KEY);
+        } catch (error) {}
+
+        if (storedPreference !== null) {
+            myOrdersOnlyToggle.checked = storedPreference === '1';
+        }
+
+        myOrdersOnly = myOrdersOnlyToggle.checked;
+
         myOrdersOnlyToggle.addEventListener('change', function() {
+            myOrdersOnly = this.checked;
+
+            try {
+                localStorage.setItem(MY_ORDERS_STORAGE_KEY, this.checked ? '1' : '0');
+            } catch (error) {}
+
             loadOrders();
         });
     }

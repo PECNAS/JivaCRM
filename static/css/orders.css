@@ -716,3 +716,68 @@
   color: #7a7267;
   font-size: 0.8rem;
 }
+
+@media (max-width: 768px) {
+  .orders-table {
+    display: block;
+    width: 100%;
+  }
+
+  .orders-table thead {
+    display: none;
+  }
+
+  .orders-table tbody {
+    display: block;
+  }
+
+  .orders-table tr {
+    display: block;
+    position: relative;
+    margin-bottom: 0.6rem;
+    padding: 0.75rem;
+    background: #13110e;
+    border: 1px solid #2b2620;
+    border-radius: 12px;
+  }
+
+  .orders-table td {
+    display: block;
+    padding: 0.2rem 0;
+    border: none;
+    font-size: 0.85rem;
+  }
+
+  .orders-table td[colspan] {
+    text-align: center;
+  }
+
+  .view-link {
+    display: block;
+    width: 100%;
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    text-align: center;
+    background: rgba(240, 168, 104, 0.12);
+  }
+
+  .modal--create-order,
+  .modal--create-client,
+  .modal--copy-order {
+    max-height: 92vh;
+  }
+
+  .client-combobox__dropdown {
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .orders-title {
+    font-size: 1.35rem;
+  }
+
+  .orders-table td {
+    font-size: 0.8rem;
+  }
+}

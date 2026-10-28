@@ -18,5 +18,10 @@ from .services import (
     ServiceUpdateView, ServiceDeleteView,
 )
 from .profile import (
-    ProfileView, ProfileDetailView, ProfileScheduleView, ProfileTicketsView,
+    ProfileView, ProfileDetailView, ProfileUpdateView, ProfileScheduleView, ProfileTicketsView,
+    ProfilePaymentsView,
+)
+from .money import (
+    MoneyView, MoneyDataView, MoneyOrderPaymentView, MoneyOrderPayView,
+    MoneyAccrualView, MoneyPayoutView, MoneyMonthPreviewView, MoneyMonthPayView,
 )

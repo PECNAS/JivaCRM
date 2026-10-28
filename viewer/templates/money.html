@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Деньги{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/clients.css' %}">
+<link rel="stylesheet" href="{% static 'css/money.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="money-header">
+    <div class="money-header__top">
+        <h1 class="money-title">Деньги</h1>
+        <div class="money-header__actions">
+            <button class="btn btn-primary" id="moneyPayoutMonthBtn" type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                    <line x1="2" y1="10" x2="22" y2="10"/>
+                </svg>
+                Совершить выплату
+            </button>
+        </div>
+    </div>
+
+    <div class="money-filters">
+        <div class="money-period">
+            <span class="money-period__label">Период</span>
+            <input type="month" class="form-input money-period__input" id="moneyMonthInput">
+            <button class="money-period__step" type="button" id="moneyPrevMonthBtn" aria-label="Предыдущий месяц">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+            </button>
+            <button class="money-period__step" type="button" id="moneyNextMonthBtn" aria-label="Следующий месяц">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="money-range" id="moneyRange">
+            <button type="button" class="money-range__btn active" data-range="month">Месяц</button>
+            <button type="button" class="money-range__btn" data-range="two_months">2 месяца</button>
+            <button type="button" class="money-range__btn" data-range="half_year">Полгода</button>
+        </div>
+
+        <input type="text" class="form-input money-search" id="moneySearchInput" placeholder="Поиск сотрудника, заказа или услуги">
+    </div>
+
+    <div class="money-tabs" role="tablist">
+        <button class="money-tab active" type="button" data-tab="accruals" role="tab">Начисления</button>
+        <button class="money-tab" type="button" data-tab="payouts" role="tab">Выплаты</button>
+        <button class="money-tab" type="button" data-tab="summary" role="tab">Сводка</button>
+    </div>
+
+    <div class="money-stats" id="moneyStats"></div>
+</section>
+
+<section class="money-content">
+    <div class="money-panel active" id="moneyPanelAccruals">
+        <div class="money-panel__head">
+            <h2 class="money-panel__title">Начисления</h2>
+            <div class="money-panel__controls">
+                <div class="money-segmented" id="moneyAccrualFilter">
+                    <button type="button" class="money-segmented__btn" data-filter="pending">Ждут начисления</button>
+                    <button type="button" class="money-segmented__btn" data-filter="accrued">Начислено</button>
+                    <button type="button" class="money-segmented__btn active" data-filter="all">Все</button>
+                </div>
+                <select class="form-select money-select" id="moneyCategoryFilter">
+                    <option value="all">Все статьи</option>
+                    <option value="order">Ставка за заказ</option>
+                    <option value="salary">Оклад</option>
+                    <option value="hours">Часы и %</option>
+                    <option value="daily">Суточные</option>
+                    <option value="bonus">Премия</option>
+                    <option value="deduction">Вычет</option>
+                </select>
+                <select class="form-select money-select" id="moneySortSelect">
+                    <option value="date_desc">Сначала новые</option>
+                    <option value="date_asc">Сначала старые</option>
+                    <option value="amount_desc">Сумма по убыванию</option>
+                    <option value="amount_asc">Сумма по возрастанию</option>
+                    <option value="name">По названию</option>
+                </select>
+                <button class="btn btn-outline btn-sm" type="button" id="moneyAddManualBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Добавить
+                </button>
+            </div>
+        </div>
+        <div class="money-list" id="moneyAccrualsList">
+            <div class="money-loading">Загрузка...</div>
+        </div>
+    </div>
+
+    <div class="money-panel" id="moneyPanelPayouts">
+        <div class="money-panel__head">
+            <h2 class="money-panel__title">Выплаты наличными и переводом</h2>
+            <button class="btn btn-outline btn-sm" type="button" id="moneyAddPayoutBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Добавить
+            </button>
+        </div>
+        <div class="money-list" id="moneyPayoutsList">
+            <div class="money-loading">Загрузка...</div>
+        </div>
+    </div>
+
+    <div class="money-panel" id="moneyPanelSummary">
+        <div class="money-panel__head">
+            <h2 class="money-panel__title">Сводка по сотрудникам</h2>
+        </div>
+        <div class="money-list" id="moneySummaryList">
+            <div class="money-loading">Загрузка...</div>
+        </div>
+    </div>
+</section>
+
+<div class="modal-overlay" id="moneyAccrualModal">
+    <div class="modal modal--money">
+        <div class="modal__header">
+            <h2 class="modal__title" id="moneyAccrualModalTitle">Начисление</h2>
+            <button class="modal__close" type="button" id="moneyAccrualCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="moneyAccrualForm" class="money-form">
+                <div class="form-group">
+                    <label class="form-label" for="moneyAccrualEmployee">Сотрудник *</label>
+                    <select class="form-select" id="moneyAccrualEmployee" required></select>
+                </div>
+                <div class="form-grid form-grid--2">
+                    <div class="form-group">
+                        <label class="form-label" for="moneyAccrualCategory">Статья *</label>
+                        <select class="form-select" id="moneyAccrualCategory">
+                            <option value="salary">Оклад</option>
+                            <option value="hours">Часы и %</option>
+                            <option value="daily">Суточные</option>
+                            <option value="bonus">Премия</option>
+                            <option value="deduction">Вычет</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="moneyAccrualAmount">Сумма *</label>
+                        <input type="number" class="form-input" id="moneyAccrualAmount" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="moneyAccrualDate">Дата начисления *</label>
+                        <input type="date" class="form-input" id="moneyAccrualDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="moneyAccrualTitleField">За что</label>
+                        <input type="text" class="form-input" id="moneyAccrualTitleField" placeholder="Например, смена в ноябре">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="moneyAccrualComment">Комментарий</label>
+                    <textarea class="form-textarea" id="moneyAccrualComment" rows="2"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__left">
+                <button type="button" class="btn btn-danger btn-sm" id="moneyAccrualDeleteBtn" style="display:none;">Отменить начисление</button>
+            </div>
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="moneyAccrualCancelBtn">Отмена</button>
+                <button type="submit" form="moneyAccrualForm" class="btn btn-primary" id="moneyAccrualSaveBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="moneyPayoutModal">
+    <div class="modal modal--money">
+        <div class="modal__header">
+            <h2 class="modal__title">Выплата наличными или переводом</h2>
+            <button class="modal__close" type="button" id="moneyPayoutCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="moneyPayoutForm" class="money-form">
+                <div class="form-group">
+                    <label class="form-label" for="moneyPayoutEmployee">Сотрудник *</label>
+                    <select class="form-select" id="moneyPayoutEmployee" required></select>
+                </div>
+                <div class="money-payout-balance" id="moneyPayoutBalance"></div>
+                <div class="form-grid form-grid--2">
+                    <div class="form-group">
+                        <label class="form-label" for="moneyPayoutAmount">Сумма *</label>
+                        <input type="number" class="form-input" id="moneyPayoutAmount" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="moneyPayoutMethod">Способ *</label>
+                        <select class="form-select" id="moneyPayoutMethod">
+                            <option value="cash">Наличными</option>
+                            <option value="transfer">Переводом</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="moneyPayoutDate">Дата выплаты *</label>
+                        <input type="date" class="form-input" id="moneyPayoutDate" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="moneyPayoutComment">Комментарий</label>
+                    <textarea class="form-textarea" id="moneyPayoutComment" rows="2"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__left"></div>
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="moneyPayoutCancelBtn">Отмена</button>
+                <button type="submit" form="moneyPayoutForm" class="btn btn-primary" id="moneyPayoutSaveBtn">Выплатить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="moneyMonthModal">
+    <div class="modal modal--money-month">
+        <div class="modal__header">
+            <h2 class="modal__title" id="moneyMonthModalTitle">Выплата по месяцам</h2>
+            <button class="modal__close" type="button" id="moneyMonthCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <div class="money-month-toolbar">
+                <div class="form-group money-month-toolbar__method">
+                    <label class="form-label" for="moneyMonthMethod">Способ выплаты</label>
+                    <select class="form-select" id="moneyMonthMethod">
+                        <option value="cash">Наличными</option>
+                        <option value="transfer">Переводом</option>
+                    </select>
+                </div>
+                <div class="form-group money-month-toolbar__date">
+                    <label class="form-label" for="moneyMonthDate">Дата выплаты</label>
+                    <input type="date" class="form-input" id="moneyMonthDate">
+                </div>
+            </div>
+            <div class="money-month-list" id="moneyMonthList"></div>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__left">
+                <span class="money-month-total" id="moneyMonthTotal"></span>
+            </div>
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="moneyMonthCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-primary" id="moneyMonthPayBtn">Выплатить всем</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/money.js' %}"></script>
+{% endblock %}

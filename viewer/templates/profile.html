@@ -4,32 +4,144 @@
 {% block title %}Мой профиль{% endblock %}
 
 {% block css %}
+<link rel="stylesheet" href="{% static 'css/clients.css' %}">
+<link rel="stylesheet" href="{% static 'css/orders-editor.css' %}">
 <link rel="stylesheet" href="{% static 'css/profile.css' %}">
 {% endblock %}
 
 {% block content %}
 <section class="profile-header">
-    <h1 class="profile-title">Мой профиль</h1>
-    <p class="profile-subtitle">Личная информация, расписание и транспортные билеты</p>
+    <h1 class="profile-title">Личный кабинет</h1>
+    <p class="profile-subtitle" id="profileSubtitle">Ваши данные, платежи и транспортные билеты</p>
 </section>
 
-<section class="profile-tabs">
-    <button class="profile-tab-btn active" data-tab="info">Мои данные</button>
-    <button class="profile-tab-btn" data-tab="schedule">Предстоящие шоу</button>
-    <button class="profile-tab-btn" data-tab="tickets">Транспортные билеты</button>
+<section class="profile-tabs" role="tablist">
+    <button class="profile-tab-btn active" data-tab="info" role="tab">Мои данные</button>
+    <button class="profile-tab-btn" data-tab="payments" role="tab">Платежи</button>
+    <button class="profile-tab-btn" data-tab="tickets" role="tab">Транспортные билеты</button>
 </section>
 
 <section class="profile-content">
     <div class="profile-tab-content active" id="tab-info">
         <div class="profile-loading">Загрузка...</div>
     </div>
-    <div class="profile-tab-content" id="tab-schedule">
+    <div class="profile-tab-content" id="tab-payments">
         <div class="profile-loading">Загрузка...</div>
     </div>
     <div class="profile-tab-content" id="tab-tickets">
         <div class="profile-loading">Загрузка...</div>
     </div>
 </section>
+
+<div class="modal-overlay" id="profileEditModal">
+    <div class="modal modal--profile-edit">
+        <div class="modal__header">
+            <h2 class="modal__title">Редактирование данных</h2>
+            <button class="modal__close" id="profileEditCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="profileEditForm" class="profile-edit-form">
+                <div class="info-section">
+                    <h3 class="info-section__title">Личная информация</h3>
+                    <div class="form-grid form-grid--2">
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="profileFullName">ФИО *</label>
+                            <input type="text" class="form-input" id="profileFullName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profilePhone">Телефон</label>
+                            <input type="tel" class="form-input" id="profilePhone" placeholder="+7 (999) 123-45-67">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profileTelegram">Телеграм</label>
+                            <input type="text" class="form-input" id="profileTelegram" placeholder="@username">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3 class="info-section__title">Паспортные данные</h3>
+                    <div class="form-grid form-grid--2">
+                        <div class="form-group">
+                            <label class="form-label" for="profilePassportSeries">Серия</label>
+                            <input type="text" class="form-input" id="profilePassportSeries">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profilePassportNumber">Номер</label>
+                            <input type="text" class="form-input" id="profilePassportNumber">
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="profilePassportIssuedBy">Кем выдан</label>
+                            <input type="text" class="form-input" id="profilePassportIssuedBy">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profilePassportIssuedDate">Дата выдачи</label>
+                            <input type="date" class="form-input" id="profilePassportIssuedDate">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profilePassportCode">Код подразделения</label>
+                            <input type="text" class="form-input" id="profilePassportCode">
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="profilePassportRegistration">Адрес регистрации</label>
+                            <input type="text" class="form-input" id="profilePassportRegistration">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profilePassportInn">ИНН</label>
+                            <input type="text" class="form-input" id="profilePassportInn">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profilePassportSnils">СНИЛС</label>
+                            <input type="text" class="form-input" id="profilePassportSnils">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section" id="profileArtistCardSection" style="display:none;">
+                    <h3 class="info-section__title">Карточка артиста</h3>
+                    <div class="form-grid form-grid--2">
+                        <div class="form-group">
+                            <label class="form-label" for="profileWeight">Вес</label>
+                            <input type="text" class="form-input" id="profileWeight">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profileHeight">Рост</label>
+                            <input type="text" class="form-input" id="profileHeight">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profileShoeSize">Размер обуви</label>
+                            <input type="text" class="form-input" id="profileShoeSize">
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="profileSkillsText">Навыки</label>
+                            <textarea class="form-textarea" id="profileSkillsText" rows="2"></textarea>
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="profileComment">Комментарий</label>
+                            <textarea class="form-textarea" id="profileComment" rows="2"></textarea>
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label">Знание шоу</label>
+                            <div class="profile-shows-picker" id="profileShowsPicker"></div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__left"></div>
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="profileEditCancelBtn">Отмена</button>
+                <button type="submit" form="profileEditForm" class="btn btn-primary" id="profileEditSaveBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="toast-container" id="toastContainer"></div>
 {% endblock %}

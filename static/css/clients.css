@@ -1008,3 +1008,65 @@
     justify-content: center;
   }
 }
+@media (max-width: 760px) {
+  .clients-table {
+    display: block;
+    width: 100%;
+  }
+
+  .clients-table thead {
+    display: none;
+  }
+
+  .clients-table tbody,
+  .clients-table tr {
+    display: block;
+  }
+
+  .clients-table tr {
+    position: relative;
+    margin-bottom: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    background: #13110e;
+    border: 1px solid #2b2620;
+    border-radius: 12px;
+  }
+
+  .clients-table td {
+    display: block;
+    padding: 0.15rem 0;
+    border: none;
+  }
+
+  .clients-table td:first-child {
+    font-weight: 600;
+    color: #f5efe7;
+    font-size: 0.95rem;
+  }
+
+  .clients-table__cities {
+    max-width: none;
+    width: auto;
+    white-space: normal;
+  }
+
+  .view-link {
+    display: block;
+    width: 100%;
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    text-align: center;
+    background: rgba(240, 168, 104, 0.12);
+  }
+
+  .modal__footer .modal-footer-actions,
+  .modal-footer-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-footer-actions__left .btn,
+  .modal-footer-actions__right .btn {
+    width: 100%;
+  }
+}

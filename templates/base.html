@@ -56,17 +56,30 @@
                     </li>
                     {% endif %}
 
+                    {% if user.employee_profile.role == 'senior_admin' or user.employee_profile.role == 'manager' %}
                     <li class="menu__item">
+                        <a href="{% url 'money' %}" class="menu__link {% if request.resolver_match.url_name == 'money' %}active{% endif %}">
+                            Деньги
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="menu__item menu__item--profile">
                         <a href="{% url 'profile' %}" class="menu__link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
                             Личный кабинет
+                        </a>
+                    </li>
+                    <li class="menu__item menu__item--logout">
+                        <a href="{% url 'logout' %}" class="menu__link menu__link--logout">
+                            Выйти
                         </a>
                     </li>
                 </ul>
             </nav>
             <div class="navbar__actions">
-                <a href="{% url 'profile' %}" class="user-badge">{{ user.full_name|default:user.username }}</a>
+                <a href="{% url 'profile' %}" class="user-badge" title="Личный кабинет">{{ user.employee_profile.full_name|default:user.username }}</a>
                 <a href="{% url 'logout' %}" class="logout-btn">Выйти</a>
-                <button class="menu-toggle" id="menuToggle" aria-label="Открыть меню">
+                <button class="menu-toggle" id="menuToggle" aria-label="Открыть меню" aria-expanded="false">
                     <span class="toggle-line"></span>
                     <span class="toggle-line"></span>
                     <span class="toggle-line"></span>

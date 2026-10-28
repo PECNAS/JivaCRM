@@ -721,3 +721,57 @@
 .row-inactive-employee td {
   background: rgba(224, 82, 82, 0.06);
 }
+
+@media (max-width: 768px) {
+  .modal__header-actions {
+    gap: 0.4rem;
+  }
+
+  .modal-footer-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-footer-actions__left,
+  .modal-footer-actions__right {
+    width: 100%;
+  }
+
+  .modal-footer-actions__left .btn,
+  .modal-footer-actions__right .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal-footer-actions__right {
+    flex-direction: column-reverse;
+  }
+
+  .editor-footer {
+    padding: 0.75rem 1rem;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  .editor-footer--global {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+  }
+
+  .services-table-editor,
+  .employees-table-editor {
+    font-size: 0.8rem;
+  }
+
+  .cell-input {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.4rem;
+  }
+
+  .modal__tabs {
+    position: sticky;
+    top: 0;
+    background: #13110e;
+    z-index: 4;
+  }
+}

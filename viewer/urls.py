@@ -11,7 +11,10 @@ from .views import (
     ServiceUpdateView, ServiceDeleteView,
     CityListView,
     ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView, PricePeriodView,
-    ProfileView, ProfileDetailView, ProfileScheduleView, ProfileTicketsView,
+    ProfileView, ProfileDetailView, ProfileUpdateView, ProfileScheduleView, ProfileTicketsView,
+    ProfilePaymentsView,
+    MoneyView, MoneyDataView, MoneyOrderPaymentView, MoneyOrderPayView,
+    MoneyAccrualView, MoneyPayoutView, MoneyMonthPreviewView, MoneyMonthPayView,
 )
 
 urlpatterns = [
@@ -24,8 +27,10 @@ urlpatterns = [
 
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/detail/', ProfileDetailView.as_view(), name='profile_detail'),
+    path('profile/update/', ProfileUpdateView.as_view(), name='profile_update'),
     path('profile/schedule/', ProfileScheduleView.as_view(), name='profile_schedule'),
     path('profile/tickets/', ProfileTicketsView.as_view(), name='profile_tickets'),
+    path('profile/payments/', ProfilePaymentsView.as_view(), name='profile_payments'),
 
     path('agencies/', AgencyCreateView.as_view(), name='agency_create'),
     path('agencies/catalog/', AgencyCatalogView.as_view(), name='agency_catalog'),
@@ -58,6 +63,15 @@ urlpatterns = [
     path('orders/<int:order_id>/delete/', OrderDeleteView.as_view(), name='order_delete'),
     path('orders/services/<int:service_id>/price/', ServicePriceForOrderView.as_view(), name='order_service_price'),
     path('orders/services/<int:service_id>/employees/', ServiceEmployeesForOrderView.as_view(), name='order_service_employees'),
+
+    path('money/', MoneyView.as_view(), name='money'),
+    path('money/data/', MoneyDataView.as_view(), name='money_data'),
+    path('money/accrual/', MoneyAccrualView.as_view(), name='money_accrual'),
+    path('money/payout/', MoneyPayoutView.as_view(), name='money_payout'),
+    path('money/month/preview/', MoneyMonthPreviewView.as_view(), name='money_month_preview'),
+    path('money/month/pay/', MoneyMonthPayView.as_view(), name='money_month_pay'),
+    path('money/orders/<int:order_id>/payment/', MoneyOrderPaymentView.as_view(), name='money_order_payment'),
+    path('money/orders/<int:order_id>/pay/', MoneyOrderPayView.as_view(), name='money_order_pay'),
 
     path('services/', ServicesView.as_view(), name='services'),
     path('services/tree/', ServiceTreeView.as_view(), name='service_tree'),
