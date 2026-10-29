@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
 import json
-from ..models import Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City, CalendarColor, PriceRisePeriod, Agency
+from ..models import Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City, CityGroup, CalendarColor, PriceRisePeriod, Agency
 
 
 def format_date(date_value):
@@ -298,6 +298,7 @@ class OrderDetailView(View):
                 'city_name': order.city.name if order.city else '',
                 'date': format_date(order.date),
                 'address': order.address or '',
+                'contact_name': order.contact_name or '',
                 'contact_phone': order.contact_phone or '',
                 'contact_telegram': order.contact_telegram or '',
                 'setup_time': order.setup_time or '',
@@ -370,6 +371,7 @@ class OrderUpdateView(View):
                 order.city = None
 
             order.address = request.POST.get('address', '').strip()
+            order.contact_name = request.POST.get('contact_name', '').strip()
             order.contact_phone = request.POST.get('contact_phone', '').strip()
             order.contact_telegram = request.POST.get('contact_telegram', '').strip()
             order.setup_time = request.POST.get('setup_time', '').strip()
@@ -590,6 +592,7 @@ class OrderCopyView(View):
                     city=source.city,
                     date=new_date,
                     address=source.address,
+                    contact_name=source.contact_name,
                     contact_phone=source.contact_phone,
                     contact_telegram=source.contact_telegram,
                     setup_time=source.setup_time,
@@ -688,7 +691,41 @@ class ServicesFlatListView(View):
                     for row in s.staff_rows.all()
                 ]
             data.append(item)
-        return JsonResponse({'services': data})
+
+        groups = []
+
+        for group in CityGroup.objects.order_by('order', 'name'):
+            groups.append({
+                'id': group.id,
+                'name': group.name,
+                'coefficient': float(group.price_coefficient),
+                'salary_bonus': float(group.salary_bonus),
+            })
+
+        return JsonResponse({'services': data, 'city_groups': groups})
+
+
+class CityGroupsView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        groups = [
+            {
+                'id': group.id,
+                'name': group.name,
+                'coefficient': float(group.price_coefficient),
+                'salary_bonus': float(group.salary_bonus),
+            }
+            for group in CityGroup.objects.order_by('order', 'name')
+        ]
+
+        city_groups = {
+            city.id: city.group_id
+            for city in City.objects.filter(group__isnull=False)
+        }
+
+        return JsonResponse({'groups': groups, 'city_groups': city_groups})
 
 
 def serialize_price_period(period):

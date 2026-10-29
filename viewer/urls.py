@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    IndexView, LoginView, LogoutView,
+    IndexView, LoginView, LogoutView, ManifestView,
     ClientsView, ClientDetailView, ClientUpdateView, ClientDeleteView, ClientListView,
     ClientDeleteMatchedView, AgencyCreateView, CityCatalogView, AgencyCatalogView,
     EmployeesView, EmployeeDetailView, EmployeeUpdateView, EmployeeDeleteView, EmployeeListView,
@@ -11,6 +11,7 @@ from .views import (
     ServiceUpdateView, ServiceDeleteView,
     CityListView,
     ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView, PricePeriodView,
+    CityGroupsView,
     ProfileView, ProfileDetailView, ProfileUpdateView, ProfileScheduleView, ProfileTicketsView,
     ProfilePaymentsView,
     MoneyView, MoneyDataView, MoneyOrderPaymentView, MoneyOrderPayView,
@@ -22,6 +23,7 @@ urlpatterns = [
     path('', IndexView.as_view(), name='index'),
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
+    path('manifest.webmanifest', ManifestView.as_view(), name='manifest'),
 
     path('schedule/', ScheduleView.as_view(), name='schedule'),
     path('schedule/my-orders/', MyOrdersListView.as_view(), name='my_orders'),
@@ -57,6 +59,7 @@ urlpatterns = [
     path('orders/list/', OrderListView.as_view(), name='order_list'),
     path('orders/cities/', CityListView.as_view(), name='order_cities'),
     path('orders/price-period/', PricePeriodView.as_view(), name='order_price_period'),
+    path('orders/city-groups/', CityGroupsView.as_view(), name='order_city_groups'),
     path('orders/services/', ServicesFlatListView.as_view(), name='order_services'),
     path('orders/<int:order_id>/', OrderDetailView.as_view(), name='order_detail'),
     path('orders/<int:order_id>/update/', OrderUpdateView.as_view(), name='order_update'),

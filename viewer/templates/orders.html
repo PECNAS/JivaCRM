@@ -289,6 +289,10 @@
                         <h3 class="info-section__title">Контактное лицо на площадке</h3>
                         <div class="form-grid form-grid--2">
                             <div class="form-group">
+                                <label class="form-label" for="editOrderContactName">Имя</label>
+                                <input type="text" class="form-input" id="editOrderContactName" placeholder="Например, Ирина">
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label" for="editOrderContactPhone">Телефон</label>
                                 <input type="tel" class="form-input" id="editOrderContactPhone" placeholder="+7 (999) 123-45-67">
                             </div>
@@ -386,6 +390,13 @@
             </div>
 
             <div class="tab-content" id="tab-services">
+                <div class="services-city-group">
+                    <label class="form-label" for="editOrderCityGroup">Группа городов</label>
+                    <select class="form-select" id="editOrderCityGroup">
+                        <option value="">По городу заказа</option>
+                    </select>
+                    <span class="form-hint" id="cityGroupHint"></span>
+                </div>
                 <div class="services-editor-container">
                     <div class="services-catalog-panel">
                         <div class="panel-header">

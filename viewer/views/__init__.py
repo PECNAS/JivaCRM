@@ -1,4 +1,4 @@
-from .base import IndexView, LoginView, LogoutView
+from .base import IndexView, LoginView, LogoutView, ManifestView
 from .clients import (
     ClientsView, ClientDetailView, ClientUpdateView, ClientDeleteView,
     ClientListView, ClientDeleteMatchedView, AgencyCreateView, CityCatalogView, AgencyCatalogView,
@@ -10,7 +10,7 @@ from .employees import (
 from .orders import (
     OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView, OrderCopyView,
     ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView,
-    CityListView, PricePeriodView,
+    CityListView, PricePeriodView, CityGroupsView,
 )
 from .schedule import ScheduleView, MyOrdersListView
 from .services import (

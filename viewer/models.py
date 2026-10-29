@@ -46,11 +46,20 @@ class Skill(models.Model):
 class CityGroup(models.Model):
     name = models.CharField('Название группы', max_length=200, unique=True)
     salary_bonus = models.DecimalField('Надбавка к ставке', max_digits=10, decimal_places=2, default=0)
+    price_coefficient = models.DecimalField(
+        'Коэффициент цены',
+        max_digits=6,
+        decimal_places=2,
+        default=1,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text='Например, 2.28 — цена услуги умножается на 2.28',
+    )
+    order = models.PositiveIntegerField('Порядок', default=0)
 
     class Meta:
         verbose_name = 'Группа городов'
         verbose_name_plural = 'Группы городов'
-        ordering = ['name']
+        ordering = ['order', 'name']
 
     def __str__(self):
         return self.name
@@ -482,6 +491,7 @@ class Order(models.Model):
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name='Город')
     date = models.DateField('Дата проведения', null=True, blank=True)
     address = models.CharField('Адрес', max_length=300, blank=True, default='')
+    contact_name = models.CharField('Контактное лицо - имя', max_length=200, blank=True)
     contact_phone = models.CharField('Контактное лицо - номер телефона', max_length=20, blank=True)
     contact_telegram = models.CharField('Контактное лицо - телеграм', max_length=100, blank=True)
     setup_time = models.CharField('Время чека', max_length=20, blank=True)
@@ -516,7 +526,7 @@ class Order(models.Model):
         return f'Заказ #{self.id} - {self.name or self.client.full_name}'
 
     CONTENT_FIELDS = [
-        'name', 'client_id', 'city_id', 'date', 'address', 'contact_phone', 'contact_telegram',
+        'name', 'client_id', 'city_id', 'date', 'address', 'contact_name', 'contact_phone', 'contact_telegram',
         'setup_time', 'dressing_room_comment', 'meal_comment', 'concept',
         'tech_lamps', 'tech_laser', 'tech_hazer', 'tech_grid', 'tech_projection', 'tech_comment',
         'venue_comment', 'props_comment', 'manager_id', 'story_manager_id', 'cost',

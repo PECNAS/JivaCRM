@@ -410,36 +410,104 @@
         display: none;
     }
 
+    .dashboard-list {
+        gap: 0.35rem;
+    }
+
     .order-row {
-        grid-template-columns: 1fr;
-        gap: 0.25rem;
-        padding: 0.7rem 0.9rem;
-    }
-
-    .order-row__cell {
-        display: flex;
-        justify-content: space-between;
-        gap: 0.5rem;
-    }
-
-    .order-row__label {
-        display: inline;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "name status"
+            "meta cost";
+        gap: 0.2rem 0.5rem;
+        padding: 0.5rem 0.65rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        line-height: 1.35;
     }
 
     .order-row__id {
         display: none;
     }
 
+    .order-row__name {
+        grid-area: name;
+        font-size: 0.86rem;
+        font-weight: 600;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        overflow-wrap: anywhere;
+    }
+
+    .order-row__client {
+        grid-area: meta;
+        font-size: 0.74rem;
+        color: #9e9487;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+
+    .order-row__address,
+    .order-row__date {
+        display: none;
+    }
+
+    .order-row__cell {
+        display: block;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+
+    .order-row__label {
+        display: none;
+    }
+
     .order-row__cost {
-        text-align: left;
+        grid-area: cost;
+        font-size: 0.8rem;
+        text-align: right;
+        color: #f0a868;
     }
 
     .order-row__status {
-        justify-self: start;
+        grid-area: status;
+        justify-self: end;
+        font-size: 0.65rem;
+        padding: 0.08rem 0.5rem 0.08rem 0.35rem;
     }
 
     .order-row__badge {
-        justify-self: start;
-        margin-top: 0.25rem;
+        grid-area: status;
+        justify-self: end;
+        margin-top: 0;
+        font-size: 0.58rem;
+    }
+
+    .order-list-note {
+        font-size: 0.72rem;
+        padding: 0 0.6rem 0.35rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .order-row {
+        padding: 0.45rem 0.55rem;
+        font-size: 0.78rem;
+    }
+
+    .order-row__name {
+        font-size: 0.82rem;
+    }
+
+    .order-row__client {
+        font-size: 0.7rem;
+    }
+
+    .dashboard-empty {
+        padding: 2rem 1rem;
+        font-size: 0.85rem;
     }
 }

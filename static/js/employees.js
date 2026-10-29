@@ -56,43 +56,63 @@
         return div.innerHTML;
     }
 
-    function phoneMask(input) {
-        let value = input.value.replace(/\D/g, '');
+    function formatPhoneValue(value) {
+        let digits = String(value || '').replace(/\D/g, '');
 
-        if (value.length > 0 && value[0] !== '7' && value[0] !== '8') {
-            value = '7' + value;
+        if (digits.length > 11) {
+            digits = digits.slice(0, 11);
         }
 
-        if (value.length > 0 && value[0] === '8') {
-            value = '7' + value.slice(1);
+        if (digits.length === 11 && (digits[0] === '7' || digits[0] === '8')) {
+            digits = digits.slice(1);
+        } else if (digits.length === 11) {
+            digits = digits.slice(0, 10);
         }
 
-        let formatted = '';
-        if (value.length > 0) {
-            formatted = '+7';
-            let remaining = value.slice(1);
+        if (!digits) {
+            return '';
+        }
 
-            if (remaining.length > 0) {
-                formatted += ' (' + remaining.slice(0, 3);
-                if (remaining.length > 3) {
-                    formatted += ') ' + remaining.slice(3, 6);
-                    if (remaining.length > 6) {
-                        formatted += '-' + remaining.slice(6, 8);
-                        if (remaining.length > 8) {
-                            formatted += '-' + remaining.slice(8, 10);
-                        }
+        let formatted = '+7';
+
+        if (digits.length > 0) {
+            formatted += ' (' + digits.slice(0, 3);
+            if (digits.length > 3) {
+                formatted += ') ' + digits.slice(3, 6);
+                if (digits.length > 6) {
+                    formatted += '-' + digits.slice(6, 8);
+                    if (digits.length > 8) {
+                        formatted += '-' + digits.slice(8, 10);
                     }
                 }
             }
         }
 
-        input.value = formatted;
+        return formatted;
+    }
+
+    function phoneMask(input) {
+        input.value = formatPhoneValue(input.value);
         return input.value;
     }
 
     function attachPhoneMask(input) {
         if (!input) return;
         input.addEventListener('input', function() { phoneMask(this); });
+        input.addEventListener('paste', function(e) {
+            const clipboard = (e.clipboardData || window.clipboardData);
+
+            if (!clipboard) return;
+
+            const text = clipboard.getData('text');
+
+            if (!text) return;
+
+            e.preventDefault();
+
+            this.value = formatPhoneValue(text);
+            this.dispatchEvent(new Event('input', { bubbles: true }));
+        });
         input.addEventListener('focus', function() {
             if (this.value === '') this.value = '+7';
         });

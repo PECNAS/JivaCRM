@@ -1025,38 +1025,87 @@
 
   .clients-table tr {
     position: relative;
-    margin-bottom: 0.6rem;
-    padding: 0.7rem 0.85rem;
+    margin-bottom: 0.4rem;
+    padding: 0.45rem 0.6rem;
     background: #13110e;
     border: 1px solid #2b2620;
-    border-radius: 12px;
+    border-radius: 10px;
+    line-height: 1.35;
   }
 
   .clients-table td {
     display: block;
-    padding: 0.15rem 0;
+    padding: 0;
     border: none;
   }
 
   .clients-table td:first-child {
     font-weight: 600;
     color: #f5efe7;
-    font-size: 0.95rem;
+    font-size: 0.86rem;
+    padding-right: 4.5rem;
+  }
+
+  .clients-table td:nth-child(2) {
+    display: inline;
+    font-size: 0.74rem;
+    color: #9e9487;
+  }
+
+  .clients-table td:nth-child(3) {
+    display: inline;
+    font-size: 0.74rem;
+    color: #7a7267;
+  }
+
+  .clients-table td:nth-child(3)::before {
+    content: " · ";
+  }
+
+  .clients-table td:nth-child(4) {
+    display: inline;
+    font-size: 0.74rem;
+    color: #7a7267;
+  }
+
+  .clients-table td:nth-child(4)::before {
+    content: " · ";
+  }
+
+  .clients-table td:nth-child(5) {
+    display: inline-block;
+    margin-left: 0.35rem;
+  }
+
+  .clients-table td:nth-child(5) .rating-badge {
+    font-size: 0.6rem;
+    padding: 0.05rem 0.45rem;
+  }
+
+  .clients-table td:nth-child(6),
+  .clients-table td:nth-child(7) {
+    display: none;
+  }
+
+  .clients-table td:nth-child(8) {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.5rem;
+  }
+
+  .clients-table .view-link {
+    width: auto;
+    margin-top: 0;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+    background: rgba(240, 168, 104, 0.12);
+    border-radius: 40px;
   }
 
   .clients-table__cities {
     max-width: none;
     width: auto;
     white-space: normal;
-  }
-
-  .view-link {
-    display: block;
-    width: 100%;
-    margin-top: 0.4rem;
-    padding: 0.5rem;
-    text-align: center;
-    background: rgba(240, 168, 104, 0.12);
   }
 
   .modal__footer .modal-footer-actions,

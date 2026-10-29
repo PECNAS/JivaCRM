@@ -6,8 +6,10 @@
     let allEmployees = [];
     let allServices = [];
     let allCities = [];
+    let allCityGroups = [];
+    let cityGroupsByCity = {};
     let filteredEmployees = [];
-    let collapsedCats = new Set();
+    let expandedCats = new Set();
     let costOverride = false;
     let manualCost = '';
     let pricePeriodPercent = 0;
@@ -15,12 +17,67 @@
     let formSnapshot = null;
     let itemsSnapshot = '[]';
 
+    function getCityGroupCoefficient() {
+        const groupId = editOrderCityGroup && editOrderCityGroup.value ? parseInt(editOrderCityGroup.value, 10) : null;
+
+        if (groupId) {
+            const group = allCityGroups.find(item => item.id === groupId);
+            if (group) return parseFloat(group.coefficient) || 1;
+        }
+
+        const cityId = editOrderCity && editOrderCity.value ? parseInt(editOrderCity.value, 10) : null;
+
+        if (cityId) {
+            const groupIdByCity = cityGroupsByCity[cityId];
+            const group = allCityGroups.find(item => item.id === groupIdByCity);
+            if (group) return parseFloat(group.coefficient) || 1;
+        }
+
+        return 1;
+    }
+
     function getPriceMultiplier() {
-        return 1 + (parseFloat(pricePeriodPercent) || 0) / 100;
+        return (1 + (parseFloat(pricePeriodPercent) || 0) / 100) * getCityGroupCoefficient();
     }
 
     function applyPricePeriod(value) {
-        return Math.round((parseFloat(value) || 0) * getPriceMultiplier() * 100) / 100;
+        const base = parseFloat(value) || 0;
+        const coefficient = getCityGroupCoefficient();
+        const result = base * getPriceMultiplier();
+
+        if (coefficient === 1) {
+            return Math.round(result * 100) / 100;
+        }
+
+        return Math.round(result / 1000) * 1000;
+    }
+
+    function recalcEstimatePrices() {
+        estimateItems.forEach((item, index) => {
+            if (item.overridden || !item.service_id) return;
+
+            const service = allServices.find(s => s.id === item.service_id);
+            const row = service ? pickRow(service, item.people_count) : null;
+
+            item.price = row ? applyPricePeriod(row.cost) : 0;
+        });
+
+        if (estimateItems.length) {
+            renderServices();
+            renderEmployees();
+            updateCostField();
+        }
+
+        renderServicesCatalogPanel();
+    }
+
+    function renderCityGroupHint() {
+        const hint = document.getElementById('cityGroupHint');
+
+        if (!hint) return;
+
+        const coefficient = getCityGroupCoefficient();
+        hint.textContent = coefficient !== 1 ? 'Коэффициент цены: ×' + coefficient : '';
     }
 
     function loadPricePeriod() {
@@ -71,8 +128,10 @@
     const editOrderDate = document.getElementById('editOrderDate');
     const editOrderClient = document.getElementById('editOrderClient');
     const editOrderCity = document.getElementById('editOrderCity');
+    const editOrderCityGroup = document.getElementById('editOrderCityGroup');
     const editOrderStatus = document.getElementById('editOrderStatus');
     const editOrderAddress = document.getElementById('editOrderAddress');
+    const editOrderContactName = document.getElementById('editOrderContactName');
     const editOrderContactPhone = document.getElementById('editOrderContactPhone');
     const editOrderContactTelegram = document.getElementById('editOrderContactTelegram');
     const editOrderSetupTime = document.getElementById('editOrderSetupTime');
@@ -414,6 +473,7 @@
         }
         editOrderStatus.value = data.status || 'request';
         editOrderAddress.value = data.address || '';
+        editOrderContactName.value = data.contact_name || '';
         editOrderContactPhone.value = data.contact_phone || '';
         editOrderContactTelegram.value = data.contact_telegram || '';
         editOrderSetupTime.value = data.setup_time || '';
@@ -433,6 +493,10 @@
         editOrderStoryManager.value = data.story_manager_id || '';
         editOrderPaymentMethod.value = data.payment_method || '';
         editOrderCity.value = data.city_id || '';
+
+        if (editOrderCityGroup) {
+            editOrderCityGroup.value = data.city_group_id || '';
+        }
 
         estimateItems = (data.estimate_items || []).map(i => ({...i}));
         employeeItems = (data.employee_items || []).map(i => ({...i}));
@@ -541,15 +605,34 @@
     }
 
     function loadCities() {
-        fetch('/services/cities/')
-            .then(r => r.json())
-            .then(data => {
-                if (data.cities) {
-                    allCities = data.cities;
-                    const options = data.cities.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+        Promise.all([
+            fetch('/services/cities/').then(r => r.json()),
+            fetch('/orders/city-groups/').then(r => r.json())
+        ])
+            .then(([citiesData, groupsData]) => {
+                if (citiesData.cities) {
+                    allCities = citiesData.cities;
+                    const options = citiesData.cities.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
                     editOrderCity.innerHTML = '<option value="">Не выбран (Казань по умолчанию)</option>' + options;
                     if (currentOrderData) editOrderCity.value = currentOrderData.city_id || '';
                 }
+
+                if (groupsData.groups) {
+                    allCityGroups = groupsData.groups;
+                    cityGroupsByCity = groupsData.city_groups || {};
+
+                    const options = groupsData.groups.map(g =>
+                        `<option value="${g.id}">${escapeHtml(g.name)} (×${g.coefficient})</option>`
+                    ).join('');
+
+                    editOrderCityGroup.innerHTML = '<option value="">По городу заказа</option>' + options;
+                }
+
+                if (currentOrderData) {
+                    editOrderCityGroup.value = currentOrderData.city_group_id || '';
+                }
+
+                renderCityGroupHint();
             })
             .catch(err => console.error('Ошибка загрузки городов:', err));
     }
@@ -623,7 +706,7 @@
             const childrenHtml = buildCatalogTreeHtml(node.id, search, matched);
             if (search && !matched && childrenHtml === '') return;
 
-            const isCollapsed = !search && collapsedCats.has(node.id);
+            const isCollapsed = !search && !expandedCats.has(node.id);
             html += `
                 <li>
                     <div class="svc-cat" data-cat-id="${node.id}">
@@ -663,12 +746,19 @@
                 addServiceToEstimate(parseInt(addBtn.dataset.serviceId));
                 return;
             }
+
             const cat = e.target.closest('.svc-cat');
             if (cat) {
                 const id = parseInt(cat.dataset.catId);
-                if (collapsedCats.has(id)) collapsedCats.delete(id);
-                else collapsedCats.add(id);
+                if (expandedCats.has(id)) expandedCats.delete(id);
+                else expandedCats.add(id);
                 renderServicesCatalogPanel();
+                return;
+            }
+
+            const item = e.target.closest('.service-catalog-item');
+            if (item) {
+                addServiceToEstimate(parseInt(item.dataset.serviceId));
             }
         });
     }
@@ -1055,6 +1145,24 @@
         });
     }
 
+    if (editOrderCity) {
+        editOrderCity.addEventListener('change', function() {
+            if (editOrderCityGroup && editOrderCityGroup.value) {
+                editOrderCityGroup.value = '';
+            }
+
+            renderCityGroupHint();
+            recalcEstimatePrices();
+        });
+    }
+
+    if (editOrderCityGroup) {
+        editOrderCityGroup.addEventListener('change', function() {
+            renderCityGroupHint();
+            recalcEstimatePrices();
+        });
+    }
+
     if (employeeSearchInput) {
         let t;
         employeeSearchInput.addEventListener('input', function() {
@@ -1080,8 +1188,10 @@
                 date: editOrderDate.value,
                 client_id: editOrderClient.value,
                 city_id: editOrderCity.value,
+                city_group_id: editOrderCityGroup ? editOrderCityGroup.value : '',
                 status: editOrderStatus.value,
                 address: editOrderAddress.value.trim(),
+                contact_name: editOrderContactName.value.trim(),
                 contact_phone: editOrderContactPhone.value.trim(),
                 contact_telegram: editOrderContactTelegram.value.trim(),
                 setup_time: editOrderSetupTime.value.trim(),

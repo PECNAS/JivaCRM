@@ -1,3 +1,59 @@
+a {
+  color: #f0a868;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s;
+}
+
+a:hover,
+a:focus {
+  color: #f5b87a;
+}
+
+a:visited {
+  color: #f0a868;
+}
+
+@media (pointer: coarse) {
+  a,
+  a:visited,
+  a:hover,
+  a:active {
+    color: #f0a868;
+    -webkit-tap-highlight-color: rgba(240, 168, 104, 0.2);
+  }
+
+  a.view-link,
+  a.menu__link,
+  a.navbar__brand,
+  a.user-badge {
+    color: inherit;
+  }
+
+  a.menu__link {
+    color: #f5efe7;
+  }
+
+  a.menu__link.active {
+    color: #f0a868;
+  }
+
+  a.navbar__brand {
+    color: #f0a868;
+  }
+
+  a.user-badge {
+    color: #d6cdc0;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    -webkit-tap-highlight-color: rgba(240, 168, 104, 0.2);
+  }
+}
+
 * {
   margin: 0;
   padding: 0;
