@@ -298,7 +298,7 @@ def employee_balance(employee, until=None):
     return active_accrual_balance(employee, until) - active_payout_total(employee, until)
 
 
-def create_month_payouts(rows, actor=None, period_start=None, period_end=None, method='cash'):
+def create_month_payouts(rows, actor=None, period_start=None, period_end=None, method='cash', period_date=None):
     payouts = []
 
     for row in rows:
@@ -313,7 +313,7 @@ def create_month_payouts(rows, actor=None, period_start=None, period_end=None, m
             amount=amount,
             method=method,
             kind=MoneyPayout.KIND_MONTH,
-            period_date=period_end or timezone.localdate(),
+            period_date=period_date or period_end or timezone.localdate(),
             period_start=period_start,
             period_end=period_end,
             comment=row.get('comment', ''),

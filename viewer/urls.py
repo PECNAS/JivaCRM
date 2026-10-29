@@ -15,7 +15,8 @@ from .views import (
     ProfileView, ProfileDetailView, ProfileUpdateView, ProfileScheduleView, ProfileTicketsView,
     ProfilePaymentsView,
     MoneyView, MoneyDataView, MoneyOrderPaymentView, MoneyOrderPayView,
-    MoneyAccrualView, MoneyPayoutView, MoneyMonthPreviewView, MoneyMonthPayView,
+    MoneyAccrualView, MoneyPayoutView, MoneyEmployeeDetailView, MoneyPayoutListView,
+    MoneyPayoutAllView,
     FillDataView,
 )
 
@@ -72,8 +73,9 @@ urlpatterns = [
     path('money/data/', MoneyDataView.as_view(), name='money_data'),
     path('money/accrual/', MoneyAccrualView.as_view(), name='money_accrual'),
     path('money/payout/', MoneyPayoutView.as_view(), name='money_payout'),
-    path('money/month/preview/', MoneyMonthPreviewView.as_view(), name='money_month_preview'),
-    path('money/month/pay/', MoneyMonthPayView.as_view(), name='money_month_pay'),
+    path('money/payout/list/', MoneyPayoutListView.as_view(), name='money_payout_list'),
+    path('money/payout/all/', MoneyPayoutAllView.as_view(), name='money_payout_all'),
+    path('money/employee/', MoneyEmployeeDetailView.as_view(), name='money_employee_detail'),
     path('money/orders/<int:order_id>/payment/', MoneyOrderPaymentView.as_view(), name='money_order_payment'),
     path('money/orders/<int:order_id>/pay/', MoneyOrderPayView.as_view(), name='money_order_pay'),
 

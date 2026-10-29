@@ -23,6 +23,7 @@ from .profile import (
 )
 from .money import (
     MoneyView, MoneyDataView, MoneyOrderPaymentView, MoneyOrderPayView,
-    MoneyAccrualView, MoneyPayoutView, MoneyMonthPreviewView, MoneyMonthPayView,
+    MoneyAccrualView, MoneyPayoutView, MoneyEmployeeDetailView, MoneyPayoutListView,
+    MoneyPayoutAllView,
 )
 from .fill_data import FillDataView

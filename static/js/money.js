@@ -4,8 +4,8 @@
     const STORAGE_EXPANDED = 'jiva_money_expanded_orders';
 
     const state = {
-        month: '',
-        range: 'month',
+        dateFrom: '',
+        dateTo: '',
         sort: 'date_desc',
         accrualFilter: 'pending',
         data: null,
@@ -14,11 +14,12 @@
         expanded: {},
     };
 
-    const monthInput = document.getElementById('moneyMonthInput');
+    const dateFromInput = document.getElementById('moneyDateFrom');
+    const dateToInput = document.getElementById('moneyDateTo');
+    const payrollMonthInput = document.getElementById('moneyPayrollMonth');
     const searchInput = document.getElementById('moneySearchInput');
     const categoryFilter = document.getElementById('moneyCategoryFilter');
     const sortSelect = document.getElementById('moneySortSelect');
-    const rangeBox = document.getElementById('moneyRange');
     const accrualFilterBox = document.getElementById('moneyAccrualFilter');
     const statsBox = document.getElementById('moneyStats');
     const tabs = document.querySelectorAll('.money-tab');
@@ -29,8 +30,9 @@
     };
 
     const accrualsList = document.getElementById('moneyAccrualsList');
+    const payoutCandidates = document.getElementById('moneyPayoutCandidates');
     const payoutsList = document.getElementById('moneyPayoutsList');
-    const summaryList = document.getElementById('moneySummaryList');
+    const payrollList = document.getElementById('moneyPayrollList');
 
     const accrualModal = document.getElementById('moneyAccrualModal');
     const accrualForm = document.getElementById('moneyAccrualForm');
@@ -52,11 +54,10 @@
     const payoutComment = document.getElementById('moneyPayoutComment');
     const payoutBalance = document.getElementById('moneyPayoutBalance');
 
-    const monthModal = document.getElementById('moneyMonthModal');
-    const monthList = document.getElementById('moneyMonthList');
-    const monthTotal = document.getElementById('moneyMonthTotal');
-    const monthMethod = document.getElementById('moneyMonthMethod');
-    const monthDate = document.getElementById('moneyMonthDate');
+    const employeeModal = document.getElementById('moneyEmployeeModal');
+    const employeeModalTitle = document.getElementById('moneyEmployeeModalTitle');
+    const employeeSummary = document.getElementById('moneyEmployeeSummary');
+    const employeeOperations = document.getElementById('moneyEmployeeOperations');
 
     let editingAccrualId = null;
     let orderModalElement = null;
@@ -91,9 +92,25 @@
         return fetch(url, settings).then(r => r.json().then(data => ({ ok: r.ok, data: data })));
     }
 
+    function pad(value) {
+        return String(value).padStart(2, '0');
+    }
+
     function currentMonthValue() {
         const now = new Date();
-        return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        return now.getFullYear() + '-' + pad(now.getMonth() + 1);
+    }
+
+    function monthDates(value) {
+        const parts = String(value || currentMonthValue()).split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const last = new Date(year, month, 0).getDate();
+
+        return {
+            from: year + '-' + pad(month) + '-01',
+            to: year + '-' + pad(month) + '-' + pad(last),
+        };
     }
 
     function shiftMonth(value, delta) {
@@ -101,15 +118,17 @@
         let year = parseInt(parts[0], 10);
         let month = parseInt(parts[1], 10) + delta;
 
-        if (month < 1) {
-            month = 12;
+        while (month < 1) {
+            month += 12;
             year -= 1;
-        } else if (month > 12) {
-            month = 1;
+        }
+
+        while (month > 12) {
+            month -= 12;
             year += 1;
         }
 
-        return year + '-' + String(month).padStart(2, '0');
+        return year + '-' + pad(month);
     }
 
     function loadExpanded() {
@@ -151,9 +170,22 @@
     }
 
     function setActiveButton(container, selector, matchAttr, value) {
+        if (!container) return;
+
         container.querySelectorAll(selector).forEach(btn => {
             btn.classList.toggle('active', btn.dataset[matchAttr] === value);
         });
+    }
+
+    function applyMonthDates(value) {
+        const dates = monthDates(value);
+
+        state.dateFrom = dates.from;
+        state.dateTo = dates.to;
+
+        if (dateFromInput) dateFromInput.value = dates.from;
+        if (dateToInput) dateToInput.value = dates.to;
+        if (payrollMonthInput) payrollMonthInput.value = String(value || currentMonthValue()).slice(0, 7);
     }
 
     function loadData() {
@@ -166,8 +198,8 @@
         }
 
         const params = new URLSearchParams();
-        params.set('month', state.month || currentMonthValue());
-        params.set('range', state.range);
+        params.set('date_from', state.dateFrom || monthDates().from);
+        params.set('date_to', state.dateTo || monthDates().to);
         params.set('sort', state.sort);
         params.set('accrual_filter', state.accrualFilter);
 
@@ -190,17 +222,20 @@
                 }
 
                 state.data = result.data;
-                state.month = result.data.month;
                 state.employees = result.data.employees || [];
 
-                if (monthInput) monthInput.value = state.month;
+                state.dateFrom = result.data.range_start;
+                state.dateTo = result.data.range_end;
+
+                if (dateFromInput) dateFromInput.value = state.dateFrom;
+                if (dateToInput) dateToInput.value = state.dateTo;
                 if (payoutDate && !payoutDate.value) payoutDate.value = result.data.today;
-                if (monthDate && !monthDate.value) monthDate.value = result.data.today;
 
                 renderStats();
                 renderAccruals();
+                renderPayoutCandidates();
                 renderPayouts();
-                renderSummary();
+                renderPayroll();
                 fillEmployeeSelects();
             })
             .catch(() => {
@@ -236,9 +271,14 @@
     function renderAccruals() {
         const orders = (state.data && state.data.pending) || [];
         const accruals = (state.data && state.data.accruals) || [];
-        const ordersHtml = orders.map(renderOrderCard).join('');
+        const ordersHtml = state.accrualFilter === 'accrued' ? '' : orders.map(renderOrderCard).join('');
 
         const showAccrualRows = state.accrualFilter !== 'pending';
+
+        if (!ordersHtml && !showAccrualRows) {
+            accrualsList.innerHTML = '<div class="money-empty">Нет заказов, ожидающих начисления</div>';
+            return;
+        }
 
         const rowsHtml = showAccrualRows && accruals.length
             ? `
@@ -402,6 +442,71 @@
         `;
     }
 
+    function renderPayoutCandidates() {
+        const summary = (state.data && state.data.summary) || [];
+        const list = summary.filter(row => (row.balance || 0) > 0);
+
+        if (!list.length) {
+            payoutCandidates.innerHTML = '<div class="money-empty">Нет сотрудников с положительным балансом</div>';
+            return;
+        }
+
+        payoutCandidates.innerHTML = `
+            <div class="money-group">
+                <div class="money-group__head">
+                    <div class="money-group__title">
+                        <span class="money-group__name">Сотрудники с балансом</span>
+                    </div>
+                    <span class="money-group__badge">${list.length}</span>
+                </div>
+                <div class="money-table-wrap">
+                    <table class="money-table">
+                        <thead>
+                            <tr>
+                                <th>Сотрудник</th>
+                                <th class="money-table__num">Начислено</th>
+                                <th class="money-table__num">Выплачено</th>
+                                <th class="money-table__num">К выплате</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${list.map(row => `
+                                <tr>
+                                    <td data-label="Сотрудник">
+                                        <div class="money-order-employee">
+                                            <span class="money-order-employee__name">${escapeHtml(row.employee_name)}</span>
+                                            <span class="money-order-employee__meta">${escapeHtml(row.role_display || '')}</span>
+                                        </div>
+                                    </td>
+                                    <td data-label="Начислено" class="money-table__num">${formatMoney(row.accrued)}</td>
+                                    <td data-label="Выплачено" class="money-table__num">${row.paid ? formatMoney(row.paid) : '—'}</td>
+                                    <td data-label="К выплате" class="money-table__num money-amount">${formatMoney(row.balance)}</td>
+                                    <td data-label="Действие" class="money-table__actions">
+                                        <button class="btn btn-outline btn-sm" type="button" data-candidate-detail="${row.employee_id}">Подробнее</button>
+                                        <button class="btn btn-primary btn-sm" type="button" data-candidate-pay="${row.employee_id}">Выплатить</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        payoutCandidates.querySelectorAll('[data-candidate-detail]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                openEmployeeDetail(parseInt(this.dataset.candidateDetail, 10));
+            });
+        });
+
+        payoutCandidates.querySelectorAll('[data-candidate-pay]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                openPayoutModal(parseInt(this.dataset.candidatePay, 10));
+            });
+        });
+    }
+
     function renderPayouts() {
         const rows = (state.data && state.data.payouts) || [];
 
@@ -412,12 +517,6 @@
 
         payoutsList.innerHTML = `
             <div class="money-group">
-                <div class="money-group__head">
-                    <div class="money-group__title">
-                        <span class="money-group__name">Выплаты за период</span>
-                    </div>
-                    <span class="money-group__badge">${rows.length}</span>
-                </div>
                 <div class="money-table-wrap">
                     <table class="money-table">
                         <thead>
@@ -438,7 +537,11 @@
             </div>
         `;
 
-        attachPayoutEvents();
+        payoutsList.querySelectorAll('[data-payout-revert]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                revertPayout(parseInt(this.dataset.payoutRevert, 10));
+            });
+        });
     }
 
     function payoutRow(row) {
@@ -465,26 +568,28 @@
         `;
     }
 
-    function renderSummary() {
-        const rows = (state.data && state.data.summary) || [];
+    function moneyCell(value) {
+        return value ? formatMoney(value) : '—';
+    }
+
+    function renderPayroll() {
+        const payroll = (state.data && state.data.payroll) || { columns: [], rows: [], totals: {} };
+        const columns = payroll.columns || [];
+        const rows = payroll.rows || [];
 
         if (!rows.length) {
-            summaryList.innerHTML = '<div class="money-empty">За этот период данных нет</div>';
+            payrollList.innerHTML = '<div class="money-empty">За этот период данных нет</div>';
             return;
         }
 
-        summaryList.innerHTML = `
+        payrollList.innerHTML = `
             <div class="money-group">
                 <div class="money-table-wrap">
                     <table class="money-table">
                         <thead>
                             <tr>
                                 <th>Сотрудник</th>
-                                <th class="money-table__num">Оклад</th>
-                                <th class="money-table__num">Часы и %</th>
-                                <th class="money-table__num">Заказы</th>
-                                <th class="money-table__num">Прочее</th>
-                                <th class="money-table__num">Вычеты</th>
+                                ${columns.map(column => `<th class="money-table__num">${escapeHtml(column.label)}</th>`).join('')}
                                 <th class="money-table__num">Начислено</th>
                                 <th class="money-table__num">Выплачено</th>
                                 <th class="money-table__num">Баланс</th>
@@ -492,42 +597,44 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${rows.map(summaryRow).join('')}
+                            ${rows.map(row => `
+                                <tr>
+                                    <td data-label="Сотрудник">
+                                        <div class="money-order-employee">
+                                            <span class="money-order-employee__name">${escapeHtml(row.employee_name)}</span>
+                                            <span class="money-order-employee__meta">${escapeHtml(row.role_display || '')}</span>
+                                        </div>
+                                    </td>
+                                    ${columns.map(column => `<td data-label="${escapeHtml(column.label)}" class="money-table__num">${moneyCell(row.cells[column.key])}</td>`).join('')}
+                                    <td data-label="Начислено" class="money-table__num money-amount">${formatMoney(row.accrued)}</td>
+                                    <td data-label="Выплачено" class="money-table__num">${moneyCell(row.paid)}</td>
+                                    <td data-label="Баланс" class="money-table__num">${formatMoney(row.balance)}</td>
+                                    <td data-label="Действие" class="money-table__actions">
+                                        <button class="btn btn-outline btn-sm" type="button" data-candidate-detail="${row.employee_id}">Подробнее</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
                         </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>Итого</td>
+                                ${columns.map(column => `<td class="money-table__num">${moneyCell((payroll.totals || {})[column.key])}</td>`).join('')}
+                                <td class="money-table__num money-amount">${formatMoney(payroll.total_accrued)}</td>
+                                <td class="money-table__num">${moneyCell(payroll.total_paid)}</td>
+                                <td class="money-table__num">${formatMoney(payroll.total_balance)}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
         `;
 
-        attachSummaryEvents();
-    }
-
-    function summaryRow(row) {
-        const balanceClass = row.balance < 0 ? 'money-amount money-amount--negative' : 'money-amount';
-
-        return `
-            <tr>
-                <td data-label="Сотрудник">
-                    <div class="money-order-employee">
-                        <span class="money-order-employee__name">${escapeHtml(row.employee_name)}</span>
-                        <span class="money-order-employee__meta">${escapeHtml(row.role_display || '')}</span>
-                    </div>
-                </td>
-                <td data-label="Оклад" class="money-table__num">${row.salary ? formatMoney(row.salary) : '—'}</td>
-                <td data-label="Часы и %" class="money-table__num">${row.hours ? formatMoney(row.hours) : '—'}</td>
-                <td data-label="Заказы" class="money-table__num">${row.order ? formatMoney(row.order) : '—'}</td>
-                <td data-label="Прочее" class="money-table__num">${row.extra ? formatMoney(row.extra) : '—'}</td>
-                <td data-label="Вычеты" class="money-table__num">${row.deduction ? formatMoney(row.deduction) : '—'}</td>
-                <td data-label="Начислено" class="money-table__num">${formatMoney(row.accrued)}</td>
-                <td data-label="Выплачено" class="money-table__num">${row.paid ? formatMoney(row.paid) : '—'}</td>
-                <td data-label="Баланс" class="money-table__num ${balanceClass}">${formatMoney(row.balance)}</td>
-                <td data-label="Действие" class="money-table__actions">
-                    <button class="btn btn-outline btn-sm" type="button" data-summary-payout="${row.employee_id}" ${row.balance > 0 ? '' : 'disabled'}>
-                        Выплатить
-                    </button>
-                </td>
-            </tr>
-        `;
+        payrollList.querySelectorAll('[data-candidate-detail]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                openEmployeeDetail(parseInt(this.dataset.candidateDetail, 10));
+            });
+        });
     }
 
     function fillEmployeeSelects() {
@@ -567,22 +674,6 @@
         accrualsList.querySelectorAll('[data-order-all]').forEach(btn => {
             btn.addEventListener('click', function() {
                 openOrderAccrualModal(parseInt(this.dataset.orderAll, 10), null);
-            });
-        });
-    }
-
-    function attachPayoutEvents() {
-        payoutsList.querySelectorAll('[data-payout-revert]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                revertPayout(parseInt(this.dataset.payoutRevert, 10));
-            });
-        });
-    }
-
-    function attachSummaryEvents() {
-        summaryList.querySelectorAll('[data-summary-payout]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                openPayoutModal(parseInt(this.dataset.summaryPayout, 10));
             });
         });
     }
@@ -717,6 +808,8 @@
         formData.append('method', payoutMethod.value);
         formData.append('period_date', payoutDate.value);
         formData.append('comment', payoutComment.value);
+        formData.append('period_start', state.dateFrom || '');
+        formData.append('period_end', state.dateTo || '');
 
         request('/money/payout/', { method: 'POST', body: formData })
             .then(result => {
@@ -730,6 +823,40 @@
                 loadData();
             })
             .catch(() => showToast('Ошибка выплаты'));
+    }
+
+    function payAll() {
+        window.UI.confirm({
+            title: 'Выплатить всем',
+            text: 'Выплаты наличными или переводом будут проведены всем сотрудникам с положительным балансом. Продолжить?',
+            okText: 'Выплатить',
+            cancelText: 'Отмена',
+        }).then(confirmed => {
+            if (!confirmed) return;
+
+            const formData = new FormData();
+            formData.append('date_from', state.dateFrom || '');
+            formData.append('date_to', state.dateTo || '');
+            formData.append('method', 'cash');
+            formData.append('period_date', state.data ? state.data.today : '');
+
+            request('/money/payout/all/', { method: 'POST', body: formData })
+                .then(result => {
+                    if (!result.ok) {
+                        showToast((result.data && result.data.error) || 'Не удалось провести выплаты');
+                        return;
+                    }
+
+                    if (!result.data.count) {
+                        showToast('Нет сотрудников с положительным балансом');
+                        return;
+                    }
+
+                    showToast('Выплачено ' + formatMoney(result.data.total) + ' (' + result.data.count + ')');
+                    loadData();
+                })
+                .catch(() => showToast('Ошибка выплаты'));
+        });
     }
 
     function revertPayout(payoutId) {
@@ -758,6 +885,71 @@
                 })
                 .catch(() => showToast('Ошибка отмены'));
         });
+    }
+
+    function openEmployeeDetail(employeeId) {
+        employeeModalTitle.textContent = 'Начисления сотрудника';
+        employeeSummary.innerHTML = '<div class="money-loading">Загрузка...</div>';
+        employeeOperations.innerHTML = '';
+        employeeModal.classList.add('active');
+
+        const params = new URLSearchParams();
+        params.set('employee_id', String(employeeId));
+        params.set('date_from', state.dateFrom || '');
+        params.set('date_to', state.dateTo || '');
+
+        request('/money/employee/?' + params.toString())
+            .then(result => {
+                if (!result.ok) {
+                    employeeSummary.innerHTML = '<div class="money-empty">Не удалось загрузить данные</div>';
+                    return;
+                }
+
+                const data = result.data;
+                employeeModalTitle.textContent = data.employee.name;
+
+                employeeSummary.innerHTML = `
+                    <div class="money-employee-summary__period">${escapeHtml(data.range_label)}</div>
+                    <div class="money-stats money-stats--compact">
+                        <div class="money-stat">
+                            <span class="money-stat__label">Начислено</span>
+                            <span class="money-stat__value money-stat__value--accent">${formatMoney(data.accrued)}</span>
+                        </div>
+                        <div class="money-stat">
+                            <span class="money-stat__label">Выплачено</span>
+                            <span class="money-stat__value money-stat__value--paid">${formatMoney(data.paid)}</span>
+                        </div>
+                        <div class="money-stat">
+                            <span class="money-stat__label">Баланс</span>
+                            <span class="money-stat__value">${formatMoney(data.balance)}</span>
+                        </div>
+                    </div>
+                `;
+
+                const operations = data.operations || [];
+
+                if (!operations.length) {
+                    employeeOperations.innerHTML = '<div class="money-empty">Операций за период нет</div>';
+                    return;
+                }
+
+                employeeOperations.innerHTML = operations.map(item => `
+                    <div class="money-operation ${item.is_active ? '' : 'money-operation--cancelled'}">
+                        <div class="money-operation__main">
+                            <span class="money-operation__title">${escapeHtml(item.title)}</span>
+                            <span class="money-operation__meta">${escapeHtml(item.date_display)} · ${escapeHtml(item.subtitle)}</span>
+                        </div>
+                        <span class="money-operation__amount ${item.amount < 0 ? 'money-operation__amount--out' : ''}">${formatMoney(item.amount)}</span>
+                    </div>
+                `).join('');
+            })
+            .catch(() => {
+                employeeSummary.innerHTML = '<div class="money-empty">Ошибка загрузки</div>';
+            });
+    }
+
+    function closeEmployeeDetail() {
+        employeeModal.classList.remove('active');
     }
 
     function buildOrderModal() {
@@ -921,157 +1113,64 @@
             });
     }
 
-    function openMonthModal() {
-        monthList.innerHTML = '<div class="money-loading">Загрузка...</div>';
-        monthTotal.innerHTML = '';
-        monthDate.value = state.data ? state.data.today : '';
-        monthModal.classList.add('active');
-
-        const month = state.month || currentMonthValue();
-
-        request('/money/month/preview/?month=' + encodeURIComponent(month))
-            .then(result => {
-                if (!result.ok) {
-                    monthList.innerHTML = '<div class="money-empty">Не удалось загрузить данные</div>';
-                    return;
-                }
-
-                const rows = result.data.rows || [];
-
-                if (!rows.length) {
-                    monthList.innerHTML = '<div class="money-empty">Нет сотрудников с положительным балансом</div>';
-                    monthTotal.innerHTML = 'Итого: <b>' + formatMoney(0) + '</b>';
-                    return;
-                }
-
-                monthList.innerHTML = rows.map(row => `
-                    <div class="money-month-row">
-                        <div class="money-month-row__name">
-                            <span class="money-month-row__title">${escapeHtml(row.employee_name)}</span>
-                            <span class="money-month-row__meta">${escapeHtml(row.role_display || '')} · баланс ${formatMoney(row.balance)}</span>
-                        </div>
-                        <input type="number" class="form-input money-input-amount" min="0" step="0.01" value="${formatAmountInput(row.balance)}" data-month-employee="${row.employee_id}">
-                        <span class="money-month-row__meta">${escapeHtml(result.data.period_label)}</span>
-                    </div>
-                `).join('');
-
-                if (monthDate && !monthDate.value) monthDate.value = result.data.today;
-
-                monthList.querySelectorAll('[data-month-employee]').forEach(input => {
-                    input.addEventListener('input', recalcMonthTotal);
-                });
-
-                recalcMonthTotal();
-            })
-            .catch(() => {
-                monthList.innerHTML = '<div class="money-empty">Ошибка загрузки</div>';
-            });
-    }
-
-    function recalcMonthTotal() {
-        let total = 0;
-
-        monthList.querySelectorAll('[data-month-employee]').forEach(input => {
-            total += parseFloat(input.value) || 0;
-        });
-
-        monthTotal.innerHTML = 'Итого: <b>' + formatMoney(total) + '</b>';
-    }
-
-    function closeMonthModal() {
-        monthModal.classList.remove('active');
-    }
-
-    function submitMonthPay() {
-        const inputs = monthList.querySelectorAll('[data-month-employee]');
-
-        if (!inputs.length) {
-            showToast('Нет сотрудников для выплаты');
-            return;
-        }
-
-        window.UI.confirm({
-            title: 'Выплатить всем',
-            text: 'Будут проведены выплаты наличными или переводом всем сотрудникам с указанными суммами. Баланс обнулится. Продолжить?',
-            okText: 'Выплатить',
-            cancelText: 'Отмена',
-        }).then(confirmed => {
-            if (!confirmed) return;
-
-            const formData = new FormData();
-            formData.append('month', state.month || currentMonthValue());
-            formData.append('method', monthMethod.value);
-            formData.append('period_date', monthDate.value);
-
-            inputs.forEach(input => {
-                formData.append('employee_id', input.dataset.monthEmployee);
-                formData.append('amount', input.value);
-            });
-
-            const btn = document.getElementById('moneyMonthPayBtn');
-            btn.disabled = true;
-
-            request('/money/month/pay/', { method: 'POST', body: formData })
-                .then(result => {
-                    btn.disabled = false;
-
-                    if (!result.ok) {
-                        showToast((result.data && result.data.error) || 'Не удалось провести выплаты');
-                        return;
-                    }
-
-                    showToast('Выплачено ' + formatMoney(result.data.total) + ' (' + result.data.count + ')');
-                    closeMonthModal();
-                    loadData();
-                })
-                .catch(() => {
-                    btn.disabled = false;
-                    showToast('Ошибка выплаты');
-                });
-        });
-    }
-
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             switchTab(this.dataset.tab);
         });
     });
 
-    if (monthInput) {
-        monthInput.value = currentMonthValue();
-        state.month = currentMonthValue();
+    applyMonthDates(currentMonthValue());
 
-        monthInput.addEventListener('change', function() {
+    if (dateFromInput) {
+        dateFromInput.addEventListener('change', function() {
             if (!this.value) return;
-            state.month = this.value;
+            state.dateFrom = this.value;
+            loadData();
+        });
+    }
+
+    if (dateToInput) {
+        dateToInput.addEventListener('change', function() {
+            if (!this.value) return;
+            state.dateTo = this.value;
+            loadData();
+        });
+    }
+
+    if (payrollMonthInput) {
+        payrollMonthInput.value = currentMonthValue();
+
+        payrollMonthInput.addEventListener('change', function() {
+            if (!this.value) return;
+            applyMonthDates(this.value);
             loadData();
         });
     }
 
     const prevBtn = document.getElementById('moneyPrevMonthBtn');
     const nextBtn = document.getElementById('moneyNextMonthBtn');
+    const currentMonthBtn = document.getElementById('moneyCurrentMonthBtn');
 
     if (prevBtn) {
         prevBtn.addEventListener('click', function() {
-            state.month = shiftMonth(state.month || currentMonthValue(), -1);
+            const shifted = shiftMonth(state.dateFrom ? state.dateFrom.slice(0, 7) : '', -1);
+            applyMonthDates(shifted);
             loadData();
         });
     }
 
     if (nextBtn) {
         nextBtn.addEventListener('click', function() {
-            state.month = shiftMonth(state.month || currentMonthValue(), 1);
+            const shifted = shiftMonth(state.dateFrom ? state.dateFrom.slice(0, 7) : '', 1);
+            applyMonthDates(shifted);
             loadData();
         });
     }
 
-    if (rangeBox) {
-        rangeBox.querySelectorAll('[data-range]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                state.range = this.dataset.range;
-                setActiveButton(rangeBox, '[data-range]', 'range', state.range);
-                loadData();
-            });
+    if (currentMonthBtn) {
+        currentMonthBtn.addEventListener('click', function() {
+            applyMonthDates(currentMonthValue());
+            loadData();
         });
     }
 
@@ -1107,19 +1206,28 @@
 
     const addManualBtn = document.getElementById('moneyAddManualBtn');
     const addPayoutBtn = document.getElementById('moneyAddPayoutBtn');
-    const payoutMonthBtn = document.getElementById('moneyPayoutMonthBtn');
+    const payoutAllBtn = document.getElementById('moneyPayoutAllBtn');
 
     if (addManualBtn) addManualBtn.addEventListener('click', () => openAccrualModal(null));
     if (addPayoutBtn) addPayoutBtn.addEventListener('click', () => openPayoutModal(null));
-    if (payoutMonthBtn) payoutMonthBtn.addEventListener('click', openMonthModal);
+    if (payoutAllBtn) payoutAllBtn.addEventListener('click', payAll);
 
     document.getElementById('moneyAccrualCloseBtn').addEventListener('click', closeAccrualModal);
     document.getElementById('moneyAccrualCancelBtn').addEventListener('click', closeAccrualModal);
     document.getElementById('moneyPayoutCloseBtn').addEventListener('click', closePayoutModal);
     document.getElementById('moneyPayoutCancelBtn').addEventListener('click', closePayoutModal);
-    document.getElementById('moneyMonthCloseBtn').addEventListener('click', closeMonthModal);
-    document.getElementById('moneyMonthCancelBtn').addEventListener('click', closeMonthModal);
-    document.getElementById('moneyMonthPayBtn').addEventListener('click', submitMonthPay);
+
+    const employeeCloseBtn = document.getElementById('moneyEmployeeCloseBtn');
+    const employeeCloseFooterBtn = document.getElementById('moneyEmployeeCloseFooterBtn');
+
+    if (employeeCloseBtn) employeeCloseBtn.addEventListener('click', closeEmployeeDetail);
+    if (employeeCloseFooterBtn) employeeCloseFooterBtn.addEventListener('click', closeEmployeeDetail);
+
+    if (employeeModal) {
+        employeeModal.addEventListener('click', function(e) {
+            if (e.target === employeeModal) closeEmployeeDetail();
+        });
+    }
 
     accrualForm.addEventListener('submit', submitAccrual);
     payoutForm.addEventListener('submit', submitPayout);
@@ -1140,10 +1248,6 @@
         if (e.target === payoutModal) closePayoutModal();
     });
 
-    monthModal.addEventListener('click', function(e) {
-        if (e.target === monthModal) closeMonthModal();
-    });
-
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         if (document.getElementById('uiConfirmModal')) return;
@@ -1151,6 +1255,12 @@
         if (orderModalElement && orderModalElement.classList.contains('active')) {
             e.preventDefault();
             closeOrderModal();
+            return;
+        }
+
+        if (employeeModal && employeeModal.classList.contains('active')) {
+            e.preventDefault();
+            closeEmployeeDetail();
             return;
         }
 
@@ -1163,16 +1273,9 @@
         if (payoutModal.classList.contains('active')) {
             e.preventDefault();
             closePayoutModal();
-            return;
-        }
-
-        if (monthModal.classList.contains('active')) {
-            e.preventDefault();
-            closeMonthModal();
         }
     }, true);
 
-    setActiveButton(rangeBox, '[data-range]', 'range', state.range);
     setActiveButton(accrualFilterBox, '[data-filter]', 'filter', state.accrualFilter);
 
     loadExpanded();

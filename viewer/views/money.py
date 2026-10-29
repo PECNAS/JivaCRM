@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.http import JsonResponse
@@ -39,10 +39,6 @@ def money_guard(request):
         return None, JsonResponse({'error': 'Недостаточно прав'}, status=403)
 
     return employee, None
-
-
-def format_money(value):
-    return float(value)
 
 
 def serialize_employee_options():
@@ -178,15 +174,28 @@ class MoneyView(View):
         return render(request, 'money.html', {'employee': employee})
 
 
-RANGE_MONTH = 'month'
-RANGE_TWO_MONTHS = 'two_months'
-RANGE_HALF_YEAR = 'half_year'
+def resolve_period(request):
+    today = timezone.localdate()
 
-RANGE_MONTHS = {
-    RANGE_MONTH: 1,
-    RANGE_TWO_MONTHS: 2,
-    RANGE_HALF_YEAR: 6,
-}
+    date_from = parse_iso_date(request.GET.get('date_from') or request.POST.get('date_from'))
+    date_to = parse_iso_date(request.GET.get('date_to') or request.POST.get('date_to'))
+
+    if date_from is None and date_to is None:
+        start = date(today.year, today.month, 1)
+        _, end, _ = month_bounds(today.year, today.month)
+        return start, end
+
+    if date_from is None:
+        date_from = date_to.replace(day=1)
+
+    if date_to is None:
+        _, date_to, _ = month_bounds(date_from.year, date_from.month)
+
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    return date_from, date_to
+
 
 SORT_DEFAULT = 'date_desc'
 SORT_DATE_ASC = 'date_asc'
@@ -195,23 +204,6 @@ SORT_AMOUNT_ASC = 'amount_asc'
 SORT_NAME = 'name'
 
 SORTS = [SORT_DEFAULT, SORT_DATE_ASC, SORT_AMOUNT_DESC, SORT_AMOUNT_ASC, SORT_NAME]
-
-
-def resolve_range(value, year, month):
-    key = value if value in RANGE_MONTHS else RANGE_MONTH
-    months = RANGE_MONTHS[key]
-
-    start_year = year
-    start_month = month - months + 1
-
-    while start_month <= 0:
-        start_month += 12
-        start_year -= 1
-
-    start = date(start_year, start_month, 1)
-    _, end, next_start = month_bounds(year, month)
-
-    return key, start, end, next_start
 
 
 def sort_rows(rows, sort_key, date_field='date', amount_field='amount', name_field='name'):
@@ -244,8 +236,8 @@ class MoneyDataView(View):
         if error:
             return error
 
-        year, month = parse_month(request.GET.get('month'))
-        range_key, start, end, next_start = resolve_range(request.GET.get('range'), year, month)
+        start, end = resolve_period(request)
+        next_start = end + timedelta(days=1)
 
         search = request.GET.get('search', '').strip().lower()
         category = request.GET.get('category', 'all')
@@ -259,7 +251,7 @@ class MoneyDataView(View):
             serialize_pending_order(order)
             for order in (
                 Order.objects
-                .filter(status='completed', date__gte=start, date__lt=next_start)
+                .filter(status='completed', date__gte=start, date__lte=end)
                 .select_related('client', 'city', 'manager')
                 .prefetch_related('employee_items__employee', 'estimate_items', 'money_accruals')
                 .order_by('date', 'id')
@@ -268,18 +260,18 @@ class MoneyDataView(View):
         ]
 
         pending_orders = [row for row in orders if not row['is_full']]
-        accrued_orders = [row for row in orders if row['is_accrued']]
+        accrued_orders = [row for row in orders if row['is_full']]
 
         if accrual_filter == 'pending':
             orders = pending_orders
         elif accrual_filter == 'accrued':
-            orders = accrued_orders
+            orders = []
 
         orders = sort_rows(orders, sort_key, date_field='date', amount_field='amount')
 
         accruals = (
             MoneyAccrual.objects
-            .filter(period_date__gte=start, period_date__lt=next_start)
+            .filter(period_date__gte=start, period_date__lte=end)
             .select_related('employee', 'order', 'order__client', 'created_by')
             .order_by('-period_date', '-id')
         )
@@ -291,7 +283,7 @@ class MoneyDataView(View):
 
         payouts = (
             MoneyPayout.objects
-            .filter(period_date__gte=start, period_date__lt=next_start)
+            .filter(period_date__gte=start, period_date__lte=end)
             .select_related('employee', 'created_by')
             .order_by('-period_date', '-id')
         )
@@ -321,6 +313,7 @@ class MoneyDataView(View):
             ]
 
         summary = build_summary(start, next_start)
+        payroll = build_payroll(start, next_start)
 
         stats = {
             'accrued': sum(row['signed_amount'] for row in accrual_rows if row['is_active']),
@@ -333,21 +326,21 @@ class MoneyDataView(View):
                 if not item['accrual_id']
             ),
             'balance_total': sum(row['balance'] for row in summary),
+            'payroll_total': payroll['total'],
         }
 
         return JsonResponse({
             'success': True,
-            'month': f'{year:04d}-{month:02d}',
-            'range': range_key,
-            'sort': sort_key,
-            'accrual_filter': accrual_filter,
             'range_start': start.strftime('%Y-%m-%d'),
             'range_end': end.strftime('%Y-%m-%d'),
             'range_label': f'{start.strftime("%d.%m.%Y")} — {end.strftime("%d.%m.%Y")}',
+            'sort': sort_key,
+            'accrual_filter': accrual_filter,
             'accruals': accrual_rows,
             'payouts': payout_rows,
             'pending': orders,
             'summary': summary,
+            'payroll': payroll,
             'stats': stats,
             'employees': serialize_employee_options(),
             'today': timezone.localdate().strftime('%Y-%m-%d'),
@@ -431,6 +424,256 @@ def build_summary(start, end):
     result.sort(key=lambda item: (-item['balance'], item['employee_name']))
 
     return result
+
+
+PAYROLL_CATEGORIES = [
+    (MoneyAccrual.CATEGORY_ORDER, 'order'),
+    (MoneyAccrual.CATEGORY_SALARY, 'salary'),
+    (MoneyAccrual.CATEGORY_HOURS, 'hours'),
+    (MoneyAccrual.CATEGORY_DAILY, 'daily'),
+    (MoneyAccrual.CATEGORY_BONUS, 'bonus'),
+    (MoneyAccrual.CATEGORY_SOURCE, 'source'),
+    (MoneyAccrual.CATEGORY_DEDUCTION, 'deduction'),
+]
+
+PAYROLL_LABELS = {
+    'order': 'Ставка за заказ',
+    'salary': 'Оклад',
+    'hours': 'Часы и %',
+    'daily': 'Суточные',
+    'bonus': 'Премия',
+    'source': 'Откат начисления',
+    'deduction': 'Вычет',
+}
+
+PAYROLL_COLUMNS = ['order', 'salary', 'hours', 'daily', 'bonus', 'source', 'deduction']
+
+
+def build_payroll(start, end):
+    rows = {}
+
+    for employee in Employee.objects.order_by('full_name'):
+        if not employee.is_active:
+            continue
+
+        rows[employee.id] = {
+            'employee_id': employee.id,
+            'employee_name': employee.full_name,
+            'role_display': employee.get_role_display(),
+            'cells': {key: 0.0 for key in PAYROLL_COLUMNS},
+            'accrued': 0.0,
+            'paid': 0.0,
+            'balance': 0.0,
+            'operations': 0,
+        }
+
+    accruals = (
+        MoneyAccrual.objects
+        .filter(period_date__gte=start, period_date__lt=end, status=MoneyAccrual.STATUS_ACTIVE)
+        .values_list('employee_id', 'category', 'amount', 'order_id')
+    )
+
+    for employee_id, category, amount, order_id in accruals:
+        row = rows.get(employee_id)
+
+        if row is None:
+            continue
+
+        key = None
+
+        for value, name in PAYROLL_CATEGORIES:
+            if value == category:
+                key = name
+                break
+
+        if key is None:
+            continue
+
+        value = float(amount)
+        row['cells'][key] += value
+        row['operations'] += 1
+
+        if category == MoneyAccrual.CATEGORY_DEDUCTION:
+            row['accrued'] -= value
+        elif category == MoneyAccrual.CATEGORY_SOURCE:
+            row['accrued'] -= value
+        else:
+            row['accrued'] += value
+
+    payouts = (
+        MoneyPayout.objects
+        .filter(period_date__gte=start, period_date__lt=end, is_reverted=False)
+        .values_list('employee_id', 'amount')
+    )
+
+    for employee_id, amount in payouts:
+        row = rows.get(employee_id)
+
+        if row is None:
+            continue
+
+        row['paid'] += float(amount)
+
+    balances = {}
+
+    for employee in Employee.objects.filter(id__in=list(rows.keys())):
+        balances[employee.id] = float(employee_balance(employee))
+
+    result = []
+    totals = {key: 0.0 for key in PAYROLL_COLUMNS}
+    total_accrued = 0.0
+    total_paid = 0.0
+    total_balance = 0.0
+
+    for employee_id, row in rows.items():
+        row['balance'] = balances.get(employee_id, 0.0)
+
+        if not row['accrued'] and not row['paid'] and not row['balance']:
+            continue
+
+        for key in PAYROLL_COLUMNS:
+            totals[key] += row['cells'][key]
+
+        total_accrued += row['accrued']
+        total_paid += row['paid']
+        total_balance += row['balance']
+
+        result.append(row)
+
+    result.sort(key=lambda item: item['employee_name'])
+
+    return {
+        'columns': [{'key': key, 'label': PAYROLL_LABELS[key]} for key in PAYROLL_COLUMNS],
+        'rows': result,
+        'totals': totals,
+        'total_accrued': total_accrued,
+        'total_paid': total_paid,
+        'total_balance': total_balance,
+        'total': total_accrued,
+    }
+
+
+class MoneyEmployeeDetailView(View):
+    def get(self, request):
+        employee, error = money_guard(request)
+
+        if error:
+            return error
+
+        start, end = resolve_period(request)
+        next_start = end + timedelta(days=1)
+
+        target = Employee.objects.filter(id=request.GET.get('employee_id')).first()
+
+        if target is None:
+            return JsonResponse({'error': 'Сотрудник не найден'}, status=404)
+
+        accruals = (
+            MoneyAccrual.objects
+            .filter(employee=target, period_date__gte=start, period_date__lt=next_start)
+            .select_related('order', 'created_by')
+            .order_by('-period_date', '-id')
+        )
+
+        payouts = (
+            MoneyPayout.objects
+            .filter(employee=target, period_date__gte=start, period_date__lt=next_start)
+            .order_by('-period_date', '-id')
+        )
+
+        operations = []
+
+        for accrual in accruals:
+            operations.append({
+                'type': 'accrual',
+                'date': accrual.period_date.strftime('%Y-%m-%d'),
+                'date_display': accrual.period_date.strftime('%d.%m.%Y'),
+                'title': accrual.title or accrual.get_category_display(),
+                'subtitle': accrual.get_category_display(),
+                'amount': float(accrual.signed_amount()),
+                'is_active': accrual.is_active,
+                'order_id': accrual.order.id if accrual.order else None,
+            })
+
+        for payout in payouts:
+            operations.append({
+                'type': 'payout',
+                'date': payout.period_date.strftime('%Y-%m-%d'),
+                'date_display': payout.period_date.strftime('%d.%m.%Y'),
+                'title': 'Выплата · ' + payout.get_method_display(),
+                'subtitle': payout.get_kind_display(),
+                'amount': -float(payout.amount),
+                'is_active': not payout.is_reverted,
+                'order_id': None,
+            })
+
+        operations.sort(key=lambda item: (item['date'], 0 if item['type'] == 'payout' else 1), reverse=True)
+
+        accrued = ZERO
+        paid = ZERO
+
+        for item in operations:
+            if not item['is_active']:
+                continue
+
+            if item['type'] == 'accrual':
+                accrued += Decimal(str(item['amount']))
+            else:
+                paid += -Decimal(str(item['amount']))
+
+        return JsonResponse({
+            'success': True,
+            'employee': {
+                'id': target.id,
+                'name': target.full_name,
+                'role_display': target.get_role_display(),
+            },
+            'range_label': f'{start.strftime("%d.%m.%Y")} — {end.strftime("%d.%m.%Y")}',
+            'accrued': float(accrued),
+            'paid': float(paid),
+            'balance': float(employee_balance(target)),
+            'operations': operations,
+        })
+
+
+class MoneyPayoutListView(View):
+    def get(self, request):
+        employee, error = money_guard(request)
+
+        if error:
+            return error
+
+        start, end = resolve_period(request)
+        next_start = end + timedelta(days=1)
+
+        rows = []
+
+        for summary_row in build_summary(start, next_start):
+            balance = summary_row['balance']
+
+            if balance <= 0:
+                continue
+
+            rows.append({
+                'employee_id': summary_row['employee_id'],
+                'employee_name': summary_row['employee_name'],
+                'role_display': summary_row['role_display'],
+                'accrued': summary_row['accrued'],
+                'paid': summary_row['paid'],
+                'balance': balance,
+            })
+
+        rows.sort(key=lambda item: (-item['balance'], item['employee_name']))
+
+        return JsonResponse({
+            'success': True,
+            'range_start': start.strftime('%Y-%m-%d'),
+            'range_end': end.strftime('%Y-%m-%d'),
+            'range_label': f'{start.strftime("%d.%m.%Y")} — {end.strftime("%d.%m.%Y")}',
+            'rows': rows,
+            'total': sum(row['balance'] for row in rows),
+            'today': timezone.localdate().strftime('%Y-%m-%d'),
+        })
 
 
 class MoneyOrderPaymentView(View):
@@ -605,6 +848,8 @@ class MoneyPayoutView(View):
         method = request.POST.get('method', MoneyPayout.METHOD_CASH)
         period_date = parse_iso_date(request.POST.get('period_date')) or timezone.localdate()
         comment = request.POST.get('comment', '').strip()
+        period_start = parse_iso_date(request.POST.get('period_start'))
+        period_end = parse_iso_date(request.POST.get('period_end'))
 
         if method not in [MoneyPayout.METHOD_CASH, MoneyPayout.METHOD_TRANSFER]:
             method = MoneyPayout.METHOD_CASH
@@ -623,6 +868,8 @@ class MoneyPayoutView(View):
             method=method,
             kind=MoneyPayout.KIND_MANUAL,
             period_date=period_date,
+            period_start=period_start,
+            period_end=period_end,
             comment=comment,
             created_by=employee,
         )
@@ -652,58 +899,14 @@ class MoneyPayoutView(View):
         return JsonResponse({'success': True})
 
 
-class MoneyMonthPreviewView(View):
-    def get(self, request):
-        employee, error = money_guard(request)
-
-        if error:
-            return error
-
-        year, month = parse_month(request.GET.get('month'))
-        start, end, next_start = month_bounds(year, month)
-
-        rows = []
-        total = ZERO
-
-        for summary_row in build_summary(start, end):
-            balance = Decimal(str(summary_row['balance']))
-
-            if balance <= 0:
-                continue
-
-            rows.append({
-                'employee_id': summary_row['employee_id'],
-                'employee_name': summary_row['employee_name'],
-                'role_display': summary_row['role_display'],
-                'accrued': summary_row['accrued'],
-                'paid': summary_row['paid'],
-                'balance': summary_row['balance'],
-                'amount': summary_row['balance'],
-            })
-
-            total += balance
-
-        return JsonResponse({
-            'success': True,
-            'month': f'{year:04d}-{month:02d}',
-            'period_start': start.strftime('%Y-%m-%d'),
-            'period_end': end.strftime('%Y-%m-%d'),
-            'period_label': f'{start.strftime("%d.%m.%Y")} — {end.strftime("%d.%m.%Y")}',
-            'rows': rows,
-            'total': float(total),
-            'today': timezone.localdate().strftime('%Y-%m-%d'),
-        })
-
-
-class MoneyMonthPayView(View):
+class MoneyPayoutAllView(View):
     def post(self, request):
         employee, error = money_guard(request)
 
         if error:
             return error
 
-        year, month = parse_month(request.POST.get('month'))
-        start, end, next_start = month_bounds(year, month)
+        start, end = resolve_period(request)
 
         method = request.POST.get('method', MoneyPayout.METHOD_CASH)
 
@@ -712,16 +915,21 @@ class MoneyMonthPayView(View):
 
         period_date = parse_iso_date(request.POST.get('period_date')) or timezone.localdate()
 
-        employee_ids = request.POST.getlist('employee_id')
-        amounts = request.POST.getlist('amount')
-
         rows = []
 
-        for index, employee_id in enumerate(employee_ids):
+        for summary_row in build_summary(start, end + timedelta(days=1)):
+            balance = summary_row['balance']
+
+            if balance <= 0:
+                continue
+
             rows.append({
-                'employee_id': employee_id,
-                'amount': amounts[index] if index < len(amounts) else '',
+                'employee_id': summary_row['employee_id'],
+                'amount': balance,
             })
+
+        if not rows:
+            return JsonResponse({'success': True, 'count': 0, 'total': 0})
 
         payouts = create_month_payouts(
             rows,
@@ -729,6 +937,7 @@ class MoneyMonthPayView(View):
             period_start=start,
             period_end=end,
             method=method,
+            period_date=period_date,
         )
 
         total = sum([Decimal(payout.amount) for payout in payouts], ZERO)

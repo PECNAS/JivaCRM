@@ -14,6 +14,21 @@ a:visited {
   color: #f0a868;
 }
 
+.navbar a,
+.navbar a:visited {
+  color: #f5efe7;
+}
+
+.navbar .navbar__brand,
+.navbar .navbar__brand:visited {
+  color: #f0a868;
+}
+
+.navbar .user-badge,
+.navbar .user-badge:visited {
+  color: #d6cdc0;
+}
+
 @media (pointer: coarse) {
   a,
   a:visited,
@@ -23,27 +38,26 @@ a:visited {
     -webkit-tap-highlight-color: rgba(240, 168, 104, 0.2);
   }
 
-  a.view-link,
-  a.menu__link,
-  a.navbar__brand,
-  a.user-badge {
-    color: inherit;
-  }
-
-  a.menu__link {
+  .navbar a,
+  .navbar a:visited,
+  .navbar a:hover,
+  .navbar a:active {
     color: #f5efe7;
   }
 
-  a.menu__link.active {
+  .navbar .navbar__brand,
+  .navbar .navbar__brand:visited {
     color: #f0a868;
   }
 
-  a.navbar__brand {
-    color: #f0a868;
-  }
-
-  a.user-badge {
+  .navbar .user-badge,
+  .navbar .user-badge:visited {
     color: #d6cdc0;
+  }
+
+  .navbar .menu__link.active,
+  .navbar .menu__link:hover {
+    color: #f0a868;
   }
 
   input,
