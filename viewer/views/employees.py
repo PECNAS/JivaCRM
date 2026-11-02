@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
-from ..models import Employee, Role, Service, ArtistCard, OrderEmployee
+from ..models import Employee, Role, Service, ArtistCard, OrderEmployee, resolve_availability
 
 
 EMPLOYEES_PAGE_SIZE = 50
@@ -18,6 +18,16 @@ def parse_int(value):
         return None
 
     return result if result > 0 else None
+
+
+def parse_request_date(value):
+    if not value:
+        return None
+
+    try:
+        return datetime.strptime(str(value).strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
 
 
 def serialize_artist_card(card):
@@ -346,7 +356,7 @@ class EmployeeListView(View):
 
         try:
             employee = request.user.employee_profile
-            if not employee.can_manage_employees():
+            if not employee.can_manage_employees() and not employee.can_manage_orders():
                 return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
@@ -371,11 +381,13 @@ class EmployeeListView(View):
         total = employees.count()
         limit = parse_int(request.GET.get('limit'))
 
+        employee_list = list(employees)
+
         if limit:
-            employees = employees[:limit]
+            employee_list = employee_list[:limit]
 
         result = []
-        for emp in employees:
+        for emp in employee_list:
             result.append({
                 'id': emp.id,
                 'full_name': emp.full_name,
@@ -390,6 +402,40 @@ class EmployeeListView(View):
             'employees': result,
             'total': total,
             'has_more': total > len(result),
+        })
+
+
+class AvailabilityByDateView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        target_date = parse_request_date(request.GET.get('date'))
+
+        if target_date is None:
+            return JsonResponse({'success': True, 'date': '', 'items': []})
+
+        employee_ids = []
+
+        for value in request.GET.getlist('employee_id'):
+            for part in str(value).split(','):
+                if part.strip().isdigit():
+                    employee_ids.append(int(part))
+
+        employees = Employee.objects.filter(id__in=employee_ids).prefetch_related('availability_rules')
+
+        items = []
+
+        for emp in employees:
+            row = resolve_availability(emp, target_date)
+            row['employee_id'] = emp.id
+            row['employee_name'] = emp.full_name
+            items.append(row)
+
+        return JsonResponse({
+            'success': True,
+            'date': target_date.strftime('%Y-%m-%d'),
+            'items': items,
         })
 
 

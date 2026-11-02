@@ -18,6 +18,7 @@ from .views import (
     MoneyAccrualView, MoneyPayoutView, MoneyEmployeeDetailView, MoneyPayoutListView,
     MoneyPayoutAllView,
     FillDataView,
+    AvailabilityView, AvailabilityDetailView, AvailabilityScheduleView, AvailabilityByDateView,
 )
 
 urlpatterns = [
@@ -34,6 +35,9 @@ urlpatterns = [
     path('profile/update/', ProfileUpdateView.as_view(), name='profile_update'),
     path('profile/schedule/', ProfileScheduleView.as_view(), name='profile_schedule'),
     path('profile/tickets/', ProfileTicketsView.as_view(), name='profile_tickets'),
+    path('profile/availability/', AvailabilityView.as_view(), name='profile_availability'),
+    path('profile/availability/detail/', AvailabilityDetailView.as_view(), name='profile_availability_detail'),
+    path('profile/availability/days/', AvailabilityScheduleView.as_view(), name='profile_availability_days'),
     path('profile/payments/', ProfilePaymentsView.as_view(), name='profile_payments'),
 
     path('agencies/', AgencyCreateView.as_view(), name='agency_create'),
@@ -49,6 +53,7 @@ urlpatterns = [
 
     path('employees/', EmployeesView.as_view(), name='employees'),
     path('employees/list/', EmployeeListView.as_view(), name='employee_list'),
+    path('employees/availability/', AvailabilityByDateView.as_view(), name='employee_availability'),
     path('employees/<int:employee_id>/', EmployeeDetailView.as_view(), name='employee_detail'),
     path('employees/<int:employee_id>/update/', EmployeeUpdateView.as_view(), name='employee_update'),
     path('employees/<int:employee_id>/delete/', EmployeeDeleteView.as_view(), name='employee_delete'),

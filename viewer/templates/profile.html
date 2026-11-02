@@ -17,8 +17,9 @@
 
 <section class="profile-tabs" role="tablist">
     <button class="profile-tab-btn active" data-tab="info" role="tab">Мои данные</button>
-    <button class="profile-tab-btn" data-tab="payments" role="tab">Платежи</button>
-    <button class="profile-tab-btn" data-tab="tickets" role="tab">Транспортные билеты</button>
+    <button class="profile-tab-btn" data-tab="payments" role="tab">Деньги</button>
+    <button class="profile-tab-btn" data-tab="availability" role="tab">Доступность</button>
+    <button class="profile-tab-btn" data-tab="tickets" role="tab">Билеты</button>
 </section>
 
 <section class="profile-content">
@@ -28,10 +29,77 @@
     <div class="profile-tab-content" id="tab-payments">
         <div class="profile-loading">Загрузка...</div>
     </div>
+    <div class="profile-tab-content" id="tab-availability">
+        <div class="profile-loading">Загрузка...</div>
+    </div>
     <div class="profile-tab-content" id="tab-tickets">
         <div class="profile-loading">Загрузка...</div>
     </div>
 </section>
+
+<div class="modal-overlay" id="availabilityModal">
+    <div class="modal modal--availability">
+        <div class="modal__header">
+            <h2 class="modal__title" id="availabilityModalTitle">Доступность</h2>
+            <button class="modal__close" type="button" id="availabilityCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <div class="form-grid form-grid--2">
+                <div class="form-group" id="availabilityWeekdayGroup">
+                    <label class="form-label" for="availabilityWeekday">День недели *</label>
+                    <select class="form-select" id="availabilityWeekday">
+                        <option value="0">Понедельник</option>
+                        <option value="1">Вторник</option>
+                        <option value="2">Среда</option>
+                        <option value="3">Четверг</option>
+                        <option value="4">Пятница</option>
+                        <option value="5">Суббота</option>
+                        <option value="6">Воскресенье</option>
+                    </select>
+                </div>
+                <div class="form-group" id="availabilityStartGroup">
+                    <label class="form-label" for="availabilityStart">С даты *</label>
+                    <input type="date" class="form-input" id="availabilityStart">
+                </div>
+                <div class="form-group" id="availabilityEndGroup">
+                    <label class="form-label" for="availabilityEnd">По дату</label>
+                    <input type="date" class="form-input" id="availabilityEnd">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="availabilityAction">Действие *</label>
+                    <select class="form-select" id="availabilityAction">
+                        <option value="day">Свободен весь день</option>
+                        <option value="off">Занят весь день</option>
+                        <option value="partial">Занят с ... до ...</option>
+                    </select>
+                    <span class="form-hint">Всё остальное время считается свободным</span>
+                </div>
+            </div>
+
+            <div class="availability-intervals" id="availabilityIntervals" style="display:none;">
+                <div class="availability-intervals__list" id="availabilityIntervalsList"></div>
+                <button type="button" class="btn btn-outline btn-sm" id="availabilityAddIntervalBtn">Добавить промежуток</button>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="availabilityComment">Комментарий</label>
+                <input type="text" class="form-input" id="availabilityComment" placeholder="Например: репетиция">
+            </div>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__left"></div>
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="availabilityCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-primary" id="availabilitySaveBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal-overlay" id="profileEditModal">
     <div class="modal modal--profile-edit">

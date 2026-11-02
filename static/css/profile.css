@@ -14,6 +14,226 @@
     font-size: 0.95rem;
 }
 
+.modal--availability {
+    max-width: 620px;
+}
+
+.profile-hint {
+    font-size: 0.82rem;
+    color: #7a7267;
+    margin: -0.5rem 0 0.85rem;
+    line-height: 1.45;
+}
+
+.availability-week-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem;
+}
+
+.availability-week {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    text-align: left;
+    background: #14120f;
+    border: 1px solid #2b2620;
+    border-left: 3px solid #2e7d32;
+    border-radius: 12px;
+    padding: 0.6rem 0.75rem;
+    color: #ddd4c7;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.availability-week:hover {
+    border-color: rgba(240, 168, 104, 0.55);
+}
+
+.availability-week--partial {
+    border-left-color: #c8963c;
+}
+
+.availability-week--off {
+    border-left-color: #e05252;
+}
+
+.availability-week__name {
+    font-size: 0.78rem;
+    color: #9e9487;
+}
+
+.availability-week__value {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #f5efe7;
+}
+
+.availability-exceptions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.availability-exception {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: #14120f;
+    border: 1px solid #23201b;
+    border-radius: 12px;
+    padding: 0.55rem 0.75rem;
+}
+
+.availability-exception__main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.availability-exception__dates {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #f5efe7;
+}
+
+.availability-exception__value {
+    font-size: 0.78rem;
+    color: #9e9487;
+}
+
+.availability-exception__actions {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.availability-calendar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.availability-calendar__header,
+.availability-calendar__grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.35rem;
+}
+
+.availability-calendar__weekday {
+    text-align: center;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #7a7267;
+    padding-bottom: 0.15rem;
+}
+
+.availability-day {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-height: 58px;
+    padding: 0.35rem 0.4rem;
+    border-radius: 10px;
+    background: #14120f;
+    border: 1px solid #23201b;
+    border-top: 3px solid #2e7d32;
+}
+
+.availability-day--empty {
+    background: transparent;
+    border: none;
+}
+
+.availability-day--partial {
+    border-top-color: #c8963c;
+}
+
+.availability-day--off {
+    border-top-color: #e05252;
+}
+
+.availability-day--today {
+    box-shadow: 0 0 0 1px #f0a868;
+}
+
+.availability-day__date {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f5efe7;
+}
+
+.availability-day__weekday {
+    font-size: 0.68rem;
+    color: #7a7267;
+    text-transform: uppercase;
+}
+
+.availability-day__value {
+    font-size: 0.7rem;
+    color: #9e9487;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.availability-intervals {
+    margin: 0.25rem 0 0.9rem;
+}
+
+.availability-intervals__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.availability-interval {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.availability-interval .form-input {
+    flex: 1;
+}
+
+.availability-interval__sep {
+    color: #7a7267;
+}
+
+@media (max-width: 640px) {
+    .availability-week-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .availability-calendar__header,
+    .availability-calendar__grid {
+        gap: 0.2rem;
+    }
+
+    .availability-day {
+        min-height: 48px;
+        padding: 0.2rem 0.25rem;
+    }
+
+    .availability-day__date {
+        font-size: 0.78rem;
+    }
+
+    .availability-day__value {
+        font-size: 0.58rem;
+    }
+
+    .availability-exception {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
 .profile-tabs {
     display: flex;
     gap: 0.25rem;

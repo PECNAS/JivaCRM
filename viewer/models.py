@@ -1,5 +1,6 @@
 import hashlib
 
+from datetime import datetime
 from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
@@ -680,6 +681,247 @@ class ArtistSchedule(models.Model):
 
     def __str__(self):
         return f'{self.employee.full_name} - {self.order}'
+
+
+class AvailabilityInterval(models.Model):
+    start_time = models.TimeField('С')
+    end_time = models.TimeField('До')
+
+    class Meta:
+        ordering = ['start_time', 'id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(end_time__gt=models.F('start_time')), name='availability_interval_end_after_start'),
+        ]
+
+    def __str__(self):
+        return f'{self.start_time:%H:%M}–{self.end_time:%H:%M}'
+
+    def label(self):
+        return f'{self.start_time:%H:%M}–{self.end_time:%H:%M}'
+
+
+class ArtistAvailability(models.Model):
+    ACTION_DAY = 'day'
+    ACTION_OFF = 'off'
+    ACTION_PARTIAL = 'partial'
+
+    ACTIONS = [
+        (ACTION_DAY, 'Свободен весь день'),
+        (ACTION_OFF, 'Занят весь день'),
+        (ACTION_PARTIAL, 'Занят с ... до ...'),
+    ]
+
+    KIND_WEEKLY = 'weekly'
+    KIND_EXCEPTION = 'exception'
+
+    KINDS = [
+        (KIND_WEEKLY, 'Шаблон недели'),
+        (KIND_EXCEPTION, 'Исключение на даты'),
+    ]
+
+    LAST_WEEKDAY = 6
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='availability_rules', verbose_name='Сотрудник')
+    kind = models.CharField('Тип правила', max_length=10, choices=KINDS, default=KIND_WEEKLY)
+    weekday = models.PositiveSmallIntegerField('День недели', null=True, blank=True)
+    start_date = models.DateField('С даты', null=True, blank=True)
+    end_date = models.DateField('По дату', null=True, blank=True)
+    action = models.CharField('Действие', max_length=10, choices=ACTIONS, default=ACTION_DAY)
+    intervals = models.JSONField('Промежутки', default=list, blank=True)
+    comment = models.CharField('Комментарий', max_length=200, blank=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Доступность артиста'
+        verbose_name_plural = 'Доступность артистов'
+        ordering = ['weekday', 'start_date', 'id']
+        indexes = [
+            models.Index(fields=['employee', 'kind']),
+            models.Index(fields=['employee', 'start_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.employee.full_name} - {self.get_action_display()}'
+
+    def interval_labels(self):
+        labels = []
+
+        for item in self.intervals or []:
+            if isinstance(item, dict):
+                start = item.get('start') or ''
+                end = item.get('end') or ''
+            else:
+                start, end = '', ''
+
+            if start and end:
+                labels.append(f'{start}–{end}')
+
+        return labels
+
+    def label(self):
+        if self.action == self.ACTION_DAY:
+            return 'Весь день'
+
+        if self.action == self.ACTION_OFF:
+            return 'Занят весь день'
+
+        labels = self.interval_labels()
+
+        return ', '.join(labels) if labels else 'Занят'
+
+
+WEEKDAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+
+
+def normalize_intervals(values):
+    result = []
+
+    for value in values or []:
+        if not isinstance(value, dict):
+            continue
+
+        start = str(value.get('start') or '').strip()[:5]
+        end = str(value.get('end') or '').strip()[:5]
+
+        if len(start) != 5 or len(end) != 5:
+            continue
+
+        try:
+            start_dt = datetime.strptime(start, '%H:%M').time()
+            end_dt = datetime.strptime(end, '%H:%M').time()
+        except ValueError:
+            continue
+
+        if end_dt <= start_dt:
+            continue
+
+        result.append({'start': start, 'end': end})
+
+    result.sort(key=lambda item: item['start'])
+
+    merged = []
+
+    for item in result:
+        if merged and item['start'] <= merged[-1]['end']:
+            if item['end'] > merged[-1]['end']:
+                merged[-1]['end'] = item['end']
+        else:
+            merged.append(dict(item))
+
+    return merged
+
+
+def resolve_availability(employee, target_date):
+    weekday = target_date.weekday()
+
+    weekly = employee.availability_rules.filter(
+        kind=ArtistAvailability.KIND_WEEKLY,
+        weekday=weekday,
+    ).order_by('-updated_at', '-id').first()
+
+    action = ArtistAvailability.ACTION_DAY
+    intervals = []
+
+    if weekly is not None:
+        action = weekly.action
+        intervals = normalize_intervals(weekly.intervals)
+
+    exception = employee.availability_rules.filter(
+        kind=ArtistAvailability.KIND_EXCEPTION,
+        start_date__lte=target_date,
+        end_date__gte=target_date,
+    ).order_by('-updated_at', '-id').first()
+
+    if exception is not None:
+        action = exception.action
+        intervals = normalize_intervals(exception.intervals)
+
+    data = {'date': target_date.strftime('%Y-%m-%d'), 'action': action, 'intervals': []}
+
+    if action == ArtistAvailability.ACTION_DAY:
+        data['status'] = 'free'
+        data['label'] = 'Весь день'
+        return data
+
+    if action == ArtistAvailability.ACTION_OFF:
+        data['status'] = 'off'
+        data['label'] = 'Занят весь день'
+        return data
+
+    labels = [f'{item["start"]}–{item["end"]}' for item in intervals]
+
+    data['status'] = 'partial'
+    data['intervals'] = intervals
+    data['label'] = ', '.join(labels) if labels else 'Занят'
+    data['free_ranges'] = free_ranges_for_intervals(intervals)
+
+    return data
+
+
+def time_to_minutes(value):
+    try:
+        hours, minutes = str(value).strip()[:5].split(':')
+        return int(hours) * 60 + int(minutes)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def complement_intervals(start, end):
+    start_minutes = time_to_minutes(start)
+    end_minutes = time_to_minutes(end)
+
+    if start_minutes is None or end_minutes is None:
+        return []
+
+    result = []
+
+    if start_minutes > 0:
+        result.append({'start': '00:00', 'end': f'{start_minutes // 60:02d}:{start_minutes % 60:02d}'})
+
+    if end_minutes < 1440:
+        result.append({'start': f'{end_minutes // 60:02d}:{end_minutes % 60:02d}', 'end': '24:00'})
+
+    return result
+
+
+def free_ranges_for_intervals(intervals):
+    covered = []
+
+    for item in intervals or []:
+        covered.append({
+            'start': time_to_minutes(item.get('start')),
+            'end': time_to_minutes(item.get('end')),
+        })
+
+    covered = [item for item in covered if item['start'] is not None and item['end'] is not None]
+
+    if not covered:
+        return [{'start': '00:00', 'end': '24:00'}]
+
+    covered.sort(key=lambda item: item['start'])
+
+    merged = []
+
+    for item in covered:
+        if merged and item['start'] <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], item['end']))
+        else:
+            merged.append((item['start'], item['end']))
+
+    result = []
+    cursor = 0
+
+    for start_minutes, end_minutes in merged:
+        if start_minutes > cursor:
+            result.append({'start': f'{cursor // 60:02d}:{cursor % 60:02d}', 'end': f'{start_minutes // 60:02d}:{start_minutes % 60:02d}'})
+
+        cursor = max(cursor, end_minutes)
+
+    if cursor < 1440:
+        result.append({'start': f'{cursor // 60:02d}:{cursor % 60:02d}', 'end': '24:00'})
+
+    return result
 
 
 class MoneyAccrual(models.Model):

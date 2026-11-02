@@ -27,3 +27,6 @@ from .money import (
     MoneyPayoutAllView,
 )
 from .fill_data import FillDataView
+from .availability import (
+    AvailabilityView, AvailabilityDetailView, AvailabilityScheduleView, AvailabilityByDateView,
+)

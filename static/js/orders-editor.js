@@ -4,6 +4,7 @@
     let estimateItems = [];
     let employeeItems = [];
     let allEmployees = [];
+    let employeeAvailability = {};
     let allServices = [];
     let allCities = [];
     let allCityGroups = [];
@@ -296,6 +297,7 @@
                 loadPricePeriod();
                 loadServicesList();
                 loadEmployeesList();
+                loadEmployeeAvailability();
                 formSnapshot = window.UI.snapshot(orderInfoForm);
                 itemsSnapshot = JSON.stringify(estimateItems);
             })
@@ -403,6 +405,7 @@
     if (editOrderDate) {
         editOrderDate.addEventListener('change', function() {
             loadPricePeriod();
+            loadEmployeeAvailability();
         });
     }
 
@@ -904,12 +907,24 @@
             const initials = emp.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
             const roleLabel = roleLabels[emp.role] || emp.role;
             const isAdded = employeeItems.some(item => item.employee_id === emp.id);
+            const availability = employeeAvailability[emp.id];
+            let availabilityHtml = '';
+
+            if (availability && availability.status !== 'free') {
+                const availabilityClass = availability.status === 'off'
+                    ? 'employee-availability--off'
+                    : 'employee-availability--partial';
+                const availabilityLabel = availability.status === 'off' ? 'Занят весь день' : 'Занят: ' + availability.label;
+                availabilityHtml = `<div class="employee-availability ${availabilityClass}">${escapeHtml(availabilityLabel)}</div>`;
+            }
+
             return `
                 <div class="employee-item ${isAdded ? 'added' : ''}" data-employee-id="${emp.id}">
                     <div class="employee-avatar">${initials}</div>
                     <div class="employee-info">
                         <div class="employee-name">${escapeHtml(emp.full_name)}</div>
                         <div class="employee-role">${escapeHtml(roleLabel)}</div>
+                        ${availabilityHtml}
                     </div>
                     <button class="add-employee-btn" data-employee-id="${emp.id}"
                             data-employee-name="${escapeHtml(emp.full_name)}"
@@ -932,11 +947,64 @@
         });
     }
 
+    function loadEmployeeAvailability() {
+        const dateValue = editOrderDate && editOrderDate.value ? editOrderDate.value : '';
+
+        if (!dateValue) {
+            employeeAvailability = {};
+            renderEmployeesListPanel();
+            return;
+        }
+
+        const employeeIds = allEmployees
+            .filter(emp => emp.is_active !== false && emp.role === 'artist')
+            .map(emp => emp.id);
+
+        if (!employeeIds.length) {
+            employeeAvailability = {};
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.set('date', dateValue);
+        params.set('employee_id', employeeIds.join(','));
+
+        fetch('/employees/availability/?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                const map = {};
+
+                (data.items || []).forEach(item => {
+                    map[item.employee_id] = item;
+                });
+
+                employeeAvailability = map;
+                renderEmployeesListPanel();
+            })
+            .catch(err => console.error('Ошибка загрузки доступности:', err));
+    }
+
+    function availabilityWarning(id) {
+        const availability = employeeAvailability[id];
+
+        if (!availability || availability.status === 'free') return '';
+
+        return availability.status === 'off'
+            ? 'Артист занят весь день'
+            : 'Артист занят с ' + availability.label;
+    }
+
     function addEmployeeToOrder(id, name, roleLabel, rawRole) {
         const existing = employeeItems.find(it => it.employee_id === id);
         if (existing) {
             showToast('Сотрудник уже добавлен');
             return;
+        }
+
+        const warning = availabilityWarning(id);
+
+        if (warning) {
+            showToast(name + ': ' + warning);
         }
 
         const def = getDefaultPaymentByRole(rawRole);

@@ -1,7 +1,7 @@
 (function() {
-    const TABS = ['info', 'payments', 'tickets'];
+    const TABS = ['info', 'availability', 'payments', 'tickets'];
 
-    let loadedTabs = { info: false, payments: false, tickets: false };
+    let loadedTabs = { info: false, availability: false, payments: false, tickets: false };
     let profileData = null;
     let editSnapshot = null;
     let selectedShows = [];
@@ -44,6 +44,8 @@
     function loadTab(tabName) {
         if (tabName === 'info') {
             loadInfoTab();
+        } else if (tabName === 'availability') {
+            loadAvailabilityTab();
         } else if (tabName === 'payments') {
             loadPaymentsTab();
         } else if (tabName === 'tickets') {
@@ -540,6 +542,385 @@
         `;
     }
 
+    const availabilityWeekdays = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const availabilityState = { weekly: {}, exceptions: [], calendar: [], editingId: null, kind: 'weekly', intervals: [] };
+
+    const availabilityModal = document.getElementById('availabilityModal');
+    const availabilityModalTitle = document.getElementById('availabilityModalTitle');
+    const availabilityWeekday = document.getElementById('availabilityWeekday');
+    const availabilityStart = document.getElementById('availabilityStart');
+    const availabilityEnd = document.getElementById('availabilityEnd');
+    const availabilityAction = document.getElementById('availabilityAction');
+    const availabilityComment = document.getElementById('availabilityComment');
+    const availabilityIntervals = document.getElementById('availabilityIntervals');
+    const availabilityIntervalsList = document.getElementById('availabilityIntervalsList');
+    const availabilityWeekdayGroup = document.getElementById('availabilityWeekdayGroup');
+    const availabilityStartGroup = document.getElementById('availabilityStartGroup');
+    const availabilityEndGroup = document.getElementById('availabilityEndGroup');
+
+    function availabilityStatusClass(status) {
+        if (status === 'off') return 'availability-day--off';
+        if (status === 'partial') return 'availability-day--partial';
+        return 'availability-day--free';
+    }
+
+    function loadAvailabilityTab() {
+        const container = document.getElementById('tab-availability');
+
+        if (!availabilityState.weekly || Object.keys(availabilityState.weekly).length === 0) {
+            container.innerHTML = '<div class="profile-loading">Загрузка...</div>';
+        }
+
+        fetch('/profile/availability/detail/', { cache: 'no-store' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    container.innerHTML = `<div class="profile-empty">${escapeHtml(data.error)}</div>`;
+                    return;
+                }
+
+                availabilityState.weekly = data.weekly || {};
+                availabilityState.exceptions = data.exceptions || [];
+                availabilityState.calendar = data.calendar || [];
+
+                renderAvailabilityTab(data);
+            })
+            .catch(error => {
+                container.innerHTML = '<div class="profile-empty">Ошибка загрузки доступности</div>';
+                console.error(error);
+            });
+    }
+
+    function renderAvailabilityTab(data) {
+        const container = document.getElementById('tab-availability');
+
+        const weekdayCards = availabilityWeekdays.map((label, index) => {
+            const rule = availabilityState.weekly[String(index)];
+            const action = rule ? rule.action : 'day';
+            const value = rule ? rule.label : 'Весь день';
+
+            return `
+                <button type="button" class="availability-week ${action === 'off' ? 'availability-week--off' : (action === 'partial' ? 'availability-week--partial' : '')}" data-weekday="${index}">
+                    <span class="availability-week__name">${label}</span>
+                    <span class="availability-week__value">${escapeHtml(value)}</span>
+                </button>
+            `;
+        }).join('');
+
+        const exceptionsHtml = availabilityState.exceptions.length
+            ? availabilityState.exceptions.map(rule => `
+                <div class="availability-exception">
+                    <div class="availability-exception__main">
+                        <span class="availability-exception__dates">${escapeHtml(rule.start_display)}${rule.end_display && rule.end_display !== rule.start_display ? ' — ' + escapeHtml(rule.end_display) : ''}</span>
+                        <span class="availability-exception__value">${escapeHtml(rule.label)}${rule.comment ? ' · ' + escapeHtml(rule.comment) : ''}</span>
+                    </div>
+                    <div class="availability-exception__actions">
+                        <button type="button" class="money-icon-btn" data-exception-edit="${rule.id}" aria-label="Изменить">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="money-icon-btn money-icon-btn--danger" data-exception-delete="${rule.id}" aria-label="Удалить">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('')
+            : '<div class="profile-empty">Исключений нет — действует обычная неделя</div>';
+
+        const calendarHeader = availabilityWeekdays.map(label => `
+            <div class="availability-calendar__weekday">${escapeHtml(label.slice(0, 2))}</div>
+        `).join('');
+
+        const calendarHtml = availabilityState.calendar.map(day => {
+            if (day.empty) {
+                return '<div class="availability-day availability-day--empty"></div>';
+            }
+
+            return `
+                <div class="availability-day ${availabilityStatusClass(day.status)} ${day.is_today ? 'availability-day--today' : ''}" title="${escapeHtml(day.weekday_label)} · ${escapeHtml(day.label)}">
+                    <span class="availability-day__date">${escapeHtml(day.day_label)}</span>
+                    <span class="availability-day__value">${day.status === 'free' ? 'весь день' : escapeHtml(day.label)}</span>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="profile-card">
+                <div class="profile-card__header">
+                    <h3 class="profile-card__title">Обычная неделя</h3>
+                </div>
+                <p class="profile-hint">Задайте, когда вы заняты в обычный день недели. Свободное время — всё остальное, оно действует каждый месяц автоматически.</p>
+                <div class="availability-week-grid">${weekdayCards}</div>
+            </div>
+
+            <div class="profile-card">
+                <div class="profile-card__header">
+                    <h3 class="profile-card__title">Исключения на даты</h3>
+                    <button type="button" class="btn btn-primary btn-sm" id="availabilityAddExceptionBtn">Добавить исключение</button>
+                </div>
+                <p class="profile-hint">Отпуск, гастроли, разовая занятость — дни, которые отличаются от обычной недели. Здесь указывается, когда вы заняты.</p>
+                <div class="availability-exceptions">${exceptionsHtml}</div>
+            </div>
+
+            <div class="profile-card">
+                <div class="profile-card__header">
+                    <h3 class="profile-card__title">Календарь на месяц</h3>
+                </div>
+                <div class="availability-calendar">
+                    <div class="availability-calendar__header">${calendarHeader}</div>
+                    <div class="availability-calendar__grid">${calendarHtml}</div>
+                </div>
+            </div>
+        `;
+
+        container.querySelectorAll('[data-weekday]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                openAvailabilityModal('weekly', parseInt(this.dataset.weekday, 10));
+            });
+        });
+
+        const addExceptionBtn = document.getElementById('availabilityAddExceptionBtn');
+
+        if (addExceptionBtn) {
+            addExceptionBtn.addEventListener('click', function() {
+                openAvailabilityModal('exception', null);
+            });
+        }
+
+        container.querySelectorAll('[data-exception-edit]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                openAvailabilityModal('exception', null, parseInt(this.dataset.exceptionEdit, 10));
+            });
+        });
+
+        container.querySelectorAll('[data-exception-delete]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                deleteAvailabilityRule(parseInt(this.dataset.exceptionDelete, 10));
+            });
+        });
+    }
+
+    function renderIntervals() {
+        if (!availabilityIntervalsList) return;
+
+        if (availabilityAction.value !== 'partial') {
+            availabilityIntervals.style.display = 'none';
+            return;
+        }
+
+        availabilityIntervals.style.display = 'block';
+
+        availabilityIntervalsList.innerHTML = availabilityState.intervals.map((item, index) => `
+            <div class="availability-interval">
+                <input type="time" class="form-input" data-interval-start="${index}" value="${escapeHtml(item.start || '')}">
+                <span class="availability-interval__sep">—</span>
+                <input type="time" class="form-input" data-interval-end="${index}" value="${escapeHtml(item.end || '')}">
+                <button type="button" class="money-icon-btn money-icon-btn--danger" data-interval-remove="${index}" aria-label="Удалить промежуток">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+
+        availabilityIntervalsList.querySelectorAll('[data-interval-start]').forEach(input => {
+            input.addEventListener('change', function() {
+                availabilityState.intervals[parseInt(this.dataset.intervalStart, 10)].start = this.value;
+            });
+        });
+
+        availabilityIntervalsList.querySelectorAll('[data-interval-end]').forEach(input => {
+            input.addEventListener('change', function() {
+                availabilityState.intervals[parseInt(this.dataset.intervalEnd, 10)].end = this.value;
+            });
+        });
+
+        availabilityIntervalsList.querySelectorAll('[data-interval-remove]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                availabilityState.intervals.splice(parseInt(this.dataset.intervalRemove, 10), 1);
+                renderIntervals();
+            });
+        });
+    }
+
+    function openAvailabilityModal(kind, weekday, ruleId) {
+        availabilityState.kind = kind;
+        availabilityState.editingId = ruleId || null;
+        availabilityState.intervals = [];
+
+        const isWeekly = kind === 'weekly';
+        availabilityModalTitle.textContent = isWeekly ? 'Обычный день недели' : 'Исключение на даты';
+
+        if (availabilityWeekdayGroup) availabilityWeekdayGroup.style.display = isWeekly ? '' : 'none';
+        if (availabilityStartGroup) availabilityStartGroup.style.display = isWeekly ? 'none' : '';
+        if (availabilityEndGroup) availabilityEndGroup.style.display = isWeekly ? 'none' : '';
+
+        availabilityComment.value = '';
+
+        if (isWeekly) {
+            const rule = weekday !== null ? availabilityState.weekly[String(weekday)] : null;
+
+            availabilityWeekday.value = String(weekday !== null ? weekday : 0);
+            availabilityAction.value = rule ? rule.action : 'day';
+
+            if (rule && rule.action === 'partial') {
+                availabilityState.intervals = (rule.intervals || []).map(item => ({ start: item.start, end: item.end }));
+            }
+
+            if (rule) availabilityComment.value = rule.comment || '';
+        } else {
+            const rule = ruleId ? availabilityState.exceptions.find(item => item.id === ruleId) : null;
+
+            availabilityStart.value = rule ? rule.start_date : new Date().toISOString().slice(0, 10);
+            availabilityEnd.value = rule ? rule.end_date : '';
+            availabilityAction.value = rule ? rule.action : 'off';
+
+            if (rule && rule.action === 'partial') {
+                availabilityState.intervals = (rule.intervals || []).map(item => ({ start: item.start, end: item.end }));
+            }
+
+            if (rule) availabilityComment.value = rule.comment || '';
+        }
+
+        renderIntervals();
+        availabilityModal.classList.add('active');
+    }
+
+    function closeAvailabilityModal() {
+        availabilityModal.classList.remove('active');
+        availabilityState.editingId = null;
+    }
+
+    function saveAvailabilityRule() {
+        const formData = new FormData();
+        formData.append('kind', availabilityState.kind);
+        formData.append('action', availabilityAction.value);
+        formData.append('comment', availabilityComment.value.trim());
+
+        if (availabilityState.editingId) {
+            formData.append('id', availabilityState.editingId);
+        }
+
+        if (availabilityState.kind === 'weekly') {
+            formData.append('weekday', availabilityWeekday.value);
+        } else {
+            formData.append('start_date', availabilityStart.value);
+            formData.append('end_date', availabilityEnd.value || availabilityStart.value);
+        }
+
+        if (availabilityAction.value === 'partial') {
+            const intervals = availabilityState.intervals
+                .filter(item => item.start && item.end)
+                .map(item => ({ start: item.start, end: item.end }));
+
+            formData.append('intervals', JSON.stringify(intervals));
+        } else {
+            formData.append('intervals', '[]');
+        }
+
+        fetch('/profile/availability/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': window.UI.getCSRFToken() },
+            body: formData
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error);
+                    return;
+                }
+
+                showToast('Доступность сохранена');
+                closeAvailabilityModal();
+
+                const savedRule = data.rule || {};
+
+                if (savedRule.kind === 'weekly') {
+                    availabilityState.weekly[String(savedRule.weekday)] = savedRule;
+                } else if (savedRule.id) {
+                    const index = availabilityState.exceptions.findIndex(item => item.id === savedRule.id);
+
+                    if (index >= 0) {
+                        availabilityState.exceptions[index] = savedRule;
+                    } else {
+                        availabilityState.exceptions.push(savedRule);
+                    }
+                }
+
+                loadAvailabilityTab();
+            })
+            .catch(error => {
+                showToast('Ошибка сохранения');
+                console.error(error);
+            });
+    }
+
+    function deleteAvailabilityRule(ruleId) {
+        window.UI.confirm({
+            title: 'Удалить исключение',
+            text: 'Исключение будет удалено, в эти дни снова будет действовать обычная неделя.',
+            okText: 'Удалить',
+            cancelText: 'Отмена',
+            danger: true
+        }).then(confirmed => {
+            if (!confirmed) return;
+
+            fetch('/profile/availability/?id=' + ruleId, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': window.UI.getCSRFToken() }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        showToast(data.error);
+                        return;
+                    }
+
+                    showToast('Исключение удалено');
+                    loadAvailabilityTab();
+                })
+                .catch(error => console.error(error));
+        });
+    }
+
+    if (availabilityAction) {
+        availabilityAction.addEventListener('change', function() {
+            if (this.value === 'partial' && !availabilityState.intervals.length) {
+                availabilityState.intervals = [{ start: '18:00', end: '22:00' }];
+            }
+
+            renderIntervals();
+        });
+    }
+
+    const availabilityAddIntervalBtn = document.getElementById('availabilityAddIntervalBtn');
+    if (availabilityAddIntervalBtn) {
+        availabilityAddIntervalBtn.addEventListener('click', function() {
+            availabilityState.intervals.push({ start: '', end: '' });
+            renderIntervals();
+        });
+    }
+
+    const availabilityCloseBtn = document.getElementById('availabilityCloseBtn');
+    const availabilityCancelBtn = document.getElementById('availabilityCancelBtn');
+    const availabilitySaveBtn = document.getElementById('availabilitySaveBtn');
+
+    if (availabilityCloseBtn) availabilityCloseBtn.addEventListener('click', closeAvailabilityModal);
+    if (availabilityCancelBtn) availabilityCancelBtn.addEventListener('click', closeAvailabilityModal);
+    if (availabilitySaveBtn) availabilitySaveBtn.addEventListener('click', saveAvailabilityRule);
+
+    if (availabilityModal) {
+        availabilityModal.addEventListener('click', function(e) {
+            if (e.target === availabilityModal) closeAvailabilityModal();
+        });
+    }
+
     tabButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             switchTab(this.dataset.tab);
@@ -549,6 +930,12 @@
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         if (document.getElementById('uiConfirmModal')) return;
+
+        if (availabilityModal && availabilityModal.classList.contains('active')) {
+            e.preventDefault();
+            closeAvailabilityModal();
+            return;
+        }
 
         if (editModal && editModal.classList.contains('active')) {
             e.preventDefault();
