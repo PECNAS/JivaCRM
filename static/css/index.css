@@ -103,10 +103,11 @@
 }
 
 .my-orders-toggle input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     accent-color: #f0a868;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .dashboard-search {
@@ -179,7 +180,7 @@
 
 .order-row {
     display: grid;
-    grid-template-columns: 60px 1fr 1.3fr 1.3fr 1.2fr 1fr 130px;
+    grid-template-columns: 1fr 1.3fr 1.3fr 1.2fr 1fr 130px;
     gap: 0.75rem;
     align-items: center;
     background: #13110e;
@@ -193,20 +194,28 @@
 }
 
 .order-row:hover {
-    background: #1a1714;
-    border-color: #f0a86855;
+    border-color: rgba(240, 168, 104, 0.4);
+    filter: brightness(1.25);
 }
 
-.order-row--request {
+.order-row.order-row--request {
     border-left-color: #2164c8;
+    background: rgba(33, 100, 200, 0.13);
 }
 
-.order-row--confirmed {
+.order-row.order-row--confirmed {
     border-left-color: #2e7d32;
+    background: rgba(46, 125, 50, 0.13);
 }
 
-.order-row--completed {
+.order-row.order-row--completed {
     border-left-color: #dcc8a0;
+    background: rgba(220, 200, 160, 0.11);
+}
+
+.order-row:hover {
+    border-color: rgba(240, 168, 104, 0.4);
+    filter: brightness(1.25);
 }
 
 .order-row--changed {
@@ -321,7 +330,7 @@
 
 .order-list-header {
     display: grid;
-    grid-template-columns: 60px 1fr 1.3fr 1.3fr 1.2fr 1fr 130px;
+    grid-template-columns: 1fr 1.3fr 1.3fr 1.2fr 1fr 130px;
     gap: 0.75rem;
     padding: 0.4rem 0.9rem;
     color: #7a7267;
@@ -393,17 +402,57 @@
     .dashboard-toolbar {
         flex-direction: column;
         align-items: stretch;
+        gap: 0.5rem;
+        padding: 0.6rem;
     }
 
-    .toolbar-left,
+    .toolbar-left {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
+
     .toolbar-right {
-        justify-content: stretch;
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.4rem;
     }
 
-    .dashboard-search__input,
-    .dashboard-select {
+    .view-switch {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .view-switch__btn {
+        flex: 1;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0.4rem 0.6rem;
+    }
+
+    .my-orders-toggle {
+        min-height: 40px;
+    }
+
+    .dashboard-search {
         width: 100%;
+        order: -1;
+    }
+
+    .dashboard-search__input {
+        width: 100%;
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .dashboard-select {
+        flex: 1;
+        min-width: 0;
+        width: auto;
+        min-height: 42px;
+        font-size: 15px;
     }
 
     .order-list-header {
@@ -424,10 +473,6 @@
         border-radius: 10px;
         font-size: 0.8rem;
         line-height: 1.35;
-    }
-
-    .order-row__id {
-        display: none;
     }
 
     .order-row__name {

@@ -1,0 +1,58 @@
+[
+  {
+    "k": "lock:body-class-on-load",
+    "v": "(empty)"
+  },
+  {
+    "k": "lock:active-modals",
+    "v": "(none)"
+  },
+  {
+    "k": "lock:all-modals-display",
+    "v": "availabilityModal=none | eventModal=none | eventChecklistModal=none | createOrderModal=none | createClientModal=none | orderEditorModal=none | copyOrderModal=none | orderExpenseModal=none"
+  },
+  {
+    "k": "lock:overflow",
+    "v": "hidden auto"
+  },
+  {
+    "k": "lock:switch-list",
+    "v": "ok"
+  },
+  {
+    "k": "lock:body-after-switch",
+    "v": "(empty)"
+  },
+  {
+    "k": "lock:active-after-switch",
+    "v": "(none)"
+  },
+  {
+    "k": "lock:row-click",
+    "v": "ok"
+  },
+  {
+    "k": "lock:body-after-row-click",
+    "v": "modal-lock"
+  },
+  {
+    "k": "lock:active-after-row-click",
+    "v": "orderEditorModal"
+  },
+  {
+    "k": "lock:modal-count-total",
+    "v": 8
+  },
+  {
+    "k": "lock:modal-ids",
+    "v": "availabilityModal,eventModal,eventChecklistModal,createOrderModal,createClientModal,orderEditorModal,copyOrderModal,orderExpenseModal"
+  },
+  {
+    "k": "lock:logs",
+    "v": []
+  },
+  {
+    "k": "lock:visibility-of-each",
+    "v": "availabilityModal:class=,display=none | eventModal:class=,display=none | eventChecklistModal:class=modal-overlay--stacked,display=none | createOrderModal:class=,display=none | createClientModal:class=,display=none | orderEditorModal:class=active,display=flex | copyOrderModal:class=,display=none | orderExpenseModal:class=,display=none"
+  }
+]

@@ -53,11 +53,10 @@
     <table class="orders-table">
         <thead>
             <tr>
-                <th>Название</th>
                 <th>Дата</th>
+                <th>Заказ</th>
                 <th>Клиент</th>
-                <th>Город</th>
-                <th>Статус</th>
+                <th>Менеджер</th>
                 <th>Стоимость</th>
                 <th></th>
             </tr>
@@ -87,7 +86,11 @@
             <form id="createOrderForm" class="create-order-form">
                 <div class="form-group">
                     <label class="form-label" for="createOrderName">Название заказа *</label>
-                    <input type="text" class="form-input" id="createOrderName" placeholder="Например: Новогодний корпоратив" required>
+                    <div class="single-city-picker" id="createOrderNamePicker">
+                        <input type="text" class="form-input" id="createOrderName" placeholder="Например: Эмп5, ЧБ4, Феникс 7" autocomplete="off" required>
+                        <div class="single-city-picker__dropdown" id="createOrderNameDropdown"></div>
+                    </div>
+                    <span class="form-hint">Название услуги и количество артистов через пробел — услуга добавится в заказ</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="createOrderClientSearch">Заказчик *</label>
@@ -103,6 +106,16 @@
                         <div class="client-combobox__dropdown"></div>
                         <select class="form-select" id="createOrderClient" style="display:none;"></select>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="createOrderCityInput">Город</label>
+                    <div class="single-city-picker" id="createOrderCityPicker">
+                        <input type="text" class="form-input" id="createOrderCityInput" placeholder="Начните вводить название города" autocomplete="off">
+                        <input type="hidden" id="createOrderCityId" value="">
+                        <input type="hidden" id="createOrderCityName" value="">
+                        <div class="single-city-picker__dropdown" id="createOrderCityDropdown"></div>
+                    </div>
+                    <span class="form-hint">Если города нет в списке, его можно создать</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="createOrderDate">Дата заказа</label>
@@ -144,8 +157,8 @@
                     <input type="text" class="form-input" id="newClientFullName" placeholder="Иванов Иван Иванович" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="newClientPhone">Телефон *</label>
-                    <input type="tel" class="form-input" id="newClientPhone" placeholder="+7 (999) 123-45-67" required>
+                    <label class="form-label" for="newClientPhone">Телефон</label>
+                    <input type="tel" class="form-input" id="newClientPhone" placeholder="+7 (999) 123-45-67">
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="newClientType">Тип клиента *</label>
@@ -167,6 +180,7 @@
                 <div class="form-group">
                     <label class="form-label" for="newClientTelegram">Телеграм</label>
                     <input type="text" class="form-input" id="newClientTelegram" placeholder="@username">
+                    <span class="form-hint">Телефон или телеграм — обязательно хотя бы одно</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="newClientEmail">Email</label>
@@ -208,7 +222,10 @@
 <div class="modal-overlay" id="orderEditorModal">
     <div class="modal modal--editor">
         <div class="modal__header">
-            <h2 class="modal__title" id="editorOrderTitle">Заказ</h2>
+            <div class="modal__heading">
+                <h2 class="modal__title" id="editorOrderTitle">Заказ</h2>
+                <span class="modal__subtitle" id="editorOrderSubtitle" style="display:none;"></span>
+            </div>
             <div class="modal__header-actions">
                 <button class="modal__close" id="editorModalCloseBtn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -218,10 +235,11 @@
                 </button>
             </div>
         </div>
-        <div class="modal__tabs">
+        <div class="modal__tabs" id="orderEditorTabs">
             <button class="tab-btn active" data-tab="info">Информация</button>
-            <button class="tab-btn" data-tab="services">Услуги</button>
-            <button class="tab-btn" data-tab="employees">Сотрудники</button>
+            <button class="tab-btn" data-tab="extra">Дополнительная информация</button>
+            <button class="tab-btn" data-tab="checklist">Чек-лист<span class="tab-badge" id="orderChecklistBadge" style="display:none;"></span></button>
+            <button class="tab-btn" data-tab="expenses">Расходы<span class="tab-badge" id="orderExpensesBadge" style="display:none;"></span></button>
         </div>
         <div class="modal__body">
             <div class="tab-content active" id="tab-info">
@@ -259,28 +277,102 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="editOrderCity">Город</label>
-                                <select class="form-select" id="editOrderCity">
-                                    <option value="">Не выбран (Казань по умолчанию)</option>
-                                </select>
+                                <label class="form-label" for="editOrderChat">Номер узкого чата</label>
+                                <input type="text" class="form-input" id="editOrderChat" placeholder="УЗ1, УЗ5, УЗ1 и УЗ3">
                             </div>
-                            <div class="form-group detail-item--full">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderCityInput">Город</label>
+                                <div class="single-city-picker" id="editOrderCityPicker">
+                                    <input type="text" class="form-input" id="editOrderCityInput" placeholder="Начните вводить название города" autocomplete="off">
+                                    <input type="hidden" id="editOrderCity" value="">
+                                    <div class="single-city-picker__dropdown" id="editOrderCityDropdown"></div>
+                                </div>
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label" for="editOrderDate">Дата проведения</label>
                                 <input type="date" class="form-input" id="editOrderDate">
-                                <span class="form-hint">Можно оставить пустым</span>
                                 <div class="price-period-notice" id="pricePeriodNotice" style="display:none;"></div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="editOrderSetupTime">Время чека/установки</label>
-                                <input type="text" class="form-input" id="editOrderSetupTime" placeholder="18:00">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="editOrderDuration">Длительность (дней)</label>
-                                <input type="number" class="form-input" id="editOrderDuration" min="1" value="1">
                             </div>
                             <div class="form-group detail-item--full">
                                 <label class="form-label" for="editOrderAddress">Адрес</label>
                                 <input type="text" class="form-input" id="editOrderAddress" placeholder="Город, улица, дом">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3 class="info-section__title">Услуги</h3>
+                        <div class="services-city-group">
+                            <label class="form-label" for="editOrderCityGroup">Группа городов</label>
+                            <select class="form-select" id="editOrderCityGroup">
+                                <option value="">По городу заказа</option>
+                            </select>
+                            <span class="form-hint" id="cityGroupHint"></span>
+                        </div>
+                        <div class="services-editor-container services-editor-container--inline">
+                            <div class="services-catalog-panel">
+                                <div class="panel-header">
+                                    <h3>Каталог услуг</h3>
+                                    <input type="text" class="search-input-sm" id="serviceSearchInput" placeholder="Поиск...">
+                                </div>
+                                <div class="services-catalog-list" id="servicesCatalogList"></div>
+                            </div>
+                            <div class="services-table-wrapper">
+                                <div class="panel-header">
+                                    <h3>Выбранные услуги</h3>
+                                    <div class="services-total">
+                                        Итого: <span id="servicesTotal">0.00₽</span>
+                                    </div>
+                                </div>
+                                <div class="services-table-container">
+                                    <table class="services-table-editor">
+                                        <thead>
+                                            <tr>
+                                                <th>Услуга</th>
+                                                <th style="width:80px;">Чел.</th>
+                                                <th style="width:120px;">Стоимость</th>
+                                                <th>Комментарий</th>
+                                                <th style="width:40px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="servicesTableBody">
+                                            <tr class="empty-row">
+                                                <td colspan="5">Добавьте услуги из каталога</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-content" id="tab-extra">
+                <form id="orderExtraForm" class="order-info-form">
+                    <div class="info-section">
+                        <h3 class="info-section__title">Оплата</h3>
+                        <div class="form-grid form-grid--3">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderPaymentDue">Дата оплаты</label>
+                                <input type="date" class="form-input" id="editOrderPaymentDue">
+                            </div>
+                            <div class="form-group detail-item--full">
+                                <label class="form-label" for="editOrderPaymentComment">Заметка к оплате</label>
+                                <input type="text" class="form-input" id="editOrderPaymentComment" placeholder="Например, предоплата 50%">
+                            </div>
+                        </div>
+                        <div class="order-payments" id="orderPaymentsBlock">
+                            <div class="order-payments__head">
+                                <span class="order-payments__title">Фиксация оплат</span>
+                                <span class="order-payments__total" id="orderPaymentsTotal">0.00₽</span>
+                            </div>
+                            <div class="order-payments__list" id="orderPaymentsList"></div>
+                            <div class="order-payments__form">
+                                <input type="date" class="form-input" id="orderPaymentDate">
+                                <input type="text" class="form-input" id="orderPaymentAmount" placeholder="Сумма" inputmode="decimal">
+                                <input type="text" class="form-input" id="orderPaymentComment" placeholder="Комментарий">
+                                <button type="button" class="btn btn-outline btn-sm" id="orderPaymentAddBtn">Добавить оплату</button>
                             </div>
                         </div>
                     </div>
@@ -343,7 +435,25 @@
 
                     <div class="info-section">
                         <h3 class="info-section__title">Детали мероприятия</h3>
-                        <div class="form-grid form-grid--2">
+                        <div class="form-grid form-grid--3">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderStart">Начало мероприятия</label>
+                                <input type="datetime-local" class="form-input" id="editOrderStart">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderEnd">Окончание мероприятия</label>
+                                <input type="datetime-local" class="form-input" id="editOrderEnd">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderSetupTime">Время чека/установки</label>
+                                <input type="text" class="form-input" id="editOrderSetupTime" placeholder="18:00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderDuration">Длительность (дней)</label>
+                                <input type="number" class="form-input" id="editOrderDuration" min="1" value="1">
+                            </div>
+                        </div>
+                        <div class="form-grid form-grid--2" style="margin-top:1rem;">
                             <div class="form-group detail-item--full">
                                 <label class="form-label" for="editOrderConcept">Концепция</label>
                                 <textarea class="form-textarea" id="editOrderConcept" rows="3" placeholder="Описание концепции мероприятия"></textarea>
@@ -389,86 +499,39 @@
                 </form>
             </div>
 
-            <div class="tab-content" id="tab-services">
-                <div class="services-city-group">
-                    <label class="form-label" for="editOrderCityGroup">Группа городов</label>
-                    <select class="form-select" id="editOrderCityGroup">
-                        <option value="">По городу заказа</option>
-                    </select>
-                    <span class="form-hint" id="cityGroupHint"></span>
-                </div>
-                <div class="services-editor-container">
-                    <div class="services-catalog-panel">
-                        <div class="panel-header">
-                            <h3>Каталог услуг</h3>
-                            <input type="text" class="search-input-sm" id="serviceSearchInput" placeholder="Поиск...">
-                        </div>
-                        <div class="services-catalog-list" id="servicesCatalogList"></div>
-                    </div>
-                    <div class="services-table-wrapper">
-                        <div class="panel-header">
-                            <h3>Выбранные услуги</h3>
-                            <div class="services-total">
-                                Итого: <span id="servicesTotal">0 ₽</span>
+            <div class="tab-content" id="tab-checklist">
+                <div class="order-checklist-tab">
+                    <div class="order-checklist__head">
+                        <div class="order-checklist__progress" id="orderChecklistProgress"></div>
+                        <div class="order-checklist__actions">
+                            <div class="order-checklist__picker">
+                                <input type="text" class="form-input" id="orderChecklistTemplateInput" placeholder="Начните вводить название чек-листа" autocomplete="off">
+                                <div class="order-checklist__dropdown" id="orderChecklistTemplateDropdown"></div>
                             </div>
                         </div>
-                        <div class="services-table-container">
-                            <table class="services-table-editor">
-                                <thead>
-                                    <tr>
-                                        <th>Услуга</th>
-                                        <th style="width:80px;">Чел.</th>
-                                        <th style="width:120px;">Стоимость</th>
-                                        <th>Комментарий</th>
-                                        <th style="width:40px;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="servicesTableBody">
-                                    <tr class="empty-row">
-                                        <td colspan="5">Добавьте услуги из каталога</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
                     </div>
+                    <div class="order-checklist__add">
+                        <select class="form-select" id="orderChecklistShowSelect"></select>
+                        <input type="text" class="form-input" id="orderChecklistInput" placeholder="Новый пункт чек-листа">
+                        <button type="button" class="btn btn-primary btn-sm" id="orderChecklistAddBtn">Добавить пункт</button>
+                    </div>
+                    <div class="order-checklist" id="orderChecklistList"></div>
                 </div>
             </div>
 
-            <div class="tab-content" id="tab-employees">
-                <div class="employees-container">
-                    <div class="employees-list-panel">
-                        <div class="panel-header">
-                            <h3>Сотрудники</h3>
-                            <input type="text" class="search-input-sm" id="employeeSearchInput" placeholder="Поиск...">
-                        </div>
-                        <div class="employees-list" id="employeesListPanel"></div>
+            <div class="tab-content" id="tab-expenses">
+                <div class="order-expenses-tab">
+                    <div class="order-expenses__head">
+                        <div class="order-expenses__summary" id="orderExpensesTotal"></div>
+                        <button type="button" class="btn btn-primary order-expenses__add" id="addOrderExpenseBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Добавить расход
+                        </button>
                     </div>
-                    <div class="employees-table-wrapper">
-                        <div class="panel-header">
-                            <h3>Назначенные сотрудники</h3>
-                            <div class="employees-total">
-                                Итого: <span id="employeesTotal">0 ₽</span>
-                            </div>
-                        </div>
-                        <div class="employees-table-container">
-                            <table class="employees-table-editor">
-                                <thead>
-                                    <tr>
-                                        <th>Сотрудник</th>
-                                        <th>Роль</th>
-                                        <th style="width:110px;">Оплата</th>
-                                        <th>Комментарий</th>
-                                        <th style="width:40px;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="employeesTableBody">
-                                    <tr class="empty-row">
-                                        <td colspan="5">Добавьте сотрудников из списка</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <div class="order-expenses" id="orderExpensesList"></div>
                 </div>
             </div>
         </div>
@@ -498,7 +561,7 @@
                         </svg>
                         Отменить
                     </button>
-                    <button type="submit" form="orderInfoForm" class="btn btn-primary" id="globalSaveBtn">
+                    <button type="button" class="btn btn-primary" id="globalSaveBtn">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                             <polyline points="17 21 17 13 7 13 7 21"/>
@@ -537,6 +600,47 @@
             <div class="form-actions">
                 <button type="button" class="btn btn-outline" id="copyOrderCancelBtn">Отмена</button>
                 <button type="button" class="btn btn-primary" id="copyOrderConfirmBtn">Копировать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="orderExpenseModal">
+    <div class="modal modal--expense">
+        <div class="modal__header">
+            <h2 class="modal__title" id="orderExpenseModalTitle">Расход по заказу</h2>
+            <button class="modal__close" type="button" id="orderExpenseCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="orderExpenseForm" class="order-expense-form">
+                <div class="form-grid form-grid--2">
+                    <div class="form-group">
+                        <label class="form-label" for="orderExpensePayer">Имя (оплатил) *</label>
+                        <input type="text" class="form-input" id="orderExpensePayer" placeholder="Например, Ирина" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="orderExpenseAmount">Сумма *</label>
+                        <input type="number" class="form-input" id="orderExpenseAmount" min="0" step="0.01" placeholder="0" required>
+                    </div>
+                    <div class="form-group detail-item--full">
+                        <label class="form-label" for="orderExpenseComment">Комментарий</label>
+                        <textarea class="form-textarea" id="orderExpenseComment" rows="2" placeholder="Например, такси до площадки"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__left">
+                <button type="button" class="btn btn-danger btn-sm" id="orderExpenseDeleteBtn" style="display:none;">Удалить расход</button>
+            </div>
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="orderExpenseCancelBtn">Отмена</button>
+                <button type="submit" form="orderExpenseForm" class="btn btn-primary" id="orderExpenseSaveBtn">Сохранить</button>
             </div>
         </div>
     </div>

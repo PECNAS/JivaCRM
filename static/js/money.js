@@ -8,6 +8,7 @@
         dateTo: '',
         sort: 'date_desc',
         accrualFilter: 'pending',
+        expenseFilter: 'all',
         data: null,
         employees: [],
         loading: false,
@@ -25,9 +26,17 @@
     const tabs = document.querySelectorAll('.money-tab');
     const panels = {
         accruals: document.getElementById('moneyPanelAccruals'),
+        history: document.getElementById('moneyPanelHistory'),
         payouts: document.getElementById('moneyPanelPayouts'),
+        expenses: document.getElementById('moneyPanelExpenses'),
         summary: document.getElementById('moneyPanelSummary'),
     };
+
+    const historyList = document.getElementById('moneyHistoryList');
+    const historyFilter = document.getElementById('moneyHistoryFilter');
+
+    const expensesList = document.getElementById('moneyExpensesList');
+    const expenseFilterBox = document.getElementById('moneyExpenseFilter');
 
     const accrualsList = document.getElementById('moneyAccrualsList');
     const payoutCandidates = document.getElementById('moneyPayoutCandidates');
@@ -71,8 +80,7 @@
     };
 
     function formatMoney(value) {
-        const num = parseFloat(value) || 0;
-        return num.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ₽';
+        return window.UI.formatMoney(value);
     }
 
     function formatAmountInput(value) {
@@ -161,6 +169,10 @@
         renderAccruals();
     }
 
+    if (historyFilter) {
+        historyFilter.addEventListener('change', renderHistory);
+    }
+
     function switchTab(name) {
         tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.tab === name));
 
@@ -232,9 +244,11 @@
                 if (payoutDate && !payoutDate.value) payoutDate.value = result.data.today;
 
                 renderStats();
+                renderHistory();
                 renderAccruals();
                 renderPayoutCandidates();
                 renderPayouts();
+                renderExpenses();
                 renderPayroll();
                 fillEmployeeSelects();
             })
@@ -266,6 +280,42 @@
                 <span class="money-stat__value">${formatMoney(stats.balance_total)}</span>
             </div>
         `;
+    }
+
+    function renderHistory() {
+        if (!historyList) return;
+
+        const all = (state.data && state.data.history) || [];
+        const filter = historyFilter ? historyFilter.value : 'all';
+        const rows = filter === 'all' ? all : all.filter(item => item.kind === filter);
+
+        if (!rows.length) {
+            historyList.innerHTML = '<div class="money-empty">Операций за период нет</div>';
+            return;
+        }
+
+        historyList.innerHTML = rows.map(item => {
+            const isPayout = item.kind === 'payout';
+            const sign = item.amount < 0 ? '−' : '+';
+            const amountClass = isPayout ? 'money-history__amount--out' : 'money-history__amount--in';
+            const subtitle = isPayout
+                ? (item.title || 'Выплата')
+                : (item.order_name || item.title || '');
+
+            return `
+                <div class="money-history">
+                    <div class="money-history__main">
+                        <span class="money-history__employee">${escapeHtml(item.employee_name)}</span>
+                        <span class="money-history__subtitle">${escapeHtml(subtitle)}</span>
+                    </div>
+                    <div class="money-history__meta">
+                        <span class="money-history__kind money-history__kind--${item.kind}">${escapeHtml(item.kind_label)}</span>
+                        <span class="money-history__date">${escapeHtml(item.date_display)}</span>
+                    </div>
+                    <span class="money-history__amount ${amountClass}">${sign}${formatMoney(Math.abs(item.amount))}</span>
+                </div>
+            `;
+        }).join('');
     }
 
     function renderAccruals() {
@@ -396,7 +446,7 @@
                     <div class="money-order__footer">
                         <span class="money-order__total">Ставки сотрудников: <b>${formatMoney(order.total)}</b></span>
                         <div class="money-table__actions">
-                            <a class="btn btn-outline btn-sm" href="/orders/?search=${encodeURIComponent(order.name)}&status=completed">Открыть заказ</a>
+                            <a class="btn btn-outline btn-sm" href="/schedule/?open_order=${order.id}">Открыть заказ</a>
                             <button class="btn btn-primary btn-sm" type="button" data-order-all="${order.id}" ${order.is_full ? 'disabled' : ''}>
                                 Начислить всем
                             </button>
@@ -566,6 +616,99 @@
                 </td>
             </tr>
         `;
+    }
+
+    function expenseStatusClass(item) {
+        if (item.status === 'company') return 'money-group__badge--done';
+        if (item.status === 'team') return 'money-group__badge--accent';
+        return '';
+    }
+
+    function renderExpenses() {
+        if (!expensesList) return;
+
+        const all = (state.data && state.data.expenses) || [];
+        const statuses = (state.data && state.data.expense_statuses) || [];
+        const filter = state.expenseFilter;
+
+        const rows = filter === 'all' ? all : all.filter(item => item.status === filter);
+
+        if (!rows.length) {
+            expensesList.innerHTML = '<div class="money-empty">Расходов за период нет</div>';
+            return;
+        }
+
+        const total = rows.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+
+        expensesList.innerHTML = `
+            <div class="money-group">
+                <div class="money-group__head">
+                    <div class="money-group__title">
+                        <span class="money-group__name">Расходы за период</span>
+                    </div>
+                    <span class="money-group__badge">${rows.length} · ${formatMoney(total)}</span>
+                </div>
+                <div class="money-table-wrap">
+                    <table class="money-table">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Заказ</th>
+                                <th>Имя (оплатил)</th>
+                                <th>Комментарий</th>
+                                <th class="money-table__num">Сумма</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(item => `
+                                <tr>
+                                    <td data-label="Дата" class="money-table__muted">${escapeHtml(item.period_date_display || '—')}</td>
+                                    <td data-label="Заказ">
+                                        <a class="money-expense__order" href="/schedule/?open_order=${item.order_id}">${escapeHtml(item.order_name)}</a>
+                                    </td>
+                                    <td data-label="Оплатил">${escapeHtml(item.payer_name)}</td>
+                                    <td data-label="Комментарий" class="money-table__muted">${escapeHtml(item.comment || '—')}</td>
+                                    <td data-label="Сумма" class="money-table__num money-amount">${formatMoney(item.amount)}</td>
+                                    <td data-label="Статус">
+                                        <select class="form-select money-expense__status" data-expense-status="${item.id}">
+                                            ${statuses.map(status => `
+                                                <option value="${status.key}" ${status.key === item.status ? 'selected' : ''}>${escapeHtml(status.label)}</option>
+                                            `).join('')}
+                                        </select>
+                                        <span class="money-group__badge ${expenseStatusClass(item)} money-expense__badge">${escapeHtml(item.status_display)}</span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        expensesList.querySelectorAll('[data-expense-status]').forEach(select => {
+            select.addEventListener('change', function() {
+                updateExpenseStatus(parseInt(this.dataset.expenseStatus, 10), this.value);
+            });
+        });
+    }
+
+    function updateExpenseStatus(expenseId, status) {
+        const formData = new FormData();
+        formData.append('id', String(expenseId));
+        formData.append('status', status);
+
+        request('/money/expense/status/', { method: 'POST', body: formData })
+            .then(result => {
+                if (!result.ok) {
+                    showToast((result.data && result.data.error) || 'Не удалось изменить статус');
+                    return;
+                }
+
+                showToast('Статус расхода: ' + result.data.status_display);
+                loadData();
+            })
+            .catch(() => showToast('Ошибка изменения статуса'));
     }
 
     function moneyCell(value) {
@@ -1138,8 +1281,6 @@
     }
 
     if (payrollMonthInput) {
-        payrollMonthInput.value = currentMonthValue();
-
         payrollMonthInput.addEventListener('change', function() {
             if (!this.value) return;
             applyMonthDates(this.value);
@@ -1171,6 +1312,16 @@
         currentMonthBtn.addEventListener('click', function() {
             applyMonthDates(currentMonthValue());
             loadData();
+        });
+    }
+
+    if (expenseFilterBox) {
+        expenseFilterBox.querySelectorAll('[data-expense-filter]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                state.expenseFilter = this.dataset.expenseFilter;
+                setActiveButton(expenseFilterBox, '[data-expense-filter]', 'expenseFilter', state.expenseFilter);
+                renderExpenses();
+            });
         });
     }
 
@@ -1251,6 +1402,7 @@
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         if (document.getElementById('uiConfirmModal')) return;
+        if (e.defaultPrevented) return;
 
         if (orderModalElement && orderModalElement.classList.contains('active')) {
             e.preventDefault();

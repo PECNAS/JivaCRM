@@ -38,8 +38,10 @@
 
     <div class="money-tabs" role="tablist">
         <button class="money-tab active" type="button" data-tab="accruals" role="tab">Начисления</button>
-        <button class="money-tab" type="button" data-tab="payouts" role="tab">Выплаты</button>
+        <button class="money-tab" type="button" data-tab="payouts" role="tab">К выплате</button>
         <button class="money-tab" type="button" data-tab="summary" role="tab">Сводка</button>
+        <button class="money-tab" type="button" data-tab="history" role="tab">История</button>
+        <button class="money-tab" type="button" data-tab="expenses" role="tab">Расходы</button>
     </div>
 
     <div class="money-stats" id="moneyStats"></div>
@@ -85,6 +87,22 @@
         </div>
     </div>
 
+    <div class="money-panel" id="moneyPanelHistory">
+        <div class="money-panel__head">
+            <h2 class="money-panel__title">История операций</h2>
+            <div class="money-panel__controls">
+                <select class="form-select money-select" id="moneyHistoryFilter">
+                    <option value="all">Все операции</option>
+                    <option value="accrual">Начисления за шоу</option>
+                    <option value="payout">Выплаты</option>
+                </select>
+            </div>
+        </div>
+        <div class="money-list" id="moneyHistoryList">
+            <div class="money-loading">Загрузка...</div>
+        </div>
+    </div>
+
     <div class="money-panel" id="moneyPanelPayouts">
         <div class="money-panel__head">
             <h2 class="money-panel__title">К выплате</h2>
@@ -118,12 +136,26 @@
         </div>
     </div>
 
+    <div class="money-panel" id="moneyPanelExpenses">
+        <div class="money-panel__head">
+            <h2 class="money-panel__title">Расходы по заказам</h2>
+            <div class="money-panel__controls">
+                <div class="money-segmented" id="moneyExpenseFilter">
+                    <button type="button" class="money-segmented__btn active" data-expense-filter="all">Все</button>
+                    <button type="button" class="money-segmented__btn" data-expense-filter="pending">На рассмотрении</button>
+                    <button type="button" class="money-segmented__btn" data-expense-filter="company">Корпоративный счёт</button>
+                    <button type="button" class="money-segmented__btn" data-expense-filter="team">Команда</button>
+                </div>
+            </div>
+        </div>
+        <div class="money-list" id="moneyExpensesList">
+            <div class="money-loading">Загрузка...</div>
+        </div>
+    </div>
+
     <div class="money-panel" id="moneyPanelSummary">
         <div class="money-panel__head">
-            <h2 class="money-panel__title">Сводка по выплатам</h2>
-            <div class="money-panel__controls">
-                <input type="month" class="form-input money-period__input" id="moneyPayrollMonth">
-            </div>
+            <h2 class="money-panel__title">Сводка по сотрудникам</h2>
         </div>
         <div class="money-list" id="moneyPayrollList">
             <div class="money-loading">Загрузка...</div>

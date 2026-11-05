@@ -1,0 +1,154 @@
+[
+  {
+    "k": "t:table-id",
+    "v": "clients-table"
+  },
+  {
+    "k": "t:all-tables",
+    "v": "clients-table|th=8|tr=4"
+  },
+  {
+    "k": "t:thead-html",
+    "v": "<thead> <tr> <th>ФИО</th> <th>Телефон</th> <th>Агентство</th> <th>Города</th> <th>Рейтинг</th> <th>Запросов</th> <th>Заказов</th> <th></th> </tr> </thead>"
+  },
+  {
+    "k": "t:thead-th-count",
+    "v": 8
+  },
+  {
+    "k": "t:thead-display",
+    "v": "display=table-header-group vis=visible h=44.96875"
+  },
+  {
+    "k": "t:first-row-cells",
+    "v": "TD:Ирина Дымченко | TD: | TD:— | TD:Москва | TD:Средний | TD:0 | TD:0 | TD:Подробнее"
+  },
+  {
+    "k": "c:telegram-row",
+    "v": "Телеграм: https://t.me/irina_dymchenko"
+  },
+  {
+    "k": "c:phone-row",
+    "v": "Телефон: @https://t.me/irina_dymchenko"
+  },
+  {
+    "k": "c:telegram-value-attr",
+    "v": "no tg link"
+  },
+  {
+    "k": "e:forms-in-modal",
+    "v": "editClientForm"
+  },
+  {
+    "k": "e:edit-btn-type",
+    "v": "submit|editClientForm"
+  },
+  {
+    "k": "e:clear-name",
+    "v": ""
+  },
+  {
+    "k": "e:click-save",
+    "v": "clicked"
+  },
+  {
+    "k": "e:toast-after-empty-save",
+    "v": "no toast"
+  },
+  {
+    "k": "e:modal-still-open",
+    "v": true
+  },
+  {
+    "k": "e:logs",
+    "v": []
+  },
+  {
+    "k": "e:phone-typed-5digits",
+    "v": "+7 (917) 1"
+  },
+  {
+    "k": "e:phone-typed-full",
+    "v": "+7 (917) 123-45-67"
+  },
+  {
+    "k": "k:add-open",
+    "v": true
+  },
+  {
+    "k": "k:esc-dispatch",
+    "v": "sent"
+  },
+  {
+    "k": "k:after-esc",
+    "v": true
+  },
+  {
+    "k": "k:body-class",
+    "v": "modal-lock"
+  },
+  {
+    "k": "k:overlay-click",
+    "v": "clicked"
+  },
+  {
+    "k": "k:after-overlay",
+    "v": true
+  },
+  {
+    "k": "k:cross-click",
+    "v": "clicked"
+  },
+  {
+    "k": "k:after-cross",
+    "v": true
+  },
+  {
+    "k": "d:confirm-dialog-exists",
+    "v": "clientModal || uiConfirmModal || modal:Удалить клиента? Если у клиента есть заказы, он будет деактивирован: исчезнет из || confirm-text:Если у клиента есть заказы, он будет деактивирован: исчезнет из списка, но заказ"
+  },
+  {
+    "k": "d:ui-confirm-defined",
+    "v": "function"
+  },
+  {
+    "k": "d:all-visible-dialogs",
+    "v": "clientModal|h=1000 || modal|h=623 || uiConfirmModal|h=1000 || modal|h=236 || confirm-text|h=44"
+  },
+  {
+    "k": "d:logs",
+    "v": []
+  },
+  {
+    "k": "a:forms",
+    "v": "addClientForm"
+  },
+  {
+    "k": "a:submit-btn",
+    "v": "submit|form=addClientForm|onclick=none"
+  },
+  {
+    "k": "a:required-attrs",
+    "v": "addFullName,addClientType,addRating"
+  },
+  {
+    "k": "a:click-add-empty",
+    "v": "clicked"
+  },
+  {
+    "k": "a:toast-after-empty",
+    "v": "no toast"
+  },
+  {
+    "k": "a:modal-after-empty",
+    "v": true
+  },
+  {
+    "k": "a:fill-name",
+    "v": "ТЕСТ КЛИЕНТ DSH"
+  },
+  {
+    "k": "a:logs",
+    "v": []
+  }
+]

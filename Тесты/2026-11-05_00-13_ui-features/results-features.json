@@ -1,0 +1,330 @@
+[
+  {
+    "k": "login",
+    "v": "/schedule/"
+  },
+  {
+    "k": "S:month-nav",
+    "v": "Ноябрь 2026 -> Декабрь 2026"
+  },
+  {
+    "k": "S:view-switch",
+    "v": "list|list=flex"
+  },
+  {
+    "k": "S:list-rows",
+    "v": 1
+  },
+  {
+    "k": "S:sort-change",
+    "v": "ok"
+  },
+  {
+    "k": "S:status-filter",
+    "v": "ok"
+  },
+  {
+    "k": "S:status-rows",
+    "v": 1
+  },
+  {
+    "k": "S:past-toggle",
+    "v": "ok"
+  },
+  {
+    "k": "S:past-note",
+    "v": "Выполненные ранее — 1. Фильтр по статусу не применяется."
+  },
+  {
+    "k": "S:past-off",
+    "v": "ok"
+  },
+  {
+    "k": "S:addOrderBtn-visible",
+    "v": "visible=true text=Создать заказ"
+  },
+  {
+    "k": "S:createOrderModal-open",
+    "v": true
+  },
+  {
+    "k": "S:createOrderModal-fields",
+    "v": "createOrderName|createOrderClientSearch|createOrderClient|createOrderCityInput|createOrderCityId|createOrderCityName|createOrderDate|createOrderConcept"
+  },
+  {
+    "k": "S:row-click",
+    "v": "clicked"
+  },
+  {
+    "k": "S:eventModal-open",
+    "v": false
+  },
+  {
+    "k": "S:eventModal-buttons",
+    "v": "eventModalChecklistBtn:true|eventModalDetailsBtn:true"
+  },
+  {
+    "k": "S:checklist-btn-visible",
+    "v": "flex"
+  },
+  {
+    "k": "S:eventChecklistModal-open",
+    "v": false
+  },
+  {
+    "k": "S:modal-console",
+    "v": []
+  },
+  {
+    "k": "S:detailsBtn-visible",
+    "v": "flex"
+  },
+  {
+    "k": "S:editor-url",
+    "v": "/schedule/"
+  },
+  {
+    "k": "S:editorModal-open",
+    "v": true
+  },
+  {
+    "k": "S:editor-tabs",
+    "v": "Информация\n            До|Информация*|Дополнительная информация|Чек-лист|Расходы|Основная информация\n     *|Выбранные услуги\n        |Услуга\n                  |Услуга\n                  |Оплата\n                  |Чек-листов в заказе нет\n |Чек-листов в заказе нет\n |Добавить расход\n         |Добавить расход\n         "
+  },
+  {
+    "k": "C:search",
+    "v": "ok"
+  },
+  {
+    "k": "C:search-rows",
+    "v": 2
+  },
+  {
+    "k": "C:loadmore-visible",
+    "v": "true"
+  },
+  {
+    "k": "C:ratingFilter",
+    "v": "set:high"
+  },
+  {
+    "k": "C:rating-rows",
+    "v": 50
+  },
+  {
+    "k": "C:view-click",
+    "v": "clicked"
+  },
+  {
+    "k": "C:clientModal-open",
+    "v": true
+  },
+  {
+    "k": "C:clientModal-content",
+    "v": "Айгуль | ФИО: | Айгуль | ТЕЛЕФОН: | @f_aigull | ТИП: | Агентство | АГЕНТСТВО: | Просто Вместе | МЕНЕДЖЕР АГЕНТСТВА: | — | РЕЙТИНГ: | Средний | EMAIL: | — | ТЕЛЕГРАМ: | f_aigull | ГОРОДА: | Казань | КОММЕНТАРИЙ: | — | Заказы клиента | 15 ноября · Запрос | Перейти к заказу → | Удалить | Закрыть | Реда"
+  },
+  {
+    "k": "C:editBtn",
+    "v": "clicked"
+  },
+  {
+    "k": "C:edit-form-visible",
+    "v": "true"
+  },
+  {
+    "k": "C:phone-mask",
+    "v": "+7 (917) 123-45-67"
+  },
+  {
+    "k": "C:console",
+    "v": []
+  },
+  {
+    "k": "C:addBtn",
+    "v": "clicked"
+  },
+  {
+    "k": "C:addModal-open",
+    "v": true
+  },
+  {
+    "k": "C:addPhone-mask",
+    "v": "+7 (917) 123-45-67"
+  },
+  {
+    "k": "C:addConsole",
+    "v": []
+  },
+  {
+    "k": "E:search",
+    "v": "ok"
+  },
+  {
+    "k": "E:search-rows",
+    "v": 1
+  },
+  {
+    "k": "E:roleFilter",
+    "v": "set:senior_admin"
+  },
+  {
+    "k": "E:role-rows",
+    "v": 1
+  },
+  {
+    "k": "E:loadmore",
+    "v": "inline-flex"
+  },
+  {
+    "k": "E:view-click",
+    "v": "clicked"
+  },
+  {
+    "k": "E:employeeModal-open",
+    "v": true
+  },
+  {
+    "k": "E:employeeModal-tabs",
+    "v": "missing|missing|artistCardTab:flex"
+  },
+  {
+    "k": "E:passport-tab",
+    "v": "clicked"
+  },
+  {
+    "k": "E:phone-mask",
+    "v": "found"
+  },
+  {
+    "k": "E:console",
+    "v": []
+  },
+  {
+    "k": "M:month-nav",
+    "v": "2026-11-01 -> 2026-10-01"
+  },
+  {
+    "k": "M:currentMonth",
+    "v": "2026-11-01"
+  },
+  {
+    "k": "M:tab-Начисления",
+    "v": "active=true panels=4 text=Начисления Ждут начисления Начислено Все Все статьи Ставка за заказ Оклад Часы и"
+  },
+  {
+    "k": "M:tab-К выплате",
+    "v": "active=true panels=6 text=К выплате Выплатить всем Добавить Нет сотрудников с положительным балансом Истор"
+  },
+  {
+    "k": "M:tab-Сводка",
+    "v": "active=true panels=3 text=Сводка по сотрудникам За этот период данных нет"
+  },
+  {
+    "k": "M:tab-История",
+    "v": "active=true panels=4 text=История операций Все операции Начисления за шоу Выплаты Операций за период нет"
+  },
+  {
+    "k": "M:tab-Расходы",
+    "v": "active=true panels=4 text=Расходы по заказам Все На рассмотрении Корпоративный счёт Команда Расходов за пе"
+  },
+  {
+    "k": "M:addClick",
+    "v": "clicked"
+  },
+  {
+    "k": "M:accrualModal",
+    "v": true
+  },
+  {
+    "k": "M:accrualFields",
+    "v": "moneyAccrualEmployee:34opts|moneyAccrualCategory:5opts|moneyAccrualAmount:ok|moneyAccrualDate:ok|moneyAccrualTitleField:ok"
+  },
+  {
+    "k": "M:console",
+    "v": []
+  },
+  {
+    "k": "P:tab-Мои данные",
+    "v": "active=true len=538 loading=false"
+  },
+  {
+    "k": "P:tab-Деньги",
+    "v": "active=true len=293 loading=false"
+  },
+  {
+    "k": "P:tab-Доступность",
+    "v": "active=true len=1053 loading=false"
+  },
+  {
+    "k": "P:tab-Билеты",
+    "v": "active=true len=222 loading=false"
+  },
+  {
+    "k": "P:editBtn",
+    "v": "clicked"
+  },
+  {
+    "k": "P:editModal",
+    "v": true
+  },
+  {
+    "k": "P:editFields",
+    "v": "profileFullName:ok|profilePhone:ok|profilePassportSeries:ok|profileUsername:ok|profileCurrentPassword:ok"
+  },
+  {
+    "k": "P:console",
+    "v": []
+  },
+  {
+    "k": "SV:tree-nodes",
+    "v": 74
+  },
+  {
+    "k": "SV:expand",
+    "v": "clicked"
+  },
+  {
+    "k": "SV:after-expand",
+    "v": 74
+  },
+  {
+    "k": "SV:saveBtn",
+    "v": false
+  },
+  {
+    "k": "SV:deleteBtn",
+    "v": false
+  },
+  {
+    "k": "R:content",
+    "v": "JIVA·HUB | Расписание | Клиенты | Сотрудники | Услуги | Деньги | Отчёты | DHS Тест | Отчёты"
+  },
+  {
+    "k": "R:buttons",
+    "v": "menuToggle"
+  },
+  {
+    "k": "R:inputs",
+    "v": ""
+  },
+  {
+    "k": "R:html-length",
+    "v": 152
+  },
+  {
+    "k": "F:buttons",
+    "v": "|Импортировать сотрудников|Импортировать услуги|Импортировать клиентов|Импортировать заказы|Удалить все заказы|Удалить всех клиентов|Удалить всех сотрудников|Удалить все услуги"
+  },
+  {
+    "k": "F:imports-hrefs",
+    "v": "JIVA·HUB->/schedule/ | Расписание->/schedule/ | Клиенты->/clients/ | Сотрудники->/employees/ | Услуги->/services/ | Деньги->/money/ | Отчёты->/reports/ | Профиль->/profile/ | Выйти->/logout/ | DHS Тест->/profile/"
+  },
+  {
+    "k": "G:logout-link",
+    "v": "/logout/"
+  },
+  {
+    "k": "G:menu-toggle",
+    "v": "display=none visible=false"
+  }
+]

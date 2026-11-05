@@ -1,0 +1,78 @@
+[
+  {
+    "k": "m:calendar-title",
+    "v": "Месяц"
+  },
+  {
+    "k": "m:event-count",
+    "v": 0
+  },
+  {
+    "k": "m:cell-with-event",
+    "v": "none"
+  },
+  {
+    "k": "m:list-mode",
+    "v": "switched"
+  },
+  {
+    "k": "m:list-rows",
+    "v": 1
+  },
+  {
+    "k": "m:row-ids",
+    "v": "115"
+  },
+  {
+    "k": "m:row-rect",
+    "v": "{\"x\":800,\"y\":264}"
+  },
+  {
+    "k": "m:after-real-click-active",
+    "v": false
+  },
+  {
+    "k": "m:after-real-click-class",
+    "v": "modal-overlay"
+  },
+  {
+    "k": "m:after-real-click-display",
+    "v": "none"
+  },
+  {
+    "k": "m:modal-body-len",
+    "v": 0
+  },
+  {
+    "k": "m:modal-body-text",
+    "v": ""
+  },
+  {
+    "k": "m:logs",
+    "v": []
+  },
+  {
+    "k": "m:ctx-open",
+    "v": "EXC"
+  },
+  {
+    "k": "m:ctx-visible",
+    "v": "none"
+  },
+  {
+    "k": "m:avail-click",
+    "v": "clicked"
+  },
+  {
+    "k": "m:avail-active",
+    "v": true
+  },
+  {
+    "k": "m:avail-emps",
+    "v": 33
+  },
+  {
+    "k": "m:avail-logs",
+    "v": []
+  }
+]

@@ -1,0 +1,4613 @@
+{
+  "schedule": {
+    "buttons": [
+      {
+        "text": "",
+        "id": "menuToggle",
+        "cls": "menu-toggle",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Календарь",
+        "id": "",
+        "cls": "view-switch__btn active",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Список",
+        "id": "",
+        "cls": "view-switch__btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Создать заказ",
+        "id": "addOrderBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "",
+        "id": "calendarPrev",
+        "cls": "dashboard-calendar__nav",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "",
+        "id": "calendarNext",
+        "cls": "dashboard-calendar__nav",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "",
+        "id": "availabilityCloseBtn",
+        "cls": "modal__close",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "availabilityCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "availabilitySaveBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "eventModalCloseBtn",
+        "cls": "modal__close",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Закрыть",
+        "id": "eventModalDismissBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Чек-лист",
+        "id": "eventModalChecklistBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Подробнее",
+        "id": "eventModalDetailsBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "eventChecklistCloseBtn",
+        "cls": "modal__close",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Закрыть",
+        "id": "eventChecklistCloseBtnFooter",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "createModalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "createModalCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Создать",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "createClientModalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "createClientModalCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Создать",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "editorModalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Информация",
+        "id": "",
+        "cls": "tab-btn active",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Дополнительная информация",
+        "id": "",
+        "cls": "tab-btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Чек-лист",
+        "id": "",
+        "cls": "tab-btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Расходы",
+        "id": "",
+        "cls": "tab-btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить оплату",
+        "id": "orderPaymentAddBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "overrideCostBtn",
+        "cls": "btn-override",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить пункт",
+        "id": "orderChecklistAddBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить расход",
+        "id": "addOrderExpenseBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Удалить",
+        "id": "deleteOrderBtn",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Копировать",
+        "id": "copyOrderBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отменить",
+        "id": "cancelEditBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "globalSaveBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "copyOrderModalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "copyOrderCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Копировать",
+        "id": "copyOrderConfirmBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "orderExpenseCloseBtn",
+        "cls": "modal__close",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Удалить расход",
+        "id": "orderExpenseDeleteBtn",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "orderExpenseCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "orderExpenseSaveBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      }
+    ],
+    "inputs": [
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "dashboardSearch",
+        "name": "",
+        "placeholder": "Поиск по названию, клиенту, адресу",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "dashboardSort",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "dashboardStatus",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "pastCompletedToggle",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "availabilityDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "availabilityEmployee",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "availabilityAction",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "time",
+        "id": "availabilityStart",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "time",
+        "id": "availabilityEnd",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "availabilityComment",
+        "name": "",
+        "placeholder": "Например, тренировка",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "createOrderName",
+        "name": "",
+        "placeholder": "Начните вводить название",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "createOrderClientSearch",
+        "name": "",
+        "placeholder": "Начните вводить ФИО, телефон или агентство",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "createOrderClient",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "createOrderCityInput",
+        "name": "",
+        "placeholder": "Начните вводить название города",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "createOrderCityId",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "createOrderCityName",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "createOrderDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "createOrderConcept",
+        "name": "",
+        "placeholder": "Детали мероприятия",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "",
+        "name": "csrfmiddlewaretoken",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "newClientFullName",
+        "name": "",
+        "placeholder": "Иванов Иван Иванович",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "id": "newClientPhone",
+        "name": "",
+        "placeholder": "+7 (999) 123-45-67",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "newClientTelegram",
+        "name": "",
+        "placeholder": "@username",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "newClientType",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "newClientAgencySearch",
+        "name": "",
+        "placeholder": "Начните вводить название",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "newClientAgency",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "email",
+        "id": "newClientEmail",
+        "name": "",
+        "placeholder": "client@example.ru",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "",
+        "name": "",
+        "placeholder": "Начните вводить город",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "newClientCities",
+        "name": "city_names",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "newClientRating",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "newClientComment",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "editOrderId",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderName",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderClientSearch",
+        "name": "",
+        "placeholder": "Начните вводить ФИО, телефон или агентство",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editOrderClient",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editOrderStatus",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderChat",
+        "name": "",
+        "placeholder": "Номер Чата",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderCityInput",
+        "name": "",
+        "placeholder": "Начните вводить название города",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "editOrderCity",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "editOrderDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderAddress",
+        "name": "",
+        "placeholder": "Город, улица, дом",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editOrderCityGroup",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "serviceSearchInput",
+        "name": "",
+        "placeholder": "Поиск...",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "editOrderPaymentDue",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderPaymentComment",
+        "name": "",
+        "placeholder": "Например, предоплата 50%",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "orderPaymentDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "orderPaymentAmount",
+        "name": "",
+        "placeholder": "Сумма",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "orderPaymentComment",
+        "name": "",
+        "placeholder": "Комментарий",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderContactName",
+        "name": "",
+        "placeholder": "Например, Ирина",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "id": "editOrderContactPhone",
+        "name": "",
+        "placeholder": "+7 (999) 123-45-67",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderContactTelegram",
+        "name": "",
+        "placeholder": "@username",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editOrderManager",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editOrderStoryManager",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editOrderPaymentMethod",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderCost",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "datetime-local",
+        "id": "editOrderStart",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "datetime-local",
+        "id": "editOrderEnd",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editOrderSetupTime",
+        "name": "",
+        "placeholder": "18:00",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "number",
+        "id": "editOrderDuration",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "editOrderConcept",
+        "name": "",
+        "placeholder": "Описание концепции мероприятия",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "editOrderDressingRoom",
+        "name": "",
+        "placeholder": "Гримерка, удобства",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "editOrderMeal",
+        "name": "",
+        "placeholder": "Питание, предпочтения",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "editOrderTechLamps",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "editOrderTechLaser",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "editOrderTechHazer",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "editOrderTechGrid",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "editOrderTechProjection",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "editOrderTechComment",
+        "name": "",
+        "placeholder": "Дополнительные требования",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "editOrderVenueComment",
+        "name": "",
+        "placeholder": "Особенности площадки",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "editOrderPropsComment",
+        "name": "",
+        "placeholder": "Особенности реквизита",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "orderChecklistTemplateInput",
+        "name": "",
+        "placeholder": "Начните вводить название чек-листа",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "orderChecklistShowSelect",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "orderChecklistInput",
+        "name": "",
+        "placeholder": "Новый пункт чек-листа",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "copyOrderDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "copyOrderKeepDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "orderExpensePayer",
+        "name": "",
+        "placeholder": "Например, Ирина",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "number",
+        "id": "orderExpenseAmount",
+        "name": "",
+        "placeholder": "0",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "orderExpenseComment",
+        "name": "",
+        "placeholder": "Например, такси до площадки",
+        "visible": false
+      }
+    ],
+    "forms": [
+      {
+        "id": "createOrderForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "createClientForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "orderInfoForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "orderExtraForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "orderExpenseForm",
+        "action": "",
+        "method": "get"
+      }
+    ],
+    "tabs": [
+      {
+        "text": "Информация\n            Дополни",
+        "active": false
+      },
+      {
+        "text": "Информация",
+        "active": true
+      },
+      {
+        "text": "Дополнительная информация",
+        "active": false
+      },
+      {
+        "text": "Чек-лист",
+        "active": false
+      },
+      {
+        "text": "Расходы",
+        "active": false
+      },
+      {
+        "text": "Основная информация\n          ",
+        "active": true
+      },
+      {
+        "text": "Выбранные услуги\n             ",
+        "active": false
+      },
+      {
+        "text": "Услуга\n                       ",
+        "active": false
+      },
+      {
+        "text": "Услуга\n                       ",
+        "active": false
+      },
+      {
+        "text": "Оплата\n                       ",
+        "active": false
+      },
+      {
+        "text": "Добавить пункт",
+        "active": false
+      },
+      {
+        "text": "Добавить пункт",
+        "active": false
+      },
+      {
+        "text": "Добавить расход",
+        "active": false
+      },
+      {
+        "text": "Добавить расход",
+        "active": false
+      }
+    ],
+    "links": [
+      {
+        "text": "JIVA·HUB",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Расписание",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Клиенты",
+        "href": "/clients/"
+      },
+      {
+        "text": "Сотрудники",
+        "href": "/employees/"
+      },
+      {
+        "text": "Услуги",
+        "href": "/services/"
+      },
+      {
+        "text": "Деньги",
+        "href": "/money/"
+      },
+      {
+        "text": "Отчёты",
+        "href": "/reports/"
+      },
+      {
+        "text": "Профиль",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти",
+        "href": "/logout/"
+      },
+      {
+        "text": "DHS Тест",
+        "href": "/profile/"
+      }
+    ],
+    "modals": [
+      {
+        "id": "availabilityModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "eventModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "eventChecklistModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "createOrderModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "createClientModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "orderEditorModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "copyOrderModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "orderExpenseModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      }
+    ],
+    "role": "boss",
+    "title": "JIVA HUB · Расписание"
+  },
+  "clients": {
+    "buttons": [
+      {
+        "text": "",
+        "id": "menuToggle",
+        "cls": "menu-toggle",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить клиента",
+        "id": "addClientBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Загрузить ещё",
+        "id": "clientsLoadMoreBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "",
+        "id": "modalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Удалить",
+        "id": "deleteClientBtn",
+        "cls": "btn btn-danger",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Закрыть",
+        "id": "clientViewCloseBtn",
+        "cls": "btn btn-outline",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Редактировать",
+        "id": "editClientBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Удалить",
+        "id": "editDeleteBtn",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "editCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "addModalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "addModalCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить",
+        "id": "addModalSubmitBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "duplicateModalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Создать",
+        "id": "dupCreateBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Удалить",
+        "id": "dupDeleteOldBtn",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "dupCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      }
+    ],
+    "inputs": [
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "searchInput",
+        "name": "",
+        "placeholder": "Поиск по ФИО, агентству или телефону",
+        "visible": true
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "ratingFilter",
+        "name": "",
+        "placeholder": "",
+        "visible": true
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "cityFilter",
+        "name": "",
+        "placeholder": "",
+        "visible": true
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editFullName",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "id": "editPhone",
+        "name": "",
+        "placeholder": "+7 (999) 123-45-67",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editClientType",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editAgencySearch",
+        "name": "",
+        "placeholder": "Начните вводить название",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editAgency",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editTelegram",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "email",
+        "id": "editEmail",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "",
+        "name": "",
+        "placeholder": "Начните вводить город",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "editCityNames",
+        "name": "city_names",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "editRating",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "editComment",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "",
+        "name": "csrfmiddlewaretoken",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addFullName",
+        "name": "",
+        "placeholder": "Иванов Иван Иванович",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "id": "addPhone",
+        "name": "",
+        "placeholder": "+7 (999) 123-45-67",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addTelegram",
+        "name": "",
+        "placeholder": "@username",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "addClientType",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addAgencySearch",
+        "name": "",
+        "placeholder": "Начните вводить название",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "addAgency",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "addAgencyManager",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "email",
+        "id": "addEmail",
+        "name": "",
+        "placeholder": "client@example.ru",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "",
+        "name": "",
+        "placeholder": "Начните вводить город",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "addCityNames",
+        "name": "city_names",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "addRating",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "addComment",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "",
+        "name": "csrfmiddlewaretoken",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "dupMatchedClientId",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "dupFullName",
+        "name": "",
+        "placeholder": "Иванов Иван Иванович",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "id": "dupPhone",
+        "name": "",
+        "placeholder": "+7 (999) 123-45-67",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "dupClientType",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "dupAgencySearch",
+        "name": "",
+        "placeholder": "Начните вводить название",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "dupAgency",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "dupTelegram",
+        "name": "",
+        "placeholder": "@username",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "email",
+        "id": "dupEmail",
+        "name": "",
+        "placeholder": "client@example.ru",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "dupRating",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "",
+        "name": "",
+        "placeholder": "Начните вводить город",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "hidden",
+        "id": "dupCityNames",
+        "name": "city_names",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "dupComment",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      }
+    ],
+    "forms": [
+      {
+        "id": "editClientForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "addClientForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "duplicateClientForm",
+        "action": "",
+        "method": "get"
+      }
+    ],
+    "tabs": [
+      {
+        "text": "ФИО\tТЕЛЕФОН\tАГЕНТСТВО\tГОРОДА\tР",
+        "active": false
+      },
+      {
+        "text": "ФИО\tТЕЛЕФОН\tАГЕНТСТВО\tГОРОДА\tР",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Киров",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Ульяновск",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Киров",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Набережные Челны",
+        "active": false
+      },
+      {
+        "text": "Киров",
+        "active": false
+      },
+      {
+        "text": "Нижний Новгород",
+        "active": false
+      },
+      {
+        "text": "Киров",
+        "active": false
+      },
+      {
+        "text": "Чебоксары",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Киров",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      },
+      {
+        "text": "Чебоксары",
+        "active": false
+      },
+      {
+        "text": "Казань",
+        "active": false
+      },
+      {
+        "text": "Москва",
+        "active": false
+      }
+    ],
+    "links": [
+      {
+        "text": "JIVA·HUB",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Расписание",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Клиенты",
+        "href": "/clients/"
+      },
+      {
+        "text": "Сотрудники",
+        "href": "/employees/"
+      },
+      {
+        "text": "Услуги",
+        "href": "/services/"
+      },
+      {
+        "text": "Деньги",
+        "href": "/money/"
+      },
+      {
+        "text": "Отчёты",
+        "href": "/reports/"
+      },
+      {
+        "text": "Профиль",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти",
+        "href": "/logout/"
+      },
+      {
+        "text": "DHS Тест",
+        "href": "/profile/"
+      }
+    ],
+    "modals": [
+      {
+        "id": "clientModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "addClientModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "duplicateModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      }
+    ],
+    "role": "boss",
+    "title": "JIVA HUB · Клиенты"
+  },
+  "employees": {
+    "buttons": [
+      {
+        "text": "",
+        "id": "menuToggle",
+        "cls": "menu-toggle",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить сотрудника",
+        "id": "addEmployeeBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Подробнее",
+        "id": "",
+        "cls": "view-link",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Загрузить ещё",
+        "id": "employeesLoadMoreBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "modalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Основное",
+        "id": "",
+        "cls": "modal-tab-btn active",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Паспортные данные",
+        "id": "",
+        "cls": "modal-tab-btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Карточка артиста",
+        "id": "artistCardTab",
+        "cls": "modal-tab-btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Редактировать карточку артиста",
+        "id": "editArtistCardBtn",
+        "cls": "btn btn-outline",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Деактивировать",
+        "id": "deleteEmployeeBtn",
+        "cls": "btn btn-danger",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Закрыть",
+        "id": "closeEmployeeBtn",
+        "cls": "btn btn-outline",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Редактировать",
+        "id": "editEmployeeBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Загрузить",
+        "id": "employeeDocumentUploadBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Деактивировать",
+        "id": "editDeactivateBtn",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "editCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "addModalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "addModalCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "artistCardModalCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "artistCardCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      }
+    ],
+    "inputs": [
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "searchInput",
+        "name": "",
+        "placeholder": "Поиск по ФИО, логину или телефону",
+        "visible": true
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "roleFilter",
+        "name": "",
+        "placeholder": "",
+        "visible": true
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editUsername",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "password",
+        "id": "editPassword",
+        "name": "",
+        "placeholder": "Введите новый пароль",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editFullName",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editNickname",
+        "name": "",
+        "placeholder": "Как система называет сотрудника",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "id": "editPhone",
+        "name": "",
+        "placeholder": "+7 (999) 123-45-67",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editTelegram",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editRzdBonus",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editInstagram",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "editIsActive",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editIntPassportSeries",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editIntPassportNumber",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editPassportSeries",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editPassportNumber",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editPassportIssuedBy",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "editPassportIssuedDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editPassportDepartmentCode",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editPassportRegistration",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editPassportInn",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "editPassportSnils",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "employeeDocumentKind",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "file",
+        "id": "employeeDocumentFile",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "employeeDocumentTitle",
+        "name": "",
+        "placeholder": "Подпись",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addUsername",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "password",
+        "id": "addPassword",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addFullName",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addNickname",
+        "name": "",
+        "placeholder": "Как система называет сотрудника",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "",
+        "name": "roles",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "id": "addPhone",
+        "name": "",
+        "placeholder": "+7 (999) 123-45-67",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addTelegram",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addRzdBonus",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addInstagram",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "addIsActive",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addIntPassportSeries",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addIntPassportNumber",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addPassportSeries",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addPassportNumber",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addPassportIssuedBy",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "addPassportIssuedDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addPassportDepartmentCode",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addPassportRegistration",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addPassportInn",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "addPassportSnils",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "artistWeight",
+        "name": "",
+        "placeholder": "Например: 65 кг",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "artistHeight",
+        "name": "",
+        "placeholder": "Например: 175 см",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "artistShoeSize",
+        "name": "",
+        "placeholder": "Например: 42",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "artistSkillsText",
+        "name": "",
+        "placeholder": "Опишите навыки артиста",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "artistComment",
+        "name": "",
+        "placeholder": "Дополнительные комментарии",
+        "visible": false
+      }
+    ],
+    "forms": [
+      {
+        "id": "editEmployeeForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "addEmployeeForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "artistCardForm",
+        "action": "",
+        "method": "get"
+      }
+    ],
+    "tabs": [
+      {
+        "text": "ФИО\tЛОГИН\tРОЛЬ\tТЕЛЕФОН\tСТАТУС\t",
+        "active": false
+      },
+      {
+        "text": "ФИО\tЛОГИН\tРОЛЬ\tТЕЛЕФОН\tСТАТУС\t",
+        "active": false
+      },
+      {
+        "text": "Основное\n                    П",
+        "active": false
+      },
+      {
+        "text": "Основное",
+        "active": true
+      },
+      {
+        "text": "Паспортные данные",
+        "active": false
+      },
+      {
+        "text": "Карточка артиста",
+        "active": false
+      },
+      {
+        "text": "ФИО:\n                         ",
+        "active": true
+      },
+      {
+        "text": "Серия:\n                       ",
+        "active": false
+      },
+      {
+        "text": "Карточка артиста не заполнена\n",
+        "active": false
+      }
+    ],
+    "links": [
+      {
+        "text": "JIVA·HUB",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Расписание",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Клиенты",
+        "href": "/clients/"
+      },
+      {
+        "text": "Сотрудники",
+        "href": "/employees/"
+      },
+      {
+        "text": "Услуги",
+        "href": "/services/"
+      },
+      {
+        "text": "Деньги",
+        "href": "/money/"
+      },
+      {
+        "text": "Отчёты",
+        "href": "/reports/"
+      },
+      {
+        "text": "Профиль",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти",
+        "href": "/logout/"
+      },
+      {
+        "text": "DHS Тест",
+        "href": "/profile/"
+      }
+    ],
+    "modals": [
+      {
+        "id": "employeeModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "addEmployeeModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "artistCardModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      }
+    ],
+    "role": "boss",
+    "title": "JIVA HUB · Сотрудники"
+  },
+  "services": {
+    "buttons": [
+      {
+        "text": "",
+        "id": "menuToggle",
+        "cls": "menu-toggle",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить каталог",
+        "id": "addRootCategoryBtn",
+        "cls": "btn btn-sm",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Удалить",
+        "id": "deleteServiceBtn",
+        "cls": "btn btn-sm",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "saveServiceBtn",
+        "cls": "btn btn-sm",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      }
+    ],
+    "inputs": [],
+    "forms": [],
+    "tabs": [],
+    "links": [
+      {
+        "text": "JIVA·HUB",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Расписание",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Клиенты",
+        "href": "/clients/"
+      },
+      {
+        "text": "Сотрудники",
+        "href": "/employees/"
+      },
+      {
+        "text": "Услуги",
+        "href": "/services/"
+      },
+      {
+        "text": "Деньги",
+        "href": "/money/"
+      },
+      {
+        "text": "Отчёты",
+        "href": "/reports/"
+      },
+      {
+        "text": "Профиль",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти",
+        "href": "/logout/"
+      },
+      {
+        "text": "DHS Тест",
+        "href": "/profile/"
+      }
+    ],
+    "modals": [],
+    "role": "boss",
+    "title": "JIVA HUB · Услуги"
+  },
+  "money": {
+    "buttons": [
+      {
+        "text": "",
+        "id": "menuToggle",
+        "cls": "menu-toggle",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "moneyPrevMonthBtn",
+        "cls": "money-period__step",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "",
+        "id": "moneyNextMonthBtn",
+        "cls": "money-period__step",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Текущий месяц",
+        "id": "moneyCurrentMonthBtn",
+        "cls": "money-period__today",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Начисления",
+        "id": "",
+        "cls": "money-tab active",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "К выплате",
+        "id": "",
+        "cls": "money-tab",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Сводка",
+        "id": "",
+        "cls": "money-tab",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "История",
+        "id": "",
+        "cls": "money-tab",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Расходы",
+        "id": "",
+        "cls": "money-tab",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Ждут начисления",
+        "id": "",
+        "cls": "money-segmented__btn active",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Начислено",
+        "id": "",
+        "cls": "money-segmented__btn",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Все",
+        "id": "",
+        "cls": "money-segmented__btn",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Добавить",
+        "id": "moneyAddManualBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Выплатить всем",
+        "id": "moneyPayoutAllBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить",
+        "id": "moneyAddPayoutBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Все",
+        "id": "",
+        "cls": "money-segmented__btn active",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "На рассмотрении",
+        "id": "",
+        "cls": "money-segmented__btn",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Корпоративный счёт",
+        "id": "",
+        "cls": "money-segmented__btn",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Команда",
+        "id": "",
+        "cls": "money-segmented__btn",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "moneyAccrualCloseBtn",
+        "cls": "modal__close",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отменить начисление",
+        "id": "moneyAccrualDeleteBtn",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "moneyAccrualCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "moneyAccrualSaveBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "moneyPayoutCloseBtn",
+        "cls": "modal__close",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "moneyPayoutCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Выплатить",
+        "id": "moneyPayoutSaveBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "moneyEmployeeCloseBtn",
+        "cls": "modal__close",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Закрыть",
+        "id": "moneyEmployeeCloseFooterBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      }
+    ],
+    "inputs": [
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "moneyDateFrom",
+        "name": "",
+        "placeholder": "",
+        "visible": true
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "moneyDateTo",
+        "name": "",
+        "placeholder": "",
+        "visible": true
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "moneySearchInput",
+        "name": "",
+        "placeholder": "Поиск сотрудника, заказа или услуги",
+        "visible": true
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "moneyCategoryFilter",
+        "name": "",
+        "placeholder": "",
+        "visible": true
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "moneySortSelect",
+        "name": "",
+        "placeholder": "",
+        "visible": true
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "moneyHistoryFilter",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "moneyAccrualEmployee",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "moneyAccrualCategory",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "number",
+        "id": "moneyAccrualAmount",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "moneyAccrualDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "moneyAccrualTitleField",
+        "name": "",
+        "placeholder": "Например, смена в ноябре",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "moneyAccrualComment",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "moneyPayoutEmployee",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "number",
+        "id": "moneyPayoutAmount",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "moneyPayoutMethod",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "moneyPayoutDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "moneyPayoutComment",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      }
+    ],
+    "forms": [
+      {
+        "id": "moneyAccrualForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "moneyPayoutForm",
+        "action": "",
+        "method": "get"
+      }
+    ],
+    "tabs": [
+      {
+        "text": "Начисления\nК выплате\nСводка\nИс",
+        "active": false
+      },
+      {
+        "text": "Начисления",
+        "active": true
+      },
+      {
+        "text": "К выплате",
+        "active": false
+      },
+      {
+        "text": "Сводка",
+        "active": false
+      },
+      {
+        "text": "История",
+        "active": false
+      },
+      {
+        "text": "Расходы",
+        "active": false
+      }
+    ],
+    "links": [
+      {
+        "text": "JIVA·HUB",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Расписание",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Клиенты",
+        "href": "/clients/"
+      },
+      {
+        "text": "Сотрудники",
+        "href": "/employees/"
+      },
+      {
+        "text": "Услуги",
+        "href": "/services/"
+      },
+      {
+        "text": "Деньги",
+        "href": "/money/"
+      },
+      {
+        "text": "Отчёты",
+        "href": "/reports/"
+      },
+      {
+        "text": "Профиль",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти",
+        "href": "/logout/"
+      },
+      {
+        "text": "DHS Тест",
+        "href": "/profile/"
+      }
+    ],
+    "modals": [
+      {
+        "id": "moneyAccrualModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "moneyPayoutModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "moneyEmployeeModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      }
+    ],
+    "role": "boss",
+    "title": "JIVA HUB · Деньги"
+  },
+  "reports": {
+    "buttons": [
+      {
+        "text": "",
+        "id": "menuToggle",
+        "cls": "menu-toggle",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      }
+    ],
+    "inputs": [],
+    "forms": [],
+    "tabs": [],
+    "links": [
+      {
+        "text": "JIVA·HUB",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Расписание",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Клиенты",
+        "href": "/clients/"
+      },
+      {
+        "text": "Сотрудники",
+        "href": "/employees/"
+      },
+      {
+        "text": "Услуги",
+        "href": "/services/"
+      },
+      {
+        "text": "Деньги",
+        "href": "/money/"
+      },
+      {
+        "text": "Отчёты",
+        "href": "/reports/"
+      },
+      {
+        "text": "Профиль",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти",
+        "href": "/logout/"
+      },
+      {
+        "text": "DHS Тест",
+        "href": "/profile/"
+      }
+    ],
+    "modals": [],
+    "role": "boss",
+    "title": "JIVA HUB · Отчёты"
+  },
+  "profile": {
+    "buttons": [
+      {
+        "text": "",
+        "id": "menuToggle",
+        "cls": "menu-toggle",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Мои данные",
+        "id": "",
+        "cls": "profile-tab-btn active",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Деньги",
+        "id": "",
+        "cls": "profile-tab-btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Доступность",
+        "id": "",
+        "cls": "profile-tab-btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Билеты",
+        "id": "",
+        "cls": "profile-tab-btn",
+        "type": "submit",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Редактировать",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "",
+        "id": "availabilityCloseBtn",
+        "cls": "modal__close",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Добавить промежуток",
+        "id": "availabilityAddIntervalBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "availabilityCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "availabilitySaveBtn",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "",
+        "id": "profileEditCloseBtn",
+        "cls": "modal__close",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить вход",
+        "id": "profileCredentialsSaveBtn",
+        "cls": "btn btn-outline",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Отмена",
+        "id": "profileEditCancelBtn",
+        "cls": "btn btn-outline",
+        "type": "button",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Сохранить",
+        "id": "profileEditSaveBtn",
+        "cls": "btn btn-primary",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      }
+    ],
+    "inputs": [
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "availabilityWeekday",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "availabilityStart",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "availabilityEnd",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "select",
+        "type": "select-one",
+        "id": "availabilityAction",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "availabilityComment",
+        "name": "",
+        "placeholder": "Например: репетиция",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profileFullName",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profileNickname",
+        "name": "",
+        "placeholder": "Как система называет вас",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "tel",
+        "id": "profilePhone",
+        "name": "",
+        "placeholder": "+7 (999) 123-45-67",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profileTelegram",
+        "name": "",
+        "placeholder": "@username",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profilePassportSeries",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profilePassportNumber",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profilePassportIssuedBy",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "date",
+        "id": "profilePassportIssuedDate",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profilePassportCode",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profilePassportRegistration",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profilePassportInn",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profilePassportSnils",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profileWeight",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profileHeight",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profileShoeSize",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "profileSkillsText",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "textarea",
+        "type": "textarea",
+        "id": "profileComment",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "profileUsername",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "password",
+        "id": "profileCurrentPassword",
+        "name": "",
+        "placeholder": "Нужен для смены логина и пароля",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "password",
+        "id": "profileNewPassword",
+        "name": "",
+        "placeholder": "Оставьте пустым, чтобы не менять",
+        "visible": false
+      },
+      {
+        "tag": "input",
+        "type": "password",
+        "id": "profileNewPasswordRepeat",
+        "name": "",
+        "placeholder": "",
+        "visible": false
+      }
+    ],
+    "forms": [
+      {
+        "id": "profileEditForm",
+        "action": "",
+        "method": "get"
+      },
+      {
+        "id": "profileCredentialsForm",
+        "action": "",
+        "method": "get"
+      }
+    ],
+    "tabs": [
+      {
+        "text": "Мои данные\nДеньги\nДоступность\n",
+        "active": false
+      },
+      {
+        "text": "Мои данные",
+        "active": true
+      },
+      {
+        "text": "Деньги",
+        "active": false
+      },
+      {
+        "text": "Доступность",
+        "active": false
+      },
+      {
+        "text": "Билеты",
+        "active": false
+      },
+      {
+        "text": "ЛИЧНАЯ ИНФОРМАЦИЯ\nРедактироват",
+        "active": true
+      },
+      {
+        "text": "Загрузка...",
+        "active": false
+      },
+      {
+        "text": "Загрузка...",
+        "active": false
+      },
+      {
+        "text": "Загрузка...",
+        "active": false
+      }
+    ],
+    "links": [
+      {
+        "text": "JIVA·HUB",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Расписание",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Клиенты",
+        "href": "/clients/"
+      },
+      {
+        "text": "Сотрудники",
+        "href": "/employees/"
+      },
+      {
+        "text": "Услуги",
+        "href": "/services/"
+      },
+      {
+        "text": "Деньги",
+        "href": "/money/"
+      },
+      {
+        "text": "Отчёты",
+        "href": "/reports/"
+      },
+      {
+        "text": "Профиль",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти",
+        "href": "/logout/"
+      },
+      {
+        "text": "DHS Тест",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти из аккаунта",
+        "href": "/logout/"
+      }
+    ],
+    "modals": [
+      {
+        "id": "availabilityModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      },
+      {
+        "id": "profileEditModal",
+        "cls": "modal-overlay",
+        "active": false
+      },
+      {
+        "id": "",
+        "cls": "modal",
+        "active": false
+      }
+    ],
+    "role": "boss",
+    "title": "JIVA HUB · Мой профиль"
+  },
+  "fill-data": {
+    "buttons": [
+      {
+        "text": "",
+        "id": "menuToggle",
+        "cls": "menu-toggle",
+        "type": "submit",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "text": "Импортировать сотрудников",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Импортировать услуги",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Импортировать клиентов",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Импортировать заказы",
+        "id": "",
+        "cls": "btn btn-primary",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Удалить все заказы",
+        "id": "",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Удалить всех клиентов",
+        "id": "",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Удалить всех сотрудников",
+        "id": "",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "text": "Удалить все услуги",
+        "id": "",
+        "cls": "btn btn-danger",
+        "type": "button",
+        "disabled": false,
+        "visible": true
+      }
+    ],
+    "inputs": [],
+    "forms": [],
+    "tabs": [],
+    "links": [
+      {
+        "text": "JIVA·HUB",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Расписание",
+        "href": "/schedule/"
+      },
+      {
+        "text": "Клиенты",
+        "href": "/clients/"
+      },
+      {
+        "text": "Сотрудники",
+        "href": "/employees/"
+      },
+      {
+        "text": "Услуги",
+        "href": "/services/"
+      },
+      {
+        "text": "Деньги",
+        "href": "/money/"
+      },
+      {
+        "text": "Отчёты",
+        "href": "/reports/"
+      },
+      {
+        "text": "Профиль",
+        "href": "/profile/"
+      },
+      {
+        "text": "Выйти",
+        "href": "/logout/"
+      },
+      {
+        "text": "DHS Тест",
+        "href": "/profile/"
+      }
+    ],
+    "modals": [],
+    "role": "boss",
+    "title": "JIVA HUB · Заполнение данных"
+  },
+  "checklists-json": {
+    "buttons": [],
+    "inputs": [],
+    "forms": [],
+    "tabs": [],
+    "links": [],
+    "modals": [],
+    "role": "",
+    "title": ""
+  }
+}

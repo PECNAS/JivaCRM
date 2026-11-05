@@ -11,8 +11,18 @@
 
 {% block content %}
 <section class="profile-header">
-    <h1 class="profile-title">Личный кабинет</h1>
-    <p class="profile-subtitle" id="profileSubtitle">Ваши данные, платежи и транспортные билеты</p>
+    <div class="profile-header__main">
+        <h1 class="profile-title">Личный кабинет</h1>
+        <p class="profile-subtitle" id="profileSubtitle">Ваши данные, платежи и транспортные билеты</p>
+    </div>
+    <a href="{% url 'logout' %}" class="profile-logout-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Выйти из аккаунта
+    </a>
 </section>
 
 <section class="profile-tabs" role="tablist">
@@ -121,6 +131,11 @@
                             <label class="form-label" for="profileFullName">ФИО *</label>
                             <input type="text" class="form-input" id="profileFullName" required>
                         </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="profileNickname">Имя для обращения</label>
+                            <input type="text" class="form-input" id="profileNickname" placeholder="Как система называет вас">
+                            <span class="form-hint">Используется везде вместо ФИО. Если пусто — показывается ФИО</span>
+                        </div>
                         <div class="form-group">
                             <label class="form-label" for="profilePhone">Телефон</label>
                             <input type="tel" class="form-input" id="profilePhone" placeholder="+7 (999) 123-45-67">
@@ -200,6 +215,32 @@
                     </div>
                 </div>
             </form>
+
+            <div class="info-section info-section--credentials">
+                <h3 class="info-section__title">Вход в систему</h3>
+                <p class="profile-hint">Логин и пароль для входа в JIVA HUB</p>
+                <form id="profileCredentialsForm" class="profile-edit-form">
+                    <div class="form-grid form-grid--2">
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="profileUsername">Логин</label>
+                            <input type="text" class="form-input" id="profileUsername" autocomplete="username" data-ignore-dirty>
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label" for="profileCurrentPassword">Текущий пароль *</label>
+                            <input type="password" class="form-input" id="profileCurrentPassword" autocomplete="current-password" data-ignore-dirty placeholder="Нужен для смены логина и пароля">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profileNewPassword">Новый пароль</label>
+                            <input type="password" class="form-input" id="profileNewPassword" autocomplete="new-password" data-ignore-dirty placeholder="Оставьте пустым, чтобы не менять">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="profileNewPasswordRepeat">Повторите пароль</label>
+                            <input type="password" class="form-input" id="profileNewPasswordRepeat" autocomplete="new-password" data-ignore-dirty>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-outline btn-sm" id="profileCredentialsSaveBtn">Сохранить вход</button>
+                </form>
+            </div>
         </div>
         <div class="modal__footer modal-footer-actions">
             <div class="modal-footer-actions__left"></div>

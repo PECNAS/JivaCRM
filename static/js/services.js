@@ -3,9 +3,11 @@
     let selectedNodeType = null;
     let contextNode = null;
     let currentServiceData = null;
-    let currentActiveTab = 'info';
     let staffRows = [];
     let isSaving = false;
+    let renamingNodeId = null;
+    let collapsedNodes = new Set();
+    let initializedCollapse = false;
 
     const treeContainer = document.getElementById('treeRoot');
     const contentBody = document.getElementById('contentBody');
@@ -17,11 +19,19 @@
     const loadingOverlay = document.getElementById('loadingOverlay');
 
     function getCSRFToken() {
+        if (window.UI && window.UI.getCSRFToken) return window.UI.getCSRFToken();
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
-        return cookieValue ? cookieValue[2] : '';
+
+        if (cookieValue) return cookieValue[2];
+
+        return window.__csrfToken || '';
     }
 
     function showToast(message) {
+        if (window.UI && window.UI.showToast) {
+            window.UI.showToast(message);
+            return;
+        }
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
         toast.className = 'toast';
@@ -35,6 +45,7 @@
     }
 
     function escapeHtml(text) {
+        if (window.UI && window.UI.escapeHtml) return window.UI.escapeHtml(text);
         if (!text && text !== 0) return '';
         const div = document.createElement('div');
         div.textContent = String(text);
@@ -42,12 +53,11 @@
     }
 
     function formatPrice(value) {
-        const num = parseFloat(value) || 0;
-        return num.toFixed(2).replace('.', ',') + ' ₽';
+        return window.UI.formatMoney(value);
     }
 
-    function showLoading() { loadingOverlay.style.display = 'flex'; }
-    function hideLoading() { loadingOverlay.style.display = 'none'; }
+    function showLoading() { if (loadingOverlay) loadingOverlay.style.display = 'flex'; }
+    function hideLoading() { if (loadingOverlay) loadingOverlay.style.display = 'none'; }
 
     function getScrollableContainers() {
         const containers = [];
@@ -64,17 +74,53 @@
     }
 
     function showContextMenu(x, y) {
+        if (!contextMenu) return;
+
         contextMenu.style.display = 'block';
-        contextMenu.style.left = x + 'px';
-        contextMenu.style.top = y + 'px';
+        contextMenu.style.left = '0px';
+        contextMenu.style.top = '0px';
+
+        const rect = contextMenu.getBoundingClientRect();
+        const maxLeft = window.innerWidth - rect.width - 8;
+        const maxTop = window.innerHeight - rect.height - 8;
+
+        contextMenu.style.left = Math.max(8, Math.min(x, maxLeft)) + 'px';
+        contextMenu.style.top = Math.max(8, Math.min(y, maxTop)) + 'px';
     }
 
     function hideContextMenu() {
-        contextMenu.style.display = 'none';
+        if (contextMenu) contextMenu.style.display = 'none';
+    }
+
+    function toggleNode(nodeId, forceCollapsed) {
+        if (forceCollapsed === true) {
+            collapsedNodes.add(nodeId);
+        } else if (forceCollapsed === false) {
+            collapsedNodes.delete(nodeId);
+        } else if (collapsedNodes.has(nodeId)) {
+            collapsedNodes.delete(nodeId);
+        } else {
+            collapsedNodes.add(nodeId);
+        }
+
+        const li = treeContainer ? treeContainer.querySelector(`li[data-id="${nodeId}"]`) : null;
+
+        if (!li) return;
+
+        const children = li.querySelector(':scope > .tree-children');
+        const icon = li.querySelector(':scope > .tree-item .toggle-icon');
+
+        if (children) {
+            children.classList.toggle('collapsed', collapsedNodes.has(nodeId));
+        }
+
+        if (icon) {
+            icon.classList.toggle('expanded', !collapsedNodes.has(nodeId));
+        }
     }
 
     function fetchTree() {
-        fetch('/services/tree/')
+        fetch('/services/tree/', { cache: 'no-store' })
             .then(r => r.json())
             .then(data => {
                 if (data.error) { showToast(data.error); return; }
@@ -84,82 +130,231 @@
     }
 
     function renderTree(treeData) {
+        if (!treeContainer) return;
+
         if (!treeData || treeData.length === 0) {
-            treeContainer.innerHTML = '<div class="empty-state" style="padding:1rem;text-align:center;"><p style="color:#7a7267;font-size:0.85rem;">Нет услуг</p></div>';
+            treeContainer.innerHTML = '<div class="tree-empty">Нет услуг</div>';
             return;
         }
+
+        if (!initializedCollapse) {
+            collapseAllCategories(treeData);
+            initializedCollapse = true;
+        }
+
         treeContainer.innerHTML = buildTreeHtml(treeData);
         attachTreeEvents();
     }
 
+    function collapseAllCategories(nodes) {
+        nodes.forEach(node => {
+            if (node.type === 'category') {
+                collapsedNodes.add(node.id);
+            }
+
+            if (node.children && node.children.length) {
+                collapseAllCategories(node.children);
+            }
+        });
+    }
+
     function buildTreeHtml(nodes) {
         let html = '';
+
         nodes.forEach(node => {
             const hasChildren = node.children && node.children.length > 0;
             const isCategory = node.type === 'category';
-            const iconName = isCategory ? 'category' : 'service';
-            const label = isCategory ? 'каталог' : 'услуга';
+            const collapsed = collapsedNodes.has(node.id);
+            const isRenaming = renamingNodeId === node.id;
+            const selected = selectedNodeId === node.id;
 
             html += `<li data-id="${node.id}" data-type="${node.type}">`;
-            html += `<div class="tree-item" data-id="${node.id}">`;
-            html += hasChildren
-                ? `<span class="toggle-icon" data-toggle="1">▶</span>`
-                : `<span class="toggle-icon" style="opacity:0;">▶</span>`;
-            html += `<svg class="item-icon ${iconName}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`;
+            html += `<div class="tree-item${selected ? ' selected' : ''}" data-id="${node.id}" data-type="${node.type}">`;
+
+            if (hasChildren || isCategory) {
+                html += `<span class="toggle-icon${collapsed ? '' : ' expanded'}" data-toggle="${node.id}">`;
+                html += `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+                html += `</span>`;
+            } else {
+                html += `<span class="toggle-icon toggle-icon--empty"></span>`;
+            }
+
+            html += `<svg class="item-icon ${isCategory ? 'category' : 'service'}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`;
             html += isCategory
                 ? `<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>`
                 : `<circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/>`;
             html += `</svg>`;
-            html += `<span class="item-name">${escapeHtml(node.name)}</span>`;
-            html += `<span class="item-badge">${label}</span>`;
-            html += `</div>`;
-            if (hasChildren) {
-                html += `<ul class="tree-children collapsed">${buildTreeHtml(node.children)}</ul>`;
+
+            if (isRenaming) {
+                html += `<input type="text" class="tree-rename-input" data-rename="${node.id}" value="${escapeHtml(node.name)}">`;
+            } else {
+                html += `<span class="item-name">${escapeHtml(node.name)}</span>`;
             }
+
+            html += `</div>`;
+
+            if (hasChildren) {
+                html += `<ul class="tree-children${collapsed ? ' collapsed' : ''}">${buildTreeHtml(node.children)}</ul>`;
+            }
+
             html += `</li>`;
         });
+
         return html;
     }
 
     function attachTreeEvents() {
-        document.querySelectorAll('.tree-item').forEach(item => {
+        if (!treeContainer) return;
+
+        treeContainer.querySelectorAll('.tree-item').forEach(item => {
+            const nodeId = parseInt(item.dataset.id, 10);
+
             item.addEventListener('click', function(e) {
-                if (e.target.classList.contains('toggle-icon')) return;
+                if (e.target.closest('.tree-rename-input')) return;
+
+                const type = this.dataset.type;
+                const hasChildren = !!this.closest('li').querySelector(':scope > .tree-children');
+
                 e.stopPropagation();
-                selectNode(parseInt(this.dataset.id, 10), this);
+
+                if (e.target.closest('.toggle-icon')) return;
+
+                if (type === 'category') {
+                    if (hasChildren) toggleNode(nodeId);
+                    markSelected(this);
+                    resetContentPanel();
+                    return;
+                }
+
+                selectNode(nodeId, this);
             });
+
+            item.addEventListener('dblclick', function(e) {
+                if (e.target.closest('.tree-rename-input')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                startRename(nodeId);
+            });
+
             item.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                contextNode = parseInt(this.dataset.id, 10);
+                contextNode = nodeId;
                 showContextMenu(e.clientX, e.clientY);
             });
         });
 
-        document.querySelectorAll('.toggle-icon[data-toggle="1"]').forEach(icon => {
+        treeContainer.querySelectorAll('.toggle-icon[data-toggle]').forEach(icon => {
             icon.addEventListener('click', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
-                const li = this.closest('li');
-                if (!li) return;
-                const children = li.querySelector(':scope > .tree-children');
-                if (children) {
-                    const isCollapsed = children.classList.toggle('collapsed');
-                    this.classList.toggle('expanded', !isCollapsed);
-                }
+                toggleNode(parseInt(this.dataset.toggle, 10));
             });
         });
+
+        const renameInput = treeContainer.querySelector('.tree-rename-input[data-rename]');
+
+        if (renameInput) {
+            renameInput.focus();
+            renameInput.select();
+
+            let finished = false;
+
+            const commit = function(save) {
+                if (finished) return;
+                finished = true;
+
+                const nodeId = parseInt(renameInput.dataset.rename, 10);
+                const value = renameInput.value.trim();
+
+                renamingNodeId = null;
+
+                if (!save || !value) {
+                    fetchTree();
+                    return;
+                }
+
+                fetch(`/services/${nodeId}/update/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: new URLSearchParams({ name: value }),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        showToast(data.error);
+                        fetchTree();
+                        return;
+                    }
+
+                    if (selectedNodeId === nodeId) {
+                        currentServiceData = data.service;
+                        renderServiceCard(currentServiceData);
+                    }
+
+                    fetchTree();
+                })
+                .catch(() => {
+                    showToast('Ошибка переименования');
+                    fetchTree();
+                });
+            };
+
+            renameInput.addEventListener('blur', function() { commit(true); });
+
+            renameInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commit(true);
+                }
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    commit(false);
+                }
+            });
+        }
+    }
+
+    function startRename(nodeId) {
+        renamingNodeId = nodeId;
+        fetchTree();
+    }
+
+    function markSelected(element) {
+        if (!treeContainer) return;
+
+        treeContainer.querySelectorAll('.tree-item').forEach(el => el.classList.remove('selected'));
+
+        if (element) element.classList.add('selected');
+    }
+
+    function resetContentPanel() {
+        selectedNodeId = null;
+        selectedNodeType = null;
+        currentServiceData = null;
+        staffRows = [];
+
+        if (contentTitle) contentTitle.textContent = 'Выберите услугу';
+        if (saveServiceBtn) saveServiceBtn.style.display = 'none';
+        if (deleteServiceBtn) deleteServiceBtn.style.display = 'none';
+
+        if (contentBody) {
+            contentBody.innerHTML = '<div class="empty-state"><p>Выберите услугу для просмотра</p></div>';
+        }
     }
 
     function selectNode(id, element) {
-        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('selected'));
-        if (element) element.classList.add('selected');
+        markSelected(element);
 
         selectedNodeId = id;
         showLoading();
         const scrollPositions = getScrollableContainers();
 
-        fetch(`/services/${id}/`)
+        fetch(`/services/${id}/`, { cache: 'no-store' })
             .then(r => r.json())
             .then(data => {
                 hideLoading();
@@ -175,74 +370,59 @@
     function renderServiceCard(data) {
         contentTitle.textContent = data.name;
         deleteServiceBtn.style.display = 'inline-flex';
-        saveServiceBtn.style.display = data.type === 'service' ? 'inline-flex' : 'none';
+        saveServiceBtn.style.display = 'inline-flex';
 
-        if (data.type === 'category') {
-            renderCategoryCard(data);
-        } else {
-            renderServiceTabs(data);
-        }
+        renderServiceCardContent(data);
     }
 
-    function renderCategoryCard(data) {
-        contentBody.innerHTML = `
-            <div class="service-tab-content active" style="display:block;">
-                <div class="field-row">
-                    <div class="field-label">Название</div>
-                    <div class="field-value" data-field="name" data-type="text">${escapeHtml(data.name)}</div>
-                </div>
-            </div>
-        `;
+    function renderServiceCardContent(data) {
+        contentBody.innerHTML = '<div class="service-tab-content active" data-content="single"></div>';
+
+        renderSingleTab(data);
         attachFieldEvents();
     }
 
-    function renderServiceTabs(data) {
-        if (currentActiveTab !== 'info' && currentActiveTab !== 'staff') {
-            currentActiveTab = 'info';
-        }
+    function renderSingleTab(data) {
+        const tab = contentBody.querySelector('[data-content="single"]');
 
-        contentBody.innerHTML = `
-            <div class="service-tabs">
-                <button class="service-tab-btn ${currentActiveTab === 'info' ? 'active' : ''}" data-tab="info">Информация</button>
-                <button class="service-tab-btn ${currentActiveTab === 'staff' ? 'active' : ''}" data-tab="staff">Персонал</button>
-            </div>
-            <div class="service-tab-content ${currentActiveTab === 'info' ? 'active' : ''}" data-content="info"></div>
-            <div class="service-tab-content ${currentActiveTab === 'staff' ? 'active' : ''}" data-content="staff"></div>
-        `;
-
-        contentBody.querySelectorAll('.service-tab-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                currentActiveTab = this.dataset.tab;
-                contentBody.querySelectorAll('.service-tab-btn').forEach(b => b.classList.toggle('active', b === this));
-                contentBody.querySelectorAll('[data-content]').forEach(c => c.classList.toggle('active', c.dataset.content === currentActiveTab));
-            });
-        });
-
-        renderInfoTab(data);
-        renderStaffTab(data);
-        attachFieldEvents();
-    }
-
-    function renderInfoTab(data) {
-        const tab = contentBody.querySelector('[data-content="info"]');
         tab.innerHTML = `
             <div class="field-row">
                 <div class="field-label">Название</div>
                 <div class="field-value" data-field="name" data-type="text">${escapeHtml(data.name)}</div>
             </div>
-            <div class="field-row field-row--multiline">
-                <div class="field-label">Описание</div>
-                <div class="field-value ${data.description ? '' : 'field-value--empty'}" data-field="description" data-type="textarea">${escapeHtml(data.description || 'Добавить описание')}</div>
-            </div>
             <div class="field-row">
-                <div class="field-label">Длительность</div>
-                <div class="field-value ${data.duration ? '' : 'field-value--empty'}" data-field="duration" data-type="text">${escapeHtml(data.duration || 'Указать длительность')}</div>
+                <div class="field-label">Ставка за артиста</div>
+                <div class="field-value" data-field="artist_rate" data-type="number">${formatPrice(data.artist_rate)}</div>
             </div>
-            <div class="field-row">
-                <div class="field-label">Медиаконтент</div>
-                <div class="field-value ${data.media_url ? '' : 'field-value--empty'}" data-field="media_url" data-type="text">${data.media_url ? `<a href="${escapeHtml(data.media_url)}" target="_blank" rel="noopener">${escapeHtml(data.media_url)}</a>` : 'Добавить ссылку'}</div>
+            <div class="staff-block">
+                <div class="staff-block__title">Стоимость по количеству артистов</div>
+                <table class="calc-table staff-table">
+                    <thead>
+                        <tr>
+                            <th>Кол-во артистов</th>
+                            <th style="text-align:right;">Стоимость</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffTableBody">
+                        ${buildStaffRowsHtml()}
+                    </tbody>
+                </table>
+                <div class="calc-hint">Новая строка добавляется автоматически. Пустые строки при сохранении пропускаются.</div>
             </div>
         `;
+
+        attachStaffEvents(tab.querySelector('#staffTableBody'));
+    }
+
+    function buildStaffRowsHtml() {
+        staffRows = (currentServiceData.staff_rows || []).map(r => ({
+            artist_count: String(r.artist_count),
+            cost: String(r.cost),
+        }));
+
+        ensureTrailingEmptyRow();
+
+        return staffRows.map((row, index) => buildStaffRowHtml(index, row)).join('');
     }
 
     function isStaffRowEmpty(row) {
@@ -262,7 +442,7 @@
                     <input type="text" inputmode="numeric" class="field-input field-input--number" data-field="artist_count" data-index="${index}" value="${escapeHtml(row.artist_count)}" placeholder="0">
                 </td>
                 <td>
-                    <input type="number" step="0.01" min="0.01" class="field-input field-input--number" data-field="cost" data-index="${index}" value="${escapeHtml(row.cost)}" placeholder="0">
+                    <input type="text" inputmode="decimal" class="field-input field-input--number" data-field="cost" data-index="${index}" value="${escapeHtml(row.cost)}" placeholder="0">
                 </td>
             </tr>
         `;
@@ -280,6 +460,11 @@
             if (field === 'artist_count') {
                 const digits = input.value.replace(/\D/g, '').replace(/^0+/, '');
                 if (digits !== input.value) input.value = digits;
+            }
+
+            if (field === 'cost') {
+                const cleaned = input.value.replace(/[^\d.,]/g, '').replace(',', '.');
+                if (cleaned !== input.value) input.value = cleaned;
             }
 
             staffRows[index][field] = input.value;
@@ -302,36 +487,6 @@
         });
     }
 
-    function renderStaffTab(data) {
-        const tab = contentBody.querySelector('[data-content="staff"]');
-        staffRows = (data.staff_rows || []).map(r => ({
-            artist_count: String(r.artist_count),
-            cost: String(r.cost),
-        }));
-        ensureTrailingEmptyRow();
-
-        tab.innerHTML = `
-            <div class="field-row">
-                <div class="field-label">Ставка за артиста</div>
-                <div class="field-value" data-field="artist_rate" data-type="number">${formatPrice(data.artist_rate)}</div>
-            </div>
-            <table class="calc-table staff-table">
-                <thead>
-                    <tr>
-                        <th>Кол-во артистов</th>
-                        <th style="text-align:right;">Стоимость</th>
-                    </tr>
-                </thead>
-                <tbody id="staffTableBody">
-                    ${staffRows.map((row, index) => buildStaffRowHtml(index, row)).join('')}
-                </tbody>
-            </table>
-            <div class="calc-hint">Новая строка добавляется автоматически. Пустые строки при сохранении пропускаются.</div>
-        `;
-
-        attachStaffEvents(tab.querySelector('#staffTableBody'));
-    }
-
     function attachFieldEvents() {
         contentBody.querySelectorAll('.field-value[data-field]').forEach(el => {
             el.addEventListener('click', function() {
@@ -349,22 +504,17 @@
             : '';
 
         let input;
+
         if (type === 'textarea') {
             input = document.createElement('textarea');
             input.className = 'field-input field-input--textarea';
             input.value = rawValue;
-        } else if (type === 'number') {
-            input = document.createElement('input');
-            input.type = 'number';
-            input.className = 'field-input field-input--number';
-            input.step = '0.01';
-            input.min = '0';
-            input.value = parseFloat(rawValue) || 0;
         } else {
             input = document.createElement('input');
             input.type = 'text';
+            input.inputMode = type === 'number' ? 'decimal' : 'text';
             input.className = 'field-input';
-            input.value = rawValue;
+            input.value = type === 'number' ? String(parseFloat(rawValue) || 0) : rawValue;
         }
 
         el.textContent = '';
@@ -384,6 +534,7 @@
                 e.preventDefault();
                 input.blur();
             }
+
             if (e.key === 'Escape') {
                 cancelled = true;
                 renderServiceCard(currentServiceData);
@@ -395,7 +546,8 @@
         if (isSaving) return;
 
         if (field === 'artist_rate') {
-            value = parseFloat(value) || 0;
+            value = parseFloat(String(value).replace(',', '.')) || 0;
+
             if (value < 0) {
                 showToast('Ставка не может быть отрицательной');
                 renderServiceCard(currentServiceData);
@@ -419,12 +571,14 @@
         .then(data => {
             hideLoading();
             isSaving = false;
+
             if (data.error) {
                 showToast(data.error);
                 renderServiceCard(currentServiceData);
                 restoreScroll(scrollPositions);
                 return;
             }
+
             currentServiceData = data.service;
             fetchTree();
             renderServiceCard(currentServiceData);
@@ -440,67 +594,35 @@
 
     function collectStaffRows() {
         const result = [];
+
         for (const row of staffRows) {
             const countRaw = String(row.artist_count).trim();
-            const costRaw = String(row.cost).trim();
+            const costRaw = String(row.cost).trim().replace(',', '.');
+
             if (!countRaw && !costRaw) continue;
+
             if (!countRaw || !costRaw) {
                 showToast('Заполните обе ячейки строки');
                 return null;
             }
+
             const count = parseInt(countRaw, 10);
             const cost = parseFloat(costRaw);
+
             if (!(count > 0) || !(cost > 0)) {
                 showToast('Значения должны быть положительными');
                 return null;
             }
+
             result.push({ artist_count: count, cost: cost });
         }
+
         return result;
-    }
-
-    function saveStaffRows() {
-        if (!selectedNodeId || selectedNodeType !== 'service' || isSaving) return;
-
-        const rows = collectStaffRows();
-        if (rows === null) return;
-
-        isSaving = true;
-        showLoading();
-        const scrollPositions = getScrollableContainers();
-
-        fetch(`/services/${selectedNodeId}/update/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: new URLSearchParams({ staff_rows: JSON.stringify(rows) })
-        })
-        .then(r => r.json())
-        .then(data => {
-            hideLoading();
-            isSaving = false;
-            if (data.error) {
-                showToast(data.error);
-                return;
-            }
-            showToast('Персонал сохранён');
-            currentServiceData = data.service;
-            fetchTree();
-            renderServiceCard(currentServiceData);
-            restoreScroll(scrollPositions);
-        })
-        .catch(err => {
-            hideLoading();
-            isSaving = false;
-            showToast('Ошибка сохранения');
-            console.error(err);
-        });
     }
 
     function createNode(parentId, type) {
         showLoading();
+
         fetch('/services/create/', {
             method: 'POST',
             headers: {
@@ -512,14 +634,22 @@
         .then(r => r.json())
         .then(data => {
             hideLoading();
+
             if (data.error) { showToast(data.error); return; }
+
             if (data.success) {
                 showToast(`Создан ${type === 'category' ? 'каталог' : 'услуга'}`);
+
+                if (parentId) {
+                    toggleNode(parseInt(parentId, 10), false);
+                }
+
                 fetchTree();
+
                 setTimeout(() => {
-                    const el = document.querySelector(`.tree-item[data-id="${data.service.id}"]`);
+                    const el = treeContainer.querySelector(`.tree-item[data-id="${data.service.id}"]`);
                     if (el) selectNode(data.service.id, el);
-                }, 300);
+                }, 250);
             }
         })
         .catch(err => { hideLoading(); showToast('Ошибка создания'); console.error(err); });
@@ -551,51 +681,12 @@
                 if (data.error) { showToast(data.error); return; }
 
                 if (data.success) {
-                    showToast('Элемент удалён');
-                    contentBody.innerHTML = '<div class="empty-state"><p>Выберите каталог или услугу для просмотра</p></div>';
-                    contentTitle.textContent = 'Выберите элемент';
-                    saveServiceBtn.style.display = 'none';
-                    deleteServiceBtn.style.display = 'none';
-                    selectedNodeId = null;
-                    selectedNodeType = null;
-                    currentServiceData = null;
-                    staffRows = [];
+                    showToast(data.message || 'Элемент удалён');
+                    resetContentPanel();
                     fetchTree();
                 }
             })
             .catch(err => { hideLoading(); showToast('Ошибка удаления'); console.error(err); });
-        });
-    }
-
-    document.querySelectorAll('.context-menu-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const action = this.dataset.action;
-            hideContextMenu();
-            if (contextNode === null) return;
-            if (action === 'add-category') createNode(contextNode, 'category');
-            else if (action === 'add-service') createNode(contextNode, 'service');
-            else if (action === 'rename') {
-                const el = document.querySelector(`.tree-item[data-id="${contextNode}"]`);
-                if (el) selectNode(contextNode, el);
-            } else if (action === 'delete') deleteNode(contextNode);
-        });
-    });
-
-    document.addEventListener('click', function(e) {
-        if (contextMenu && !contextMenu.contains(e.target)) hideContextMenu();
-    });
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') hideContextMenu();
-    });
-
-    if (addRootCategoryBtn) {
-        addRootCategoryBtn.addEventListener('click', () => createNode(null, 'category'));
-    }
-
-    if (saveServiceBtn) {
-        saveServiceBtn.addEventListener('click', function() {
-            saveServiceCard();
         });
     }
 
@@ -611,7 +702,7 @@
         const scrollPositions = getScrollableContainers();
 
         const payload = { staff_rows: JSON.stringify(rows) };
-        const nameInput = document.querySelector('[data-field="name"]');
+        const nameInput = contentBody.querySelector('[data-field="name"]');
 
         if (nameInput && nameInput.tagName === 'INPUT') {
             payload.name = nameInput.value.trim();
@@ -647,6 +738,48 @@
             isSaving = false;
             showToast('Ошибка сохранения');
             console.error(err);
+        });
+    }
+
+    if (contextMenu) {
+        contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const action = this.dataset.action;
+                hideContextMenu();
+
+                if (contextNode === null) return;
+
+                if (action === 'add-category') {
+                    createNode(contextNode, 'category');
+                } else if (action === 'add-service') {
+                    createNode(contextNode, 'service');
+                } else if (action === 'rename') {
+                    startRename(contextNode);
+                } else if (action === 'delete') {
+                    const targetId = contextNode;
+                    const el = treeContainer.querySelector(`.tree-item[data-id="${targetId}"]`);
+                    if (el) selectNode(targetId, el);
+                    setTimeout(() => deleteNode(targetId), 150);
+                }
+            });
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (contextMenu && !contextMenu.contains(e.target)) hideContextMenu();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') hideContextMenu();
+    });
+
+    if (addRootCategoryBtn) {
+        addRootCategoryBtn.addEventListener('click', () => createNode(null, 'category'));
+    }
+
+    if (saveServiceBtn) {
+        saveServiceBtn.addEventListener('click', function() {
+            saveServiceCard();
         });
     }
 

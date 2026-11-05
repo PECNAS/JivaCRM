@@ -182,6 +182,73 @@ def accrue_order(order, actor=None, period_start=None):
     return created, skipped
 
 
+def sync_order_balance(order, previous_status=None, actor=None):
+    from viewer.models import Order
+
+    is_completed = order.status == 'completed'
+
+    if is_completed:
+        created, skipped = accrue_order(order, actor=actor)
+
+        for employee in created:
+            refresh_employee_accrual(order, employee, actor)
+
+        return created
+
+    if previous_status == 'completed' and not is_completed:
+        cancel_order_accruals(order, actor, 'Статус заказа изменён с «Выполненный»')
+
+    return []
+
+
+def refresh_employee_accrual(order, employee, actor=None):
+    from viewer.models import MoneyAccrual
+
+    if order.status != 'completed':
+        return None
+
+    amount = order_payment_amount(order, employee)
+
+    if amount is None or amount <= 0:
+        return None
+
+    accrual = MoneyAccrual.objects.filter(
+        employee=employee,
+        order=order,
+        category=MoneyAccrual.CATEGORY_ORDER,
+        status=MoneyAccrual.STATUS_ACTIVE,
+    ).first()
+
+    if accrual is None:
+        return None
+
+    if accrual.amount == amount:
+        return accrual
+
+    accrual.amount = amount
+    accrual.save(update_fields=['amount', 'updated_at'])
+
+    return accrual
+
+
+def cancel_order_accruals(order, actor=None, reason=''):
+    from viewer.models import MoneyAccrual
+
+    cancelled = []
+
+    query = MoneyAccrual.objects.filter(
+        order=order,
+        category=MoneyAccrual.CATEGORY_ORDER,
+        status=MoneyAccrual.STATUS_ACTIVE,
+    )
+
+    for accrual in query:
+        cancel_accrual(accrual, actor=actor, reason=reason, with_source=False)
+        cancelled.append(accrual)
+
+    return cancelled
+
+
 def accrue_order_items(order, items, actor=None, period_start=None):
     created = []
     skipped = []
@@ -234,7 +301,7 @@ def accrue_order_items(order, items, actor=None, period_start=None):
     return created, skipped
 
 
-def cancel_accrual(accrual, actor=None, reason=''):
+def cancel_accrual(accrual, actor=None, reason='', with_source=False):
     if not accrual.is_active:
         return None
 
@@ -248,7 +315,7 @@ def cancel_accrual(accrual, actor=None, reason=''):
 
         accrual.save(update_fields=['status', 'cancelled_at', 'cancelled_by', 'comment', 'updated_at'])
 
-        if accrual.amount <= 0:
+        if not with_source or accrual.amount <= 0:
             return accrual
 
         source = MoneyAccrual.objects.create(

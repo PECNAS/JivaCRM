@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-from viewer.models import Agency, City, Client, Employee
+from viewer.models import Agency, City, Client, Employee, ROLE_SENIOR_ADMIN, ROLE_MANAGER
 
 DATASET_PATH = Path(settings.BASE_DIR) / 'viewer' / 'data' / 'clients_import.json'
 
@@ -26,7 +26,7 @@ def normalize_telegram(value):
 
 def pick_creator():
     return (
-        Employee.objects.filter(role='senior_admin', is_active=True).first()
+        Employee.objects.filter(role=ROLE_SENIOR_ADMIN, is_active=True).first()
         or Employee.objects.filter(role='manager', is_active=True).first()
         or Employee.objects.first()
     )
@@ -133,6 +133,7 @@ def import_clients():
             client = Client.objects.create(
                 full_name=full_name or 'Без имени',
                 phone=phone,
+                contact_type=Client.CONTACT_PHONE if phone else (Client.CONTACT_TELEGRAM if telegram else ''),
                 client_type=client_type if client_type in ('agency', 'organizer') else 'organizer',
                 agency=agency if client_type == 'agency' else None,
                 telegram_username=telegram,

@@ -1,5 +1,6 @@
 (function() {
     let currentOrderId = null;
+    let isCreatingOrder = false;
     let createClientTargetSelect = null;
     let allClients = [];
     let createClientPicker = null;
@@ -24,7 +25,6 @@
     const editorModalCloseBtn = document.getElementById('editorModalCloseBtn');
     const editorOrderTitle = document.getElementById('editorOrderTitle');
 
-    const createClientFromCreateBtn = document.getElementById('createClientFromCreateBtn');
     const createClientModal = document.getElementById('createClientModal');
     const createClientModalCloseBtn = document.getElementById('createClientModalCloseBtn');
     const createClientModalCancelBtn = document.getElementById('createClientModalCancelBtn');
@@ -34,7 +34,10 @@
 
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
-        return cookieValue ? cookieValue[2] : '';
+
+        if (cookieValue) return cookieValue[2];
+
+        return window.__csrfToken || '';
     }
 
     const ORDERS_PAGE = 50;
@@ -82,8 +85,7 @@
 
     function showNotification(orderId, orderName) {
         const notification = document.createElement('div');
-        notification.className = 'notification';
-        notification.innerHTML = `
+        notification.className = 'notification';        notification.innerHTML = `
             <div class="notification__content">
                 <div class="notification__text">
                     Заказ "<strong>${escapeHtml(orderName)}</strong>" успешно создан
@@ -166,6 +168,7 @@
     function getRowClassNames(order) {
         let classes = 'orders-row';
 
+        if (order.status) classes += ' orders-row--' + order.status;
         if (!order.has_date) classes += ' orders-row--no-date';
         if (order.content_changed) classes += ' orders-row--changed';
         if (order.is_incomplete) classes += ' orders-row--incomplete';
@@ -178,7 +181,13 @@
         return 'Не заполнено: ' + order.missing_fields.join(', ');
     }
 
+    function canManageOrdersClientList() {
+        return document.body.dataset.canManageOrders === '1';
+    }
+
     function loadClients(selectedId, offset) {
+        if (!canManageOrdersClientList()) return;
+
         const start = offset || 0;
         const params = new URLSearchParams();
         params.set('offset', String(start));
@@ -237,6 +246,26 @@
             .catch(error => console.error('Ошибка загрузки клиентов:', error));
     }
 
+    function applyClientContacts(client) {
+        if (!client) return;
+
+        const nameField = document.getElementById('editOrderContactName');
+        const phoneField = document.getElementById('editOrderContactPhone');
+        const telegramField = document.getElementById('editOrderContactTelegram');
+
+        if (nameField) nameField.value = client.full_name || '';
+
+        if (phoneField) {
+            if (window.UI && window.UI.setPhoneValue) {
+                window.UI.setPhoneValue(phoneField, client.phone || '');
+            } else {
+                phoneField.value = client.phone || '';
+            }
+        }
+
+        if (telegramField) telegramField.value = client.telegram || '';
+    }
+
     function createClientCombobox(inputId, selectId) {
         const input = document.getElementById(inputId);
         const select = document.getElementById(selectId);
@@ -250,6 +279,7 @@
 
         let items = [];
         let index = -1;
+        let inlineFormOpen = false;
 
         function normalize(value) {
             return (value || '').toLowerCase().replace(/ё/g, 'е').trim();
@@ -260,6 +290,147 @@
             dropdown.innerHTML = '';
             items = [];
             index = -1;
+            inlineFormOpen = false;
+        }
+
+        function openInlineClientForm(name) {
+            inlineFormOpen = true;
+            dropdown.innerHTML = '';
+
+            const form = document.createElement('div');
+            form.className = 'client-inline-form';
+            form.innerHTML = `
+                <div class="client-inline-form__title">Новый клиент</div>
+                <input type="text" class="client-inline-form__input" data-field="full_name" placeholder="Имя клиента *" value="${window.UI.escapeHtml(name || '')}">
+                <select class="client-inline-form__input" data-field="client_type">
+                    <option value="organizer">Организатор</option>
+                    <option value="agency">Агентство</option>
+                </select>
+                <input type="text" class="client-inline-form__input" data-field="agency" placeholder="Название агентства *" autocomplete="off" style="display:none;">
+                <input type="text" class="client-inline-form__input" data-field="contact" placeholder="Телефон или @телеграм *" autocomplete="off">
+                <div class="client-inline-form__actions">
+                    <button type="button" class="client-inline-form__cancel">Отмена</button>
+                    <button type="button" class="client-inline-form__submit">Создать</button>
+                </div>
+                <div class="client-inline-form__error" style="display:none;"></div>
+            `;
+
+            dropdown.appendChild(form);
+            dropdown.classList.add('open');
+
+            const nameInput = form.querySelector('[data-field="full_name"]');
+            const typeInput = form.querySelector('[data-field="client_type"]');
+            const agencyInput = form.querySelector('[data-field="agency"]');
+            const contactInput = form.querySelector('[data-field="contact"]');
+            const errorBox = form.querySelector('.client-inline-form__error');
+
+            const syncAgencyVisibility = function() {
+                agencyInput.style.display = typeInput.value === 'agency' ? '' : 'none';
+            };
+
+            typeInput.addEventListener('change', syncAgencyVisibility);
+
+            nameInput.focus();
+            nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length);
+
+            form.querySelector('.client-inline-form__cancel').addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                close();
+            });
+
+            const submit = function() {
+                const fullName = nameInput.value.trim();
+                const clientType = typeInput.value;
+                const agencyName = agencyInput.value.trim();
+                const contact = contactInput.value.trim();
+
+                if (!fullName) {
+                    errorBox.textContent = 'Укажите имя клиента';
+                    errorBox.style.display = 'block';
+                    nameInput.focus();
+                    return;
+                }
+
+                if (clientType === 'agency' && !agencyName) {
+                    errorBox.textContent = 'Укажите агентство';
+                    errorBox.style.display = 'block';
+                    agencyInput.focus();
+                    return;
+                }
+
+                if (!contact) {
+                    errorBox.textContent = 'Укажите телефон или телеграм';
+                    errorBox.style.display = 'block';
+                    contactInput.focus();
+                    return;
+                }
+
+                errorBox.style.display = 'none';
+
+                const isPhone = contact.replace(/\D/g, '').length >= 10;
+                const isTelegramHandle = /^[\w.]+$/.test(contact) && !isPhone;
+
+                const body = new URLSearchParams({
+                    full_name: fullName,
+                    agency_name: clientType === 'agency' ? agencyName : '',
+                    phone: isPhone ? contact : '',
+                    telegram: isPhone ? '' : (isTelegramHandle && !contact.startsWith('@') ? '@' + contact : contact),
+                    client_type: clientType,
+                    rating: 'medium',
+                });
+
+                fetch('/clients/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': window.UI.getCSRFToken(),
+                    },
+                    body: body,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        errorBox.textContent = data.error;
+                        errorBox.style.display = 'block';
+                        return;
+                    }
+
+                    if (data.duplicate) {
+                        errorBox.textContent = 'Похожий клиент уже существует';
+                        errorBox.style.display = 'block';
+                        return;
+                    }
+
+                    if (data.client) {
+                        allClients.push(data.client);
+                        pick(data.client);
+                        window.UI.showToast('Клиент «' + data.client.full_name + '» создан');
+                    }
+                })
+                .catch(() => {
+                    errorBox.textContent = 'Не удалось создать клиента';
+                    errorBox.style.display = 'block';
+                });
+            };
+
+            form.querySelector('.client-inline-form__submit').addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                submit();
+            });
+
+            form.querySelectorAll('input').forEach(field => {
+                field.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submit();
+                    }
+
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        close();
+                    }
+                });
+            });
         }
 
         function buildItems(query) {
@@ -304,6 +475,7 @@
             select.value = client.id;
             input.value = client.full_name + (client.agency ? ' (' + client.agency + ')' : '');
             input.dataset.clientId = client.id;
+            applyClientContacts(client);
             close();
             input.dispatchEvent(new CustomEvent('client-selected', { bubbles: true, detail: { client: client } }));
             input.blur();
@@ -312,6 +484,26 @@
         function render(query) {
             dropdown.innerHTML = '';
             items = buildItems(query);
+
+            const trimmed = (query || '').trim();
+
+            if (trimmed && allClients.every(client => normalize(client.full_name) !== normalize(trimmed))) {
+                const createRow = document.createElement('div');
+                createRow.className = 'client-combobox__create';
+
+                const createBtn = document.createElement('button');
+                createBtn.type = 'button';
+                createBtn.className = 'client-combobox__create-btn';
+                createBtn.textContent = 'Создать клиента «' + trimmed + '»';
+
+                createBtn.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    openInlineClientForm(trimmed);
+                });
+
+                createRow.appendChild(createBtn);
+                dropdown.appendChild(createRow);
+            }
 
             if (!items.length) {
                 const empty = document.createElement('div');
@@ -399,9 +591,12 @@
         });
 
         input.addEventListener('blur', function() {
+            if (inlineFormOpen) return;
+
             const typed = this.value.trim();
 
             setTimeout(() => {
+                if (inlineFormOpen) return;
                 if (!dropdown.classList.contains('open')) return;
 
                 if (!typed) {
@@ -430,6 +625,7 @@
         });
 
         document.addEventListener('click', function(e) {
+            if (inlineFormOpen) return;
             if (wrapper && !wrapper.contains(e.target)) close();
         });
 
@@ -473,8 +669,31 @@
 
     let orderRowsShown = 0;
 
+    function servicesSummary(order) {
+        const services = order.services || [];
+
+        if (!services.length) {
+            return '';
+        }
+
+        const parts = services.map(item => {
+            if (!item) return '';
+
+            if (typeof item === 'string') return item;
+
+            const name = item.name || '';
+
+            if (item.people_count_unknown || !item.people_count) {
+                return name;
+            }
+
+            return name + ' ' + item.people_count;
+        }).filter(Boolean);
+
+        return parts.join(' · ');
+    }
+
     function orderRow(order) {
-        const statusClass = `status-badge--${order.status}`;
         const badge = order.content_changed
             ? '<span class="orders-row__badge">Обновлено</span>'
             : '';
@@ -482,15 +701,26 @@
             ? '<span class="orders-row__dot" title="Заполнено не полностью"></span>'
             : '';
         const missingTitle = getMissingTitle(order);
+        const dateLabel = order.has_date ? order.date_display || order.date : 'Без даты';
+        const cityLabel = order.city_name || '';
+        const servicesText = servicesSummary(order);
+        const commentText = order.comment || '';
+        const managerLabel = order.manager || '—';
 
         return `
             <tr class="${getRowClassNames(order)}" data-order-id="${order.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
-                <td><span class="orders-row__name">${escapeHtml(getOrderName(order))}</span>${badge}${incompleteDot}</td>
-                <td>${order.has_date ? order.date : 'Не указана'}</td>
-                <td>${escapeHtml(order.client)}</td>
-                <td>${escapeHtml(order.city_name || '—')}</td>
-                <td><span class="status-badge ${statusClass}">${getStatusLabel(order.status)}</span></td>
-                <td>${order.cost || '—'}</td>
+                <td class="orders-row__date"><span class="orders-row__date-value">${escapeHtml(dateLabel)}</span></td>
+                <td class="orders-row__main">
+                    <span class="orders-row__title">${escapeHtml(order.name || '—')}${badge}${incompleteDot}</span>
+                    <span class="orders-row__meta">
+                        ${cityLabel ? `<span class="orders-row__city">${escapeHtml(cityLabel)}</span>` : ''}
+                        ${servicesText ? `<span class="orders-row__services">${escapeHtml(servicesText)}</span>` : ''}
+                    </span>
+                    ${commentText ? `<details class="orders-row__comment"><summary>Комментарий</summary><div class="orders-row__comment-text">${escapeHtml(commentText)}</div></details>` : ''}
+                </td>
+                <td class="orders-row__client">${escapeHtml(order.client)}</td>
+                <td class="orders-row__manager">${escapeHtml(managerLabel)}</td>
+                <td class="orders-row__cost">${order.cost || '—'}</td>
                 <td><button class="view-link" data-id="${order.id}">Открыть</button></td>
             </tr>
         `;
@@ -542,7 +772,7 @@
                 if (reset) {
                     tableBody.innerHTML = rows.length ? rows.map(orderRow).join('') : `
                         <tr>
-                            <td colspan="7" style="text-align:center; padding: 2rem; color: #7a7267;">
+                            <td colspan="6" style="text-align:center; padding: 2rem; color: #7a7267;">
                                 Заказы не найдены
                             </td>
                         </tr>
@@ -574,19 +804,89 @@
     }
 
     function renderOrders() {
+        if (!tableBody) return;
+
         saveDateFilter();
         orderRowsShown = 0;
         fetchOrdersPage(ORDERS_PAGE, true);
     }
+
+    function updateOrderRow(data) {
+        if (!data || !data.id) return;
+
+        if (window.refreshSchedule) {
+            window.refreshSchedule(true);
+            return;
+        }
+
+        if (!tableBody) return;
+
+        const row = tableBody.querySelector(`tr[data-order-id="${data.id}"]`);
+
+        if (!row) return;
+
+        const costCell = row.querySelector('.orders-row__cost');
+
+        if (costCell && data.cost !== undefined) {
+            costCell.textContent = data.cost || '—';
+        }
+
+        const titleNode = row.querySelector('.orders-row__title');
+
+        if (titleNode && data.name) {
+            const badge = titleNode.querySelector('.orders-row__badge');
+            const dot = titleNode.querySelector('.orders-row__dot');
+
+            titleNode.textContent = data.name;
+
+            if (badge) titleNode.appendChild(badge);
+            if (dot) titleNode.appendChild(dot);
+        }
+
+        const cityNode = row.querySelector('.orders-row__city');
+
+        if (cityNode && data.city_name !== undefined) {
+            cityNode.textContent = data.city_name || '';
+        }
+
+        const managerNode = row.querySelector('.orders-row__manager');
+
+        if (managerNode && data.manager !== undefined) {
+            managerNode.textContent = data.manager || '—';
+        }
+
+        const dateNode = row.querySelector('.orders-row__date-value');
+
+        if (dateNode && data.date_display) {
+            dateNode.textContent = data.date_display;
+        }
+    }
+
+    window.updateOrderRow = updateOrderRow;
 
     function loadMoreOrders() {
         fetchOrdersPage(orderRowsShown + ORDERS_PAGE, false);
     }
 
     function openCreateModal(prefillDate) {
+        if (!createModal) return;
+
+        if (document.body.dataset.canManageOrders !== '1') {
+            showToast('У вас нет прав на создание заказов');
+            return;
+        }
+
         createModal.classList.add('active');
         document.body.style.overflow = 'hidden';
         createForm.reset();
+
+        if (window.createOrderCityPicker) {
+            window.createOrderCityPicker.reset();
+        }
+
+        if (window.createOrderNameSuggest) {
+            window.createOrderNameSuggest.reset();
+        }
 
         if (prefillDate) {
             createOrderDate.value = prefillDate;
@@ -931,6 +1231,363 @@
 
     mountNewClientCitySelector();
 
+    function mountCreateOrderCityPicker() {
+        const wrapper = document.getElementById('createOrderCityPicker');
+        const input = document.getElementById('createOrderCityInput');
+        const dropdown = document.getElementById('createOrderCityDropdown');
+        const hiddenId = document.getElementById('createOrderCityId');
+        const hiddenName = document.getElementById('createOrderCityName');
+
+        if (!wrapper || !input || !dropdown || hiddenId.dataset.mounted === '1') return;
+
+        hiddenId.dataset.mounted = '1';
+
+        let suggestions = [];
+        let index = -1;
+        let timer = null;
+        let counter = 0;
+
+        function close() {
+            dropdown.classList.remove('open');
+            dropdown.innerHTML = '';
+            index = -1;
+        }
+
+        function pick(city) {
+            hiddenId.value = city.id || '';
+            hiddenName.value = city.name || '';
+            input.value = city.name || '';
+            close();
+        }
+
+        function createCity(name) {
+            const trimmed = (name || '').trim();
+
+            if (!trimmed) return;
+
+            const existing = suggestions.find(city => city.name.toLowerCase() === trimmed.toLowerCase());
+
+            if (existing) {
+                pick(existing);
+                return;
+            }
+
+            fetch('/orders/cities/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: new URLSearchParams({ name: trimmed }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error);
+                    return;
+                }
+
+                pick({ id: data.city.id, name: data.city.name });
+                showToast('Город «' + data.city.name + '» добавлен');
+            })
+            .catch(() => showToast('Не удалось создать город'));
+        }
+
+        function render(query) {
+            dropdown.innerHTML = '';
+
+            const trimmed = (query || '').trim();
+            const exact = suggestions.some(city => city.name.toLowerCase() === trimmed.toLowerCase());
+
+            suggestions.forEach((city, position) => {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.className = 'single-city-picker__option' + (position === index ? ' active' : '');
+
+                const name = document.createElement('span');
+                name.className = 'single-city-picker__name';
+                name.textContent = city.name;
+                option.appendChild(name);
+
+                if (city.subject) {
+                    const subject = document.createElement('span');
+                    subject.className = 'single-city-picker__subject';
+                    subject.textContent = city.subject;
+                    option.appendChild(subject);
+                }
+
+                option.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    pick(city);
+                });
+
+                dropdown.appendChild(option);
+            });
+
+            if (trimmed && !exact) {
+                const create = document.createElement('button');
+                create.type = 'button';
+                create.className = 'single-city-picker__option single-city-picker__option--create';
+                create.textContent = 'Создать город «' + trimmed + '»';
+                create.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    createCity(trimmed);
+                });
+                dropdown.appendChild(create);
+            }
+
+            dropdown.classList.toggle('open', dropdown.children.length > 0);
+        }
+
+        function load(query) {
+            const current = ++counter;
+
+            const params = new URLSearchParams();
+            params.set('search', query);
+            params.set('limit', '20');
+
+            fetch('/clients/cities/?' + params.toString(), { cache: 'no-store' })
+                .then(r => r.json())
+                .then(data => {
+                    if (current !== counter) return;
+                    suggestions = data.cities || [];
+                    index = -1;
+                    render(query);
+                })
+                .catch(() => {});
+        }
+
+        input.addEventListener('input', function() {
+            hiddenId.value = '';
+            hiddenName.value = '';
+
+            const query = this.value.trim();
+            clearTimeout(timer);
+            timer = setTimeout(() => load(query), 180);
+        });
+
+        input.addEventListener('focus', function() {
+            clearTimeout(timer);
+            timer = setTimeout(() => load(this.value.trim()), 60);
+        });
+
+        input.addEventListener('keydown', function(e) {
+            const options = dropdown.querySelectorAll('.single-city-picker__option');
+
+            if (e.key === 'ArrowDown' && options.length) {
+                e.preventDefault();
+                index = (index + 1) % options.length;
+                options.forEach((option, position) => option.classList.toggle('active', position === index));
+            } else if (e.key === 'ArrowUp' && options.length) {
+                e.preventDefault();
+                index = index <= 0 ? options.length - 1 : index - 1;
+                options.forEach((option, position) => option.classList.toggle('active', position === index));
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+
+                const active = index >= 0 ? options[index] : options[0];
+
+                if (active && !active.classList.contains('single-city-picker__option--create')) {
+                    active.dispatchEvent(new MouseEvent('mousedown'));
+                } else {
+                    createCity(this.value);
+                }
+            } else if (e.key === 'Escape') {
+                e.stopPropagation();
+                close();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!wrapper.contains(e.target)) close();
+        });
+
+        window.createOrderCityPicker = {
+            reset: function() {
+                hiddenId.value = '';
+                hiddenName.value = '';
+                input.value = '';
+                close();
+            },
+            getValue: function() {
+                return { id: hiddenId.value, name: hiddenName.value || input.value.trim() };
+            }
+        };
+    }
+
+    mountCreateOrderCityPicker();
+
+    function mountCreateOrderNameSuggest() {
+        const wrapper = document.getElementById('createOrderNamePicker');
+        const input = document.getElementById('createOrderName');
+        const dropdown = document.getElementById('createOrderNameDropdown');
+
+        if (!wrapper || !input || !dropdown || wrapper.dataset.mounted === '1') return;
+
+        wrapper.dataset.mounted = '1';
+
+        let services = [];
+        let filtered = [];
+        let index = -1;
+        let loaded = false;
+
+        function parseName(value) {
+            const text = (value || '').trim();
+
+            if (!text) return { query: '', count: null };
+
+            const match = text.match(/^(.*?)[\s,\-–—]*(\d+)?$/);
+
+            if (!match) return { query: text.toLowerCase(), count: null };
+
+            const query = (match[1] || '').trim().toLowerCase();
+            const count = match[2] ? parseInt(match[2], 10) : null;
+
+            return { query: query, count: count };
+        }
+
+        function close() {
+            dropdown.classList.remove('open');
+            dropdown.innerHTML = '';
+            filtered = [];
+            index = -1;
+        }
+
+        function loadServices() {
+            if (loaded) return Promise.resolve();
+
+            return fetch('/orders/services/', { cache: 'no-store' })
+                .then(r => r.json())
+                .then(data => {
+                    services = (data.services || []).filter(item => item.type === 'service');
+                    loaded = true;
+                })
+                .catch(() => {});
+        }
+
+        function applyService(service) {
+            const parsed = parseName(input.value);
+            const count = parsed.count;
+
+            input.value = service.name + (count !== null ? ' ' + count : ' ');
+            input.dataset.serviceId = service.id;
+            input.dataset.peopleCount = count !== null ? String(count) : '';
+            close();
+            input.focus();
+
+            if (count !== null) {
+                input.setSelectionRange(input.value.length, input.value.length);
+            }
+        }
+
+        function render() {
+            dropdown.innerHTML = '';
+
+            const parsed = parseName(input.value);
+
+            if (!parsed.query) {
+                close();
+                return;
+            }
+
+            filtered = services.filter(item => item.name.toLowerCase().includes(parsed.query)).slice(0, 12);
+
+            if (!filtered.length) {
+                close();
+                return;
+            }
+
+            filtered.forEach((service, position) => {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.className = 'single-city-picker__option' + (position === index ? ' active' : '');
+
+                const name = document.createElement('span');
+                name.className = 'single-city-picker__name';
+                name.textContent = service.name;
+                option.appendChild(name);
+
+                if (parsed.count !== null) {
+                    const meta = document.createElement('span');
+                    meta.className = 'single-city-picker__subject';
+                    meta.textContent = parsed.count + ' чел.';
+                    option.appendChild(meta);
+                }
+
+                option.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    applyService(service);
+                });
+
+                dropdown.appendChild(option);
+            });
+
+            dropdown.classList.add('open');
+        }
+
+        input.addEventListener('input', function() {
+            delete this.dataset.serviceId;
+            delete this.dataset.peopleCount;
+
+            const parsed = parseName(this.value);
+
+            if (!parsed.query) {
+                close();
+                return;
+            }
+
+            loadServices().then(() => {
+                index = -1;
+                render();
+            });
+        });
+
+        input.addEventListener('keydown', function(e) {
+            const options = dropdown.querySelectorAll('.single-city-picker__option');
+
+            if (e.key === 'ArrowDown' && options.length) {
+                e.preventDefault();
+                index = (index + 1) % options.length;
+                options.forEach((option, position) => option.classList.toggle('active', position === index));
+            } else if (e.key === 'ArrowUp' && options.length) {
+                e.preventDefault();
+                index = index <= 0 ? options.length - 1 : index - 1;
+                options.forEach((option, position) => option.classList.toggle('active', position === index));
+            } else if (e.key === 'Enter' && index >= 0 && filtered[index]) {
+                e.preventDefault();
+                applyService(filtered[index]);
+            } else if (e.key === 'Escape') {
+                close();
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(() => {
+                if (filtered.length && index < 0) close();
+            }, 120);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!wrapper.contains(e.target)) close();
+        });
+
+        window.createOrderNameSuggest = {
+            reset: function() {
+                delete input.dataset.serviceId;
+                delete input.dataset.peopleCount;
+                close();
+            },
+            getService: function() {
+                return {
+                    id: input.dataset.serviceId ? parseInt(input.dataset.serviceId, 10) : null,
+                    count: input.dataset.peopleCount ? parseInt(input.dataset.peopleCount, 10) : null,
+                };
+            }
+        };
+    }
+
+    mountCreateOrderNameSuggest();
+
     if (newClientTypeField) {
         newClientTypeField.addEventListener('change', updateNewClientAgencyVisibility);
     }
@@ -1020,12 +1677,6 @@
         });
     }
 
-    if (createClientFromCreateBtn) {
-        createClientFromCreateBtn.addEventListener('click', function() {
-            openCreateClientModal(createOrderClient);
-        });
-    }
-
     if (createClientModalCloseBtn) {
         createClientModalCloseBtn.addEventListener('click', requestCloseCreateClientModal);
     }
@@ -1046,6 +1697,9 @@
 
             const fullName = newClientFullName.value.trim();
             const phone = newClientPhone.value.trim();
+            const telegramField = document.getElementById('newClientTelegram');
+            const telegram = telegramField ? telegramField.value.trim() : '';
+
             const typeField = document.getElementById('newClientType');
             const agencySelect = document.getElementById('newClientAgency');
             const cityField = document.getElementById('newClientCities');
@@ -1058,15 +1712,19 @@
                 showToast('Введите ФИО');
                 return;
             }
-            if (!phone) {
-                showToast('Введите телефон');
+
+            if (!phone && !telegram) {
+                showToast('Укажите телефон или телеграм');
                 return;
             }
 
-            const phoneDigits = phone.replace(/\D/g, '');
-            if (phoneDigits.length !== 11) {
-                showToast('Номер телефона должен содержать 11 цифр');
-                return;
+            if (phone) {
+                const phoneDigits = phone.replace(/\D/g, '');
+
+                if (phoneDigits.length !== 11) {
+                    showToast('Номер телефона должен содержать 11 цифр');
+                    return;
+                }
             }
 
             if (clientType === 'agency' && !agencyId) {
@@ -1085,7 +1743,7 @@
                     phone: phone,
                     client_type: clientType,
                     agency_id: agencyId,
-                    telegram: (document.getElementById('newClientTelegram') || {}).value || '',
+                    telegram: telegram,
                     email: (document.getElementById('newClientEmail') || {}).value || '',
                     city_names: cityNames,
                     comment: (document.getElementById('newClientComment') || {}).value || '',
@@ -1124,7 +1782,7 @@
                                 phone: phone,
                                 client_type: clientType,
                                 agency_id: agencyId,
-                                telegram: (document.getElementById('newClientTelegram') || {}).value || '',
+                                telegram: telegram,
                                 email: (document.getElementById('newClientEmail') || {}).value || '',
                                 city_names: cityNames,
                                 comment: (document.getElementById('newClientComment') || {}).value || '',
@@ -1173,11 +1831,34 @@
                 return;
             }
 
+            const cityValue = window.createOrderCityPicker
+                ? window.createOrderCityPicker.getValue()
+                : { id: '', name: '' };
+
+            const serviceValue = window.createOrderNameSuggest
+                ? window.createOrderNameSuggest.getService()
+                : { id: null, count: null };
+
             const data = {
                 name: name,
                 client_id: clientId,
-                date: date
+                date: date,
+                city_id: cityValue.id || '',
+                city_name: cityValue.id ? '' : (cityValue.name || ''),
+                service_id: serviceValue.id ? String(serviceValue.id) : '',
+                people_count: serviceValue.count !== null ? String(serviceValue.count) : '',
+                concept: (document.getElementById('createOrderConcept') || {}).value || '',
             };
+
+            const submitBtn = createForm.querySelector('[type="submit"]');
+
+            if (isCreatingOrder) return;
+
+            isCreatingOrder = true;
+
+            if (submitBtn) {
+                window.UI.setButtonBusy(submitBtn, true, 'Создание...');
+            }
 
             fetch('/orders/', {
                 method: 'POST',
@@ -1195,13 +1876,24 @@
                 }
                 if (data.success) {
                     closeCreateModal();
-                    renderOrders();
+
+                    if (window.refreshSchedule) {
+                        window.refreshSchedule(true);
+                    }
+
                     showNotification(data.order.id, data.order.name || 'Новый заказ');
                 }
             })
             .catch(error => {
                 showToast('Ошибка при создании заказа');
                 console.error(error);
+            })
+            .finally(() => {
+                isCreatingOrder = false;
+
+                if (submitBtn) {
+                    window.UI.setButtonBusy(submitBtn, false);
+                }
             });
         });
     }
@@ -1222,32 +1914,43 @@
         });
     }
 
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(renderOrders, 300);
-    });
+    if (tableBody && searchInput) {
+        let searchTimeout;
 
-    statusFilter.addEventListener('change', renderOrders);
-
-    if (ordersLoadMoreBtn) {
-        ordersLoadMoreBtn.addEventListener('click', loadMoreOrders);
-    }
-
-    if (dateFromInput) dateFromInput.addEventListener('change', renderOrders);
-    if (dateToInput) dateToInput.addEventListener('change', renderOrders);
-
-    if (dateResetBtn) {
-        dateResetBtn.addEventListener('click', function() {
-            if (dateFromInput) dateFromInput.value = '';
-            if (dateToInput) dateToInput.value = '';
-            renderOrders();
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(renderOrders, 300);
         });
+
+        if (statusFilter) statusFilter.addEventListener('change', renderOrders);
+
+        if (ordersLoadMoreBtn) {
+            ordersLoadMoreBtn.addEventListener('click', loadMoreOrders);
+        }
+
+        if (dateFromInput) dateFromInput.addEventListener('change', renderOrders);
+        if (dateToInput) dateToInput.addEventListener('change', renderOrders);
+
+        if (dateResetBtn) {
+            dateResetBtn.addEventListener('click', function() {
+                if (dateFromInput) dateFromInput.value = '';
+                if (dateToInput) dateToInput.value = '';
+                renderOrders();
+            });
+        }
     }
 
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         if (document.getElementById('uiConfirmModal')) return;
+        if (e.defaultPrevented) return;
+
+        const openDropdowns = document.querySelectorAll('.city-selector__dropdown.open, .client-combobox__dropdown.open');
+
+        if (openDropdowns.length) {
+            openDropdowns.forEach(dropdown => dropdown.classList.remove('open'));
+            return;
+        }
 
         if (createClientModal && createClientModal.classList.contains('active')) {
             e.preventDefault();
@@ -1265,11 +1968,43 @@
         window.getOrderClientPicker = function() {
             return editClientPicker;
         };
+
+        const editSearch = document.getElementById('editOrderClientSearch');
+
+        if (editSearch) {
+            editSearch.addEventListener('client-selected', function(e) {
+                if (e.detail && e.detail.client) applyClientContacts(e.detail.client);
+            });
+        }
     }
+
+
+    let pendingOrderId = null;
+
+    window.openOrderEditor = function(orderId) {
+        return openEditor(orderId);
+    };
+
+    window.openCreateOrderModal = function(prefillDate) {
+        openCreateModal(prefillDate || '');
+    };
+
+    window.setPendingOrderId = function(orderId) {
+        pendingOrderId = orderId;
+
+        if (openEditor(orderId)) {
+            pendingOrderId = null;
+        }
+    };
+
+    window.takePendingOrderId = function() {
+        const value = pendingOrderId;
+        pendingOrderId = null;
+        return value;
+    };
 
     loadClients();
     restoreDateFilter();
-    renderOrders();
 
     const urlParams = new URLSearchParams(window.location.search);
 
@@ -1280,7 +2015,12 @@
         window.history.replaceState({}, '', cleanUrl);
     }
 
-    window.addEventListener('load', function() {
-        tryOpenEditorFromUrl(20);
-    });
+    if (urlParams.get('open_order')) {
+        const orderId = parseInt(urlParams.get('open_order'), 10);
+
+        if (!isNaN(orderId)) {
+            window.history.replaceState({}, '', window.location.pathname);
+            window.setPendingOrderId(orderId);
+        }
+    }
 })();

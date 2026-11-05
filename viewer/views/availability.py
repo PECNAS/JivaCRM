@@ -37,7 +37,7 @@ def can_view_employee(actor, target):
     if actor.id == target.id:
         return True
 
-    return actor.role in ['senior_admin', 'manager', 'choreographer', 'production', 'sales_manager']
+    return actor.can_manage_feedback()
 
 
 def serialize_rule(rule):
@@ -272,7 +272,7 @@ class AvailabilityDetailView(View):
 
         return JsonResponse({
             'success': True,
-            'employee': {'id': target.id, 'name': target.full_name},
+            'employee': {'id': target.id, 'name': target.display_name},
             'weekdays': WEEKDAY_NAMES,
             'weekly': weekly,
             'exceptions': exceptions,

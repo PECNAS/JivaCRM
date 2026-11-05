@@ -7,7 +7,10 @@
 
     function getCSRFToken() {
         const match = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
-        return match ? match[2] : '';
+
+        if (match) return match[2];
+
+        return window.__csrfToken || '';
     }
 
     function addLog(message) {

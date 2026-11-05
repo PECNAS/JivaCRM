@@ -646,58 +646,119 @@
   color: #7a7267;
 }
 
-.profile-payment-list {
+.profile-money-summary {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
-.profile-payment-row {
+.profile-money-summary__item {
+  flex: 1 1 160px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.55rem 0.75rem;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.85rem;
   border-radius: 12px;
   background: #14120f;
   border: 1px solid #23201b;
 }
 
-.profile-payment-row--cancelled {
-  opacity: 0.5;
-}
-
-.profile-payment-row--cancelled .profile-payment-row__amount {
-  text-decoration: line-through;
-}
-
-.profile-payment-row__main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.profile-payment-row__title {
-  font-size: 0.9rem;
-  color: #f0ece4;
-}
-
-.profile-payment-row__meta {
+.profile-money-summary__label {
   font-size: 0.75rem;
   color: #7a7267;
 }
 
-.profile-payment-row__amount {
-  font-size: 0.95rem;
+.profile-money-summary__value {
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #f0a868;
-  white-space: nowrap;
+  color: #f5efe7;
   font-variant-numeric: tabular-nums;
 }
 
-.profile-payment-row__amount--out {
+.profile-money-table-wrap {
+  overflow-x: auto;
+}
+
+.profile-money-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.profile-money-table th {
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7a7267;
+  border-bottom: 1px solid #23201b;
+}
+
+.profile-money-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #1d1a16;
+  vertical-align: middle;
+  color: #ddd4c7;
+}
+
+.profile-money-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.profile-money-table__row--cancelled {
+  opacity: 0.5;
+}
+
+.profile-money-table__row--cancelled .profile-money-table__amount {
+  text-decoration: line-through;
+}
+
+.profile-money-table__muted {
+  color: #7a7267;
+  white-space: nowrap;
+}
+
+.profile-money-table__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.profile-money-table__title {
+  color: #f5efe7;
+}
+
+.profile-money-table__meta {
+  font-size: 0.75rem;
+  color: #7a7267;
+}
+
+.profile-money-table__type {
+  color: #7a7267;
+  white-space: nowrap;
+}
+
+.profile-money-table__amount {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.profile-money-table__amount--in {
+  color: #f0a868;
+}
+
+.profile-money-table__amount--out {
   color: #90caf9;
+}
+
+.profile-money-table__empty {
+  padding: 1rem 0.6rem;
+  text-align: center;
+  color: #7a7267;
 }
 
 .money-amount--negative {
@@ -730,4 +791,43 @@
   .profile-card__header .btn {
     width: 100%;
   }
+}
+
+.profile-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.profile-header__main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.profile-logout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #3b342c;
+    border-radius: 40px;
+    color: #9e9487;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.profile-logout-btn:hover {
+    border-color: #e05252;
+    color: #e05252;
+    background: rgba(224, 82, 82, 0.08);
+}
+
+.profile-logout-btn svg {
+    flex-shrink: 0;
 }

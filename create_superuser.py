@@ -7,7 +7,10 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jiva.settings')
 django.setup()
 
 from django.contrib.auth.models import User
-from viewer.models import CalendarColor, City, CityGroup, Employee, PriceRisePeriod, Role
+from viewer.models import (
+    CalendarColor, City, CityGroup, Employee, PriceRisePeriod, Role, ROLE_CHOICES,
+    ROLE_SENIOR_ADMIN, ROLE_ARTIST,
+)
 
 
 SUPERUSER = {
@@ -21,13 +24,14 @@ SUPERUSER = {
 
 
 DEFAULT_ROLES = [
-    'Старший администратор',
-    'Управляющий',
-    'Менеджер',
-    'Выпускающий',
-    'Хореограф',
-    'Артист',
-    'Техник',
+    {'code': 'artist', 'name': 'Артист'},
+    {'code': 'technician', 'name': 'Техник'},
+    {'code': 'choreographer', 'name': 'Хореограф'},
+    {'code': 'manager', 'name': 'Управляющий'},
+    {'code': 'sales_manager', 'name': 'Менеджер'},
+    {'code': 'production', 'name': 'Выпускающий'},
+    {'code': 'boss', 'name': 'Босс'},
+    {'code': 'senior_admin', 'name': 'Старший администратор'},
 ]
 
 
@@ -133,9 +137,23 @@ DEFAULT_PRICE_PERIODS = [
 def create_roles():
     print('Создание ролей...')
 
-    for name in DEFAULT_ROLES:
-        Role.objects.get_or_create(name=name)
+    for role_data in DEFAULT_ROLES:
+        role_obj = Role.objects.filter(name=role_data['name']).first()
 
+        if role_obj is None:
+            role_obj = Role.objects.create(
+                name=role_data['name'],
+                code=role_data['code'],
+                is_system=True,
+            )
+        elif role_obj.code != role_data['code'] or not role_obj.is_system:
+            role_obj.code = role_data['code']
+            role_obj.is_system = True
+            role_obj.save(update_fields=['code', 'is_system'])
+
+        Role.objects.filter(code=role_data['code']).exclude(pk=role_obj.pk).update(code='')
+
+    print(f'  Ролей: {len(DEFAULT_ROLES)}.')
     print('Готово.')
 
 
@@ -245,7 +263,8 @@ def create_superuser():
         user=user,
         defaults={
             'full_name': SUPERUSER['full_name'],
-            'role': 'senior_admin',
+            'nickname': SUPERUSER['full_name'],
+            'role': ROLE_SENIOR_ADMIN,
             'phone': SUPERUSER['phone'],
             'telegram_username': SUPERUSER['telegram_username'],
             'is_active': True,
@@ -255,10 +274,15 @@ def create_superuser():
     if created:
         print(f'  Создан профиль сотрудника "{employee.full_name}" с ролью старшего администратора.')
     else:
-        employee.role = 'senior_admin'
+        employee.role = ROLE_SENIOR_ADMIN
         employee.is_active = True
         employee.save(update_fields=['role', 'is_active', 'updated_at'])
         print('  Профиль сотрудника уже существует. Роль и активность проверены.')
+
+    senior_role = Role.objects.filter(code=ROLE_SENIOR_ADMIN).first()
+
+    if senior_role is not None:
+        employee.roles.add(senior_role)
 
     print('  Готово. Вход: ' + username + ' / ' + SUPERUSER['password'])
     print('  Остальные данные создаются на странице /fill-data/')

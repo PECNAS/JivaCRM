@@ -2,11 +2,13 @@ import json
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
+from django.db.models import Q
+from django.db.models.deletion import ProtectedError
 from django.http import JsonResponse
 from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from ..models import Service, ServiceStaffRow, City
+from ..models import Service, ServiceStaffRow, City, OrderEstimate
 
 
 def serialize_service(service, full=True):
@@ -31,6 +33,7 @@ def serialize_service(service, full=True):
                 {'id': row.id, 'artist_count': row.artist_count, 'cost': float(row.cost)}
                 for row in service.staff_rows.all()
             ],
+            'services_count': service.children.filter(type='service', is_active=True).count() if service.type == 'category' else 0,
         })
     return data
 
@@ -241,8 +244,39 @@ class ServiceDeleteView(View):
 
         try:
             service = get_object_or_404(Service, id=service_id)
-            service.delete()
-            return JsonResponse({'success': True})
+
+            used_ids = set(
+                OrderEstimate.objects
+                .filter(service__in=Service.objects.filter(Q(id=service.id) | Q(parent=service)))
+                .values_list('service_id', flat=True)
+            )
+
+            with transaction.atomic():
+                if used_ids:
+                    Service.objects.filter(id__in=used_ids).update(is_active=False)
+
+                Service.objects.filter(id__in=used_ids).update(parent=None)
+
+                remaining = Service.objects.filter(Q(id=service.id) | Q(parent=service))
+
+                for node in list(remaining):
+                    if node.type == 'category':
+                        node.children.update(parent=None)
+
+                remaining.delete()
+
+            message = 'Элемент удалён'
+
+            if used_ids:
+                message = 'Каталог удалён, услуги скрыты и сохранены в истории заказов'
+
+            return JsonResponse({'success': True, 'message': message})
+        except ProtectedError:
+            Service.objects.filter(id=service_id).update(is_active=False)
+            return JsonResponse({
+                'success': True,
+                'message': 'Элемент используется в заказах и скрыт вместо удаления',
+            })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 

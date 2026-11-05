@@ -115,6 +115,10 @@
                         <span class="detail-value" id="viewAgency">—</span>
                     </div>
                     <div class="detail-row">
+                        <span class="detail-label">Менеджер агентства:</span>
+                        <span class="detail-value" id="viewAgencyManager">—</span>
+                    </div>
+                    <div class="detail-row">
                         <span class="detail-label">Рейтинг:</span>
                         <span class="detail-value" id="viewRating">—</span>
                     </div>
@@ -252,37 +256,42 @@
             <form id="addClientForm" class="add-client-form add-client-form--grid">
                 {% csrf_token %}
                 <div class="form-group">
-                    <label class="form-label" for="addFullName">ФИО *</label>
+                    <label class="form-label" for="addFullName">Имя *</label>
                     <input type="text" class="form-input" id="addFullName" placeholder="Иванов Иван Иванович" required>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="addPhone">Телефон</label>
-                    <input type="tel" class="form-input" id="addPhone" placeholder="+7 (999) 123-45-67">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addClientType">Тип клиента *</label>
-                    <select class="form-select" id="addClientType" required>
-                        <option value="organizer">Организатор</option>
-                        <option value="agency">Агентство</option>
-                    </select>
-                </div>
-                <div class="form-group" id="addAgencyGroup" style="display:none;">
-                    <label class="form-label" for="addAgencySearch">Агентство</label>
-                    <input type="text" class="form-input" id="addAgencySearch" placeholder="Начните вводить название" autocomplete="off">
-                    <select class="form-select" id="addAgency" style="display:none;">
-                        <option value="">Не выбрано</option>
-                        {% for agency in agencies %}
-                        <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addTelegram">Телеграм</label>
-                    <input type="text" class="form-input" id="addTelegram" placeholder="@username">
+                <div class="form-group add-client-form__pair">
+                    <div>
+                        <label class="form-label" for="addPhone">Телефон</label>
+                        <input type="tel" class="form-input" id="addPhone" placeholder="+7 (999) 123-45-67" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="form-label" for="addTelegram">Телеграм</label>
+                        <input type="text" class="form-input" id="addTelegram" placeholder="@username" autocomplete="off">
+                    </div>
+                    <span class="form-hint">Телефон или телеграм — обязательно хотя бы одно</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label" for="addEmail">Email</label>
                     <input type="email" class="form-input" id="addEmail" placeholder="client@example.ru">
+                </div>
+                <div class="add-client-form__row">
+                    <div class="form-group add-client-form__col">
+                        <label class="form-label" for="addClientType">Тип клиента *</label>
+                        <select class="form-select" id="addClientType" required>
+                            <option value="organizer">Организатор</option>
+                            <option value="agency">Агентство</option>
+                        </select>
+                    </div>
+                    <div class="form-group add-client-form__col" id="addAgencyGroup">
+                        <label class="form-label" for="addAgencySearch">Агентство *</label>
+                        <input type="text" class="form-input" id="addAgencySearch" placeholder="Начните вводить название" autocomplete="off">
+                        <select class="form-select" id="addAgency" style="display:none;">
+                            <option value="">Не выбрано</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group form-group--wide">
                     <label class="form-label">Города</label>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
-    <title>JIVA CRM · {% block title %}Расписание{% endblock %}</title>
+    <title>JIVA HUB · {% block title %}Расписание{% endblock %}</title>
     {% load static %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,16 +15,16 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="JIVA CRM">
+    <meta name="apple-mobile-web-app-title" content="JIVA HUB">
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     {% block css %}{% endblock %}
 </head>
-<body data-role="{{ user.employee_profile.role|default:'' }}">
+<body data-role="{{ user.employee_profile.role|default:'' }}" data-can-manage-orders="{{ user.employee_profile.can_manage_orders|yesno:'1,0' }}" data-can-edit-checklists="{{ user.employee_profile.can_edit_checklists|yesno:'1,0' }}" data-can-manage-feedback="{{ user.employee_profile.can_manage_feedback|yesno:'1,0' }}">
     <header class="navbar">
         <div class="container navbar__container">
             <a href="{% url 'schedule' %}" class="navbar__brand">
                 <span class="brand__icon"></span>
-                <span class="brand__name">JIVA·CRM</span>
+                <span class="brand__name">JIVA·HUB</span>
             </a>
             <nav class="navbar__menu" id="mainMenu">
                 <ul class="menu__list">
@@ -34,28 +34,23 @@
                         </a>
                     </li>
 
-                    {% if user.employee_profile.role == 'choreographer' %}
-                    <li class="menu__item">
-                        <a href="#" class="menu__link">Тренировки</a>
-                    </li>
-                    {% endif %}
-
-                    {% if user.employee_profile.role in 'senior_admin,manager,sales_manager,production,choreographer' %}
-                    <li class="menu__item">
-                        <a href="{% url 'orders' %}" class="menu__link {% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
-                            Заказы
-                        </a>
-                    </li>
+                    {% if user.employee_profile.can_manage_clients %}
                     <li class="menu__item">
                         <a href="{% url 'clients' %}" class="menu__link {% if request.resolver_match.url_name == 'clients' %}active{% endif %}">
                             Клиенты
                         </a>
                     </li>
+                    {% endif %}
+
+                    {% if user.employee_profile.can_manage_employees %}
                     <li class="menu__item">
                         <a href="{% url 'employees' %}" class="menu__link {% if request.resolver_match.url_name == 'employees' %}active{% endif %}">
                             Сотрудники
                         </a>
                     </li>
+                    {% endif %}
+
+                    {% if user.employee_profile.can_manage_services %}
                     <li class="menu__item">
                         <a href="{% url 'services' %}" class="menu__link {% if request.resolver_match.url_name == 'services' %}active{% endif %}">
                             Услуги
@@ -63,7 +58,7 @@
                     </li>
                     {% endif %}
 
-                    {% if user.employee_profile.role == 'senior_admin' or user.employee_profile.role == 'manager' %}
+                    {% if user.employee_profile.can_manage_money %}
                     <li class="menu__item">
                         <a href="{% url 'money' %}" class="menu__link {% if request.resolver_match.url_name == 'money' %}active{% endif %}">
                             Деньги
@@ -71,12 +66,18 @@
                     </li>
                     {% endif %}
 
-                    <li class="menu__item menu__item--profile">
-                        <a href="{% url 'profile' %}" class="menu__link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
-                            Личный кабинет
+                    {% if user.employee_profile.can_view_reports %}
+                    <li class="menu__item">
+                        <a href="{% url 'reports' %}" class="menu__link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+                            Отчёты
                         </a>
                     </li>
-                    <li class="menu__item menu__item--logout">
+                    {% endif %}
+
+                    <li class="menu__item menu__item--session">
+                        <a href="{% url 'profile' %}" class="menu__link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+                            Профиль
+                        </a>
                         <a href="{% url 'logout' %}" class="menu__link menu__link--logout">
                             Выйти
                         </a>
@@ -84,8 +85,7 @@
                 </ul>
             </nav>
             <div class="navbar__actions">
-                <a href="{% url 'profile' %}" class="user-badge" title="Личный кабинет">{{ user.employee_profile.full_name|default:user.username }}</a>
-                <a href="{% url 'logout' %}" class="logout-btn">Выйти</a>
+                <a href="{% url 'profile' %}" class="user-badge{% if request.resolver_match.url_name == 'profile' %} active{% endif %}" title="Личный кабинет">{{ user.employee_profile.display_name|default:user.username }}</a>
                 <button class="menu-toggle" id="menuToggle" aria-label="Открыть меню" aria-expanded="false">
                     <span class="toggle-line"></span>
                     <span class="toggle-line"></span>
@@ -104,5 +104,8 @@
     <script src="{% static 'js/ui.js' %}"></script>
     <script src="{% static 'js/base.js' %}"></script>
     {% block js %}{% endblock %}
+    <script>
+        window.__csrfToken = '{{ csrf_token }}';
+    </script>
 </body>
 </html>

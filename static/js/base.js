@@ -1,4 +1,6 @@
 (function() {
+  const MENU_BREAKPOINT = 1100;
+
   const menuToggle = document.getElementById('menuToggle');
   const mainMenu = document.getElementById('mainMenu');
   const navbar = document.querySelector('.navbar');
@@ -15,6 +17,12 @@
     mainMenu.classList.toggle('open', isOpen);
     menuToggle.classList.toggle('active', isOpen);
     menuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+    if (window.innerWidth <= MENU_BREAKPOINT) {
+      document.body.classList.toggle('menu-open', isOpen);
+    } else {
+      document.body.classList.remove('menu-open');
+    }
   }
 
   if (menuToggle && mainMenu) {
@@ -38,15 +46,40 @@
 
   document.querySelectorAll('.menu__link').forEach(function(link) {
     link.addEventListener('click', function() {
-      if (window.innerWidth <= 768) {
+      if (window.innerWidth <= MENU_BREAKPOINT) {
         setMenuOpen(false);
       }
     });
   });
 
+  document.addEventListener('touchstart', function(e) {
+    if (!mainMenu || !mainMenu.classList.contains('open')) return;
+
+    if (mainMenu.contains(e.target) || menuToggle.contains(e.target)) return;
+
+    setMenuOpen(false);
+  }, { passive: true });
+
   syncNavbarHeight();
   window.addEventListener('resize', syncNavbarHeight);
   window.addEventListener('load', syncNavbarHeight);
+
+  function syncModalLock() {
+    const activeModal = Array.from(document.querySelectorAll('.modal-overlay.active')).length > 0;
+
+    document.body.classList.toggle('modal-lock', activeModal);
+  }
+
+  document.addEventListener('touchmove', function(e) {
+    if (!document.body.classList.contains('modal-lock')) return;
+
+    if (e.target.closest('.modal__body, .modal__footer, .money-list, .client-combobox__dropdown')) return;
+
+    e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener('DOMContentLoaded', syncModalLock);
+  setInterval(syncModalLock, 400);
 
   const SEARCH_FIELDS = ['searchInput', 'moneySearchInput'];
 

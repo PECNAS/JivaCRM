@@ -469,13 +469,46 @@
 
     function toggleAgencyField(clientType, agencyGroup, isAdd) {
         const field = isAdd ? addAgencyField : editAgencyField;
+        const visible = clientType === 'agency';
 
-        if (clientType === 'agency') {
-            agencyGroup.style.display = 'block';
-        } else {
-            agencyGroup.style.display = 'none';
-            if (field) field.clear();
+        if (agencyGroup) {
+            agencyGroup.style.display = isAdd ? (visible ? 'block' : 'none') : 'block';
         }
+
+        if (!visible && field) {
+            field.clear();
+        }
+    }
+
+    function looksLikePhone(value) {
+        const digits = String(value || '').replace(/\D/g, '');
+        return digits.length >= 10;
+    }
+
+    if (phoneInput && window.UI && window.UI.attachPhoneMask) {
+        window.UI.attachPhoneMask(phoneInput);
+    }
+
+    function applyContactDetection(input, typeField) {
+        if (!input) return;
+
+        const sync = function () {
+            const value = input.value.trim();
+            const digits = value.replace(/\D/g, '');
+            const detected = value.charAt(0) === '@' ? 'telegram' : (digits.length >= 10 ? 'phone' : '');
+
+            if (typeField) typeField.value = detected;
+
+            if (detected === 'phone' && window.UI && window.UI.attachPhoneMask) {
+                input.setAttribute('inputmode', 'tel');
+            } else {
+                input.removeAttribute('inputmode');
+            }
+        };
+
+        input.addEventListener('input', sync);
+        input.addEventListener('blur', sync);
+        sync();
     }
 
     if (addClientType) {
@@ -524,84 +557,8 @@
         select.appendChild(option);
     }
 
-    function formatPhoneValue(value) {
-        let digits = String(value || '').replace(/\D/g, '');
-
-        if (digits.length > 11) {
-            digits = digits.slice(0, 11);
-        }
-
-        if (digits.length === 11 && (digits[0] === '7' || digits[0] === '8')) {
-            digits = digits.slice(1);
-        } else if (digits.length === 11) {
-            digits = digits.slice(0, 10);
-        } else if (digits.length === 10 && digits[0] !== '9') {
-            digits = digits.slice(0, 10);
-        }
-
-        if (!digits) {
-            return '';
-        }
-
-        let formatted = '+7';
-
-        if (digits.length > 0) {
-            formatted += ' (' + digits.slice(0, 3);
-            if (digits.length > 3) {
-                formatted += ') ' + digits.slice(3, 6);
-                if (digits.length > 6) {
-                    formatted += '-' + digits.slice(6, 8);
-                    if (digits.length > 8) {
-                        formatted += '-' + digits.slice(8, 10);
-                    }
-                }
-            }
-        }
-
-        return formatted;
-    }
-
-    function phoneMask(input) {
-        input.value = formatPhoneValue(input.value);
-        return input.value;
-    }
-
-    function bindPhoneInput(input) {
-        if (!input) return;
-
-        input.addEventListener('input', function() { phoneMask(this); });
-
-        input.addEventListener('paste', function(e) {
-            const clipboard = (e.clipboardData || window.clipboardData);
-
-            if (!clipboard) return;
-
-            const text = clipboard.getData('text');
-
-            if (!text) return;
-
-            e.preventDefault();
-
-            this.value = formatPhoneValue(text);
-            this.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-
-        input.addEventListener('focus', function() {
-            if (this.value === '') this.value = '+7';
-        });
-
-        input.addEventListener('blur', function() {
-            if (this.value === '+7') this.value = '';
-        });
-    }
-
-    bindPhoneInput(phoneInput);
-    bindPhoneInput(editPhoneInput);
-    bindPhoneInput(duplicatePhoneInput);
-
     function validatePhone(phone) {
-        const digits = phone.replace(/\D/g, '');
-        return digits.length === 11 && (digits[0] === '7' || digits[0] === '8');
+        return window.UI.extractPhoneDigits(phone).length === 10;
     }
 
     function openClientModal(clientId) {
@@ -619,9 +576,11 @@
 
                 document.getElementById('modalClientName').textContent = data.full_name;
                 document.getElementById('viewFullName').textContent = data.full_name;
-                document.getElementById('viewPhone').textContent = data.phone;
+                document.getElementById('viewPhone').textContent = data.phone || '—';
                 document.getElementById('viewClientType').textContent = data.client_type_display || '—';
                 document.getElementById('viewAgency').textContent = data.agency || '—';
+                const viewAgencyManager = document.getElementById('viewAgencyManager');
+                if (viewAgencyManager) viewAgencyManager.textContent = data.agency_manager || '—';
                 document.getElementById('viewRating').textContent = data.rating_display;
                 document.getElementById('viewEmail').textContent = data.email || '—';
                 document.getElementById('viewTelegram').textContent = data.telegram || '—';
@@ -652,7 +611,7 @@
                 }
 
                 document.getElementById('editFullName').value = data.full_name;
-                document.getElementById('editPhone').value = data.phone;
+                window.UI.setPhoneValue(document.getElementById('editPhone'), data.phone);
                 document.getElementById('editClientType').value = data.client_type_key || 'organizer';
                 document.getElementById('editTelegram').value = data.telegram === '—' ? '' : data.telegram;
                 document.getElementById('editEmail').value = data.email === '—' ? '' : data.email;
@@ -707,9 +666,12 @@
         addForm.reset();
         document.getElementById('addRating').value = 'medium';
         document.getElementById('addClientType').value = 'organizer';
-        document.getElementById('addPhone').value = '';
+        const phoneField = document.getElementById('addPhone');
+        if (phoneField) phoneField.value = '';
+        const telegramField = document.getElementById('addTelegram');
+        if (telegramField) telegramField.value = '';
         document.getElementById('addComment').value = '';
-        addAgencyGroup.style.display = 'none';
+        toggleAgencyField('organizer', addAgencyGroup, true);
         if (addAgencyField) addAgencyField.clear();
         if (addCitySelector) addCitySelector.clear();
         setTimeout(() => document.getElementById('addFullName').focus(), 100);
@@ -738,15 +700,27 @@
 
     function validateDuplicatePayload(payload, focusPrefix) {
         if (!payload.full_name) {
-            showToast('Пожалуйста, заполните поле ФИО');
+            showToast('Пожалуйста, заполните поле Имя');
             document.getElementById(focusPrefix + 'FullName').focus();
             return false;
         }
-        if (payload.phone && payload.phone !== '+7' && !validatePhone(payload.phone)) {
-            showToast('Пожалуйста, введите корректный номер телефона (11 цифр)');
-            document.getElementById(focusPrefix + 'Phone').focus();
+
+        const contactField = document.getElementById(focusPrefix + 'Phone') || document.getElementById(focusPrefix + 'Contact');
+        const phoneValue = payload.phone !== undefined ? payload.phone : (payload.contact || '');
+        const telegramValue = payload.telegram || '';
+
+        if (!phoneValue && !telegramValue) {
+            showToast('Укажите телефон или телеграм');
+            if (contactField) contactField.focus();
             return false;
         }
+
+        if (phoneValue && (!looksLikePhone(phoneValue) || !validatePhone(phoneValue))) {
+            showToast('Пожалуйста, введите корректный номер телефона (11 цифр)');
+            if (contactField) contactField.focus();
+            return false;
+        }
+
         if (payload.client_type === 'agency' && !payload.agency_id) {
             showToast('Пожалуйста, выберите агентство');
             const agencyInput = document.getElementById(focusPrefix + 'AgencySearch');
@@ -911,13 +885,19 @@
     }
 
     function readAddFormPayload() {
+        const phoneField = document.getElementById('addPhone');
+        const telegramField = document.getElementById('addTelegram');
+        const phoneValue = phoneField ? phoneField.value.trim() : '';
+        const telegramValue = telegramField ? telegramField.value.trim() : '';
+
         return {
             full_name: document.getElementById('addFullName').value.trim(),
-            phone: document.getElementById('addPhone').value.trim(),
+            contact_type: phoneValue ? 'phone' : (telegramValue ? 'telegram' : ''),
+            phone: phoneValue,
             client_type_key: document.getElementById('addClientType').value,
             agency_id: addAgencyField ? addAgencyField.getValue() : null,
             agency: addAgencyField ? addAgencyField.getText() : '',
-            telegram: document.getElementById('addTelegram').value.trim(),
+            telegram: telegramValue,
             email: document.getElementById('addEmail').value.trim(),
             cities: addCitySelector ? addCitySelector.getValues() : [],
             comment: document.getElementById('addComment').value.trim(),
@@ -998,7 +978,10 @@
 
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
-        return cookieValue ? cookieValue[2] : '';
+
+        if (cookieValue) return cookieValue[2];
+
+        return window.__csrfToken || '';
     }
 
     modalCloseBtn.addEventListener('click', requestCloseClientModal);
@@ -1069,7 +1052,7 @@
             return;
         }
 
-        if (phone && phone !== '+7' && !validatePhone(phone)) {
+        if (phone && !validatePhone(phone)) {
             showToast('Пожалуйста, введите корректный номер телефона (11 цифр)');
             document.getElementById('editPhone').focus();
             return;
@@ -1129,12 +1112,18 @@
     addForm.addEventListener('submit', function(e) {
         e.preventDefault();
 
+        const phoneField = document.getElementById('addPhone');
+        const telegramField = document.getElementById('addTelegram');
+        const phoneValue = phoneField ? phoneField.value.trim() : '';
+        const telegramValue = telegramField ? telegramField.value.trim() : '';
+
         const data = {
             full_name: document.getElementById('addFullName').value.trim(),
-            phone: document.getElementById('addPhone').value.trim(),
+            contact_type: phoneValue ? 'phone' : (telegramValue ? 'telegram' : ''),
+            phone: phoneValue,
+            telegram: telegramValue,
             client_type: document.getElementById('addClientType').value,
             agency_id: addAgencyField ? addAgencyField.getValue() : '',
-            telegram: document.getElementById('addTelegram').value.trim(),
             email: document.getElementById('addEmail').value.trim(),
             city_names: addCitySelector ? addCitySelector.getValues().join(',') : '',
             comment: document.getElementById('addComment').value.trim(),
@@ -1439,13 +1428,19 @@
         const fields = form.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]), textarea, select');
 
         for (const field of fields) {
+            const value = (field.value || '').trim();
+
+            if (!value) continue;
+
             if (field.type === 'tel') {
-                const digits = field.value.replace(/\D/g, '');
+                const digits = value.replace(/\D/g, '');
                 if (digits.length > 1) return true;
                 continue;
             }
 
-            if (field.value && field.value.trim()) return true;
+            if (field.tagName === 'SELECT') continue;
+
+            return true;
         }
 
         if (addCitySelector && addCitySelector.getValues().length) return true;
@@ -1514,6 +1509,15 @@
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         if (document.getElementById('uiConfirmModal')) return;
+        if (e.defaultPrevented) return;
+
+        const openDropdowns = document.querySelectorAll('.city-selector__dropdown.open');
+
+        if (openDropdowns.length) {
+            e.preventDefault();
+            openDropdowns.forEach(dropdown => dropdown.classList.remove('open'));
+            return;
+        }
 
         if (duplicateModal && duplicateModal.classList.contains('active')) {
             e.preventDefault();
@@ -1526,6 +1530,16 @@
             requestCloseAddModal();
         }
     }, true);
+
+    const openClientParam = new URLSearchParams(window.location.search).get('open_client');
+
+    if (openClientParam && /^\d+$/.test(openClientParam)) {
+        window.history.replaceState({}, '', window.location.pathname);
+
+        if (typeof openClientModal === 'function') {
+            openClientModal(parseInt(openClientParam, 10));
+        }
+    }
 
     function escapeHtml(text) {
         if (!text && text !== 0) return '';

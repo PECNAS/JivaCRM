@@ -6,7 +6,9 @@ from django.conf import settings
 
 from viewer.models import (
     City, Client, Employee, Order, OrderEmployee, OrderEstimate, Service,
+    ROLE_SENIOR_ADMIN, ROLE_SALES_MANAGER,
 )
+from viewer.views.helpers import role_label
 
 DATASET_PATH = Path(settings.BASE_DIR) / 'viewer' / 'data' / 'orders_import.json'
 
@@ -61,8 +63,8 @@ def parse_date(value):
 
 def pick_manager():
     return (
-        Employee.objects.filter(role='sales_manager', is_active=True).first()
-        or Employee.objects.filter(role='senior_admin', is_active=True).first()
+        Employee.objects.filter(role=ROLE_SALES_MANAGER, is_active=True).first()
+        or Employee.objects.filter(role=ROLE_SENIOR_ADMIN, is_active=True).first()
         or Employee.objects.first()
     )
 
@@ -225,8 +227,9 @@ def import_orders():
             OrderEmployee.objects.create(
                 order=order,
                 employee=employee,
-                employee_name=employee.full_name,
-                employee_role=employee.get_role_display(),
+                employee_name=employee.display_name,
+                employee_role=role_label(employee.role),
+                role_code=employee.role,
                 payment=entry.get('payment') or default_rate,
                 comment=(entry.get('comment') or '').strip(),
             )

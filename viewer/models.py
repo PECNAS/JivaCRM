@@ -1,4 +1,5 @@
 import hashlib
+import re
 
 from datetime import datetime
 from decimal import Decimal
@@ -8,8 +9,44 @@ from django.core.validators import MinValueValidator
 from django.utils import timezone
 
 
+ROLE_ARTIST = 'artist'
+ROLE_TECHNICIAN = 'technician'
+ROLE_CHOREOGRAPHER = 'choreographer'
+ROLE_MANAGER = 'manager'
+ROLE_SALES_MANAGER = 'sales_manager'
+ROLE_PRODUCTION = 'production'
+ROLE_SENIOR_ADMIN = 'senior_admin'
+ROLE_BOSS = 'boss'
+
+ROLE_CHOICES = [
+    (ROLE_ARTIST, 'Артист'),
+    (ROLE_TECHNICIAN, 'Техник'),
+    (ROLE_CHOREOGRAPHER, 'Хореограф'),
+    (ROLE_MANAGER, 'Управляющий'),
+    (ROLE_SALES_MANAGER, 'Менеджер'),
+    (ROLE_PRODUCTION, 'Выпускающий'),
+    (ROLE_BOSS, 'Босс'),
+    (ROLE_SENIOR_ADMIN, 'Старший администратор'),
+]
+
+ROLE_LABELS = dict(ROLE_CHOICES)
+
+TOP_ROLES = [ROLE_BOSS, ROLE_SENIOR_ADMIN]
+ARTIST_ROLES = [ROLE_ARTIST]
+NON_ARTIST_ROLES = [
+    ROLE_TECHNICIAN, ROLE_CHOREOGRAPHER, ROLE_MANAGER,
+    ROLE_SALES_MANAGER, ROLE_PRODUCTION, ROLE_BOSS, ROLE_SENIOR_ADMIN,
+]
+CHECKLIST_EDITOR_ROLES = NON_ARTIST_ROLES
+
+
+def normalize_text(value):
+    return ' '.join((value or '').lower().replace('ё', 'е').split())
+
+
 class Agency(models.Model):
     name = models.CharField('Название', max_length=200, unique=True)
+    normalized_name = models.CharField('Название (нормализованное)', max_length=200, blank=True, db_index=True, editable=False)
 
     class Meta:
         verbose_name = 'Агентство'
@@ -19,9 +56,71 @@ class Agency(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        self.normalized_name = normalize_text(self.name)
+
+        update_fields = kwargs.get('update_fields')
+
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            update_fields.add('normalized_name')
+            kwargs['update_fields'] = list(update_fields)
+
+        super().save(*args, **kwargs)
+
+    def variants(self):
+        return [self.name] + [alias.name for alias in self.aliases.all()]
+
+
+class AgencyAlias(models.Model):
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='aliases', verbose_name='Агентство')
+    name = models.CharField('Вариация названия', max_length=200)
+    normalized_name = models.CharField('Нормализованная вариация', max_length=200, blank=True, db_index=True, editable=False)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Вариация названия агентства'
+        verbose_name_plural = 'Вариации названий агентств'
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.agency.name} — {self.name}'
+
+    def save(self, *args, **kwargs):
+        self.normalized_name = normalize_text(self.name)
+
+        update_fields = kwargs.get('update_fields')
+
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            update_fields.add('normalized_name')
+            kwargs['update_fields'] = list(update_fields)
+
+        super().save(*args, **kwargs)
+
+
+class AgencyManager(models.Model):
+    agency = models.ForeignKey(Agency, on_delete=models.CASCADE, related_name='managers', verbose_name='Агентство')
+    name = models.CharField('Имя менеджера', max_length=200)
+    phone = models.CharField('Телефон', max_length=20, blank=True)
+    telegram_username = models.CharField('Юзернейм в телеграм', max_length=100, blank=True)
+    comment = models.TextField('Комментарий', blank=True)
+    is_active = models.BooleanField('Активен', default=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Менеджер агентства'
+        verbose_name_plural = 'Менеджеры агентств'
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.name} ({self.agency.name})'
+
 
 class Role(models.Model):
     name = models.CharField('Наименование', max_length=50, unique=True)
+    code = models.CharField('Код', max_length=30, blank=True, db_index=True)
+    is_system = models.BooleanField('Системная роль', default=False)
 
     class Meta:
         verbose_name = 'Роль'
@@ -196,23 +295,22 @@ class CalendarColor(models.Model):
 
 
 class Employee(models.Model):
-    USER_ROLES = [
-        ('artist', 'Артист'),
-        ('technician', 'Техник'),
-        ('choreographer', 'Хореограф'),
-        ('manager', 'Управляющий'),
-        ('sales_manager', 'Менеджер'),
-        ('production', 'Выпускающий'),
-        ('senior_admin', 'Старший администратор'),
-    ]
+    USER_ROLES = ROLE_CHOICES
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='employee_profile')
     full_name = models.CharField('ФИО', max_length=200)
-    role = models.CharField('Роль', max_length=20, choices=USER_ROLES, default='artist')
+    nickname = models.CharField('Имя для обращения', max_length=100, blank=True)
+    role = models.CharField('Основная роль', max_length=20, choices=ROLE_CHOICES, default=ROLE_ARTIST)
+    roles = models.ManyToManyField(Role, related_name='employees', verbose_name='Дополнительные роли', blank=True)
     telegram_username = models.CharField('Юзернейм в телеграм', max_length=100, blank=True)
     phone = models.CharField('Номер телефона', max_length=20, blank=True)
     skills = models.ManyToManyField(Skill, related_name='employees', verbose_name='Навыки', blank=True)
     is_active = models.BooleanField('Активен', default=True)
+
+    rzd_bonus_number = models.CharField('Номер РЖД бонус', max_length=50, blank=True)
+    instagram = models.CharField('Инстаграм', max_length=100, blank=True)
+    international_passport_series = models.CharField('Серия загранпаспорта', max_length=10, blank=True)
+    international_passport_number = models.CharField('Номер загранпаспорта', max_length=20, blank=True)
 
     passport_series = models.CharField('Серия паспорта', max_length=10, blank=True)
     passport_number = models.CharField('Номер паспорта', max_length=20, blank=True)
@@ -258,41 +356,126 @@ class Employee(models.Model):
     def last_login(self):
         return self.user.last_login
 
+    @property
+    def display_name(self):
+        return self.nickname or self.full_name
+
+    def short_name(self):
+        return self.display_name
+
+    def role_codes(self):
+        codes = [self.role] if self.role else []
+
+        for role_obj in self.roles.all():
+            code = (role_obj.code or '').strip()
+            if code and code not in codes:
+                codes.append(code)
+
+        return codes
+
+    def has_role(self, *codes):
+        available = self.role_codes()
+        return any(code in available for code in codes)
+
+    def is_artist(self):
+        return self.role in ARTIST_ROLES
+
+    def is_top(self):
+        return self.role in TOP_ROLES
+
+    def can_see_rates(self):
+        return self.role in TOP_ROLES
+
+    def can_see_costs(self):
+        return self.role not in ARTIST_ROLES and self.role != ROLE_TECHNICIAN
+
+    def can_manage_roles(self):
+        return self.role in TOP_ROLES
+
+    def can_edit_checklists(self):
+        return True
+
+    def can_build_checklists(self):
+        return self.role in CHECKLIST_EDITOR_ROLES
+
     def can_manage_employees(self):
-        return self.role in ['senior_admin', 'manager']
+        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
 
     def can_manage_clients(self):
-        return self.role in ['senior_admin', 'manager', 'sales_manager']
+        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_SALES_MANAGER]
 
     def can_manage_orders(self):
-        return self.role in ['senior_admin', 'manager', 'sales_manager', 'production']
+        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_SALES_MANAGER, ROLE_PRODUCTION]
 
     def can_view_schedule(self):
         return self.role in [
-            'senior_admin', 'manager', 'sales_manager', 'production',
-            'choreographer', 'technician', 'artist',
+            ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_SALES_MANAGER, ROLE_PRODUCTION,
+            ROLE_CHOREOGRAPHER, ROLE_TECHNICIAN, ROLE_ARTIST,
         ]
 
     def can_create_trainings(self):
-        return self.role in ['senior_admin', 'manager', 'choreographer']
+        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_CHOREOGRAPHER]
 
     def can_manage_services(self):
-        return self.role in ['senior_admin', 'manager', 'production']
+        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_PRODUCTION]
 
     def can_manage_cities(self):
-        return self.role in ['senior_admin', 'manager']
+        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
 
     def can_manage_calendar_colors(self):
-        return self.role == 'senior_admin'
+        return self.role in TOP_ROLES
 
     def can_manage_money(self):
-        return self.role in ['senior_admin', 'manager']
+        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
+
+    def can_view_reports(self):
+        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
+
+    def can_send_feedback(self):
+        return True
+
+    def can_manage_feedback(self):
+        return self.role in [
+            ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_PRODUCTION,
+            ROLE_CHOREOGRAPHER, ROLE_SALES_MANAGER,
+        ]
 
     def can_view_own_profile(self):
         return True
 
 
+class EmployeeDocument(models.Model):
+    KIND_PASSPORT = 'passport'
+    KIND_INTERNATIONAL = 'international_passport'
+    KIND_OTHER = 'other'
+
+    KINDS = [
+        (KIND_PASSPORT, 'Паспорт'),
+        (KIND_INTERNATIONAL, 'Загранпаспорт'),
+        (KIND_OTHER, 'Другое'),
+    ]
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='documents', verbose_name='Сотрудник')
+    kind = models.CharField('Тип документа', max_length=30, choices=KINDS, default=KIND_PASSPORT)
+    title = models.CharField('Подпись', max_length=200, blank=True)
+    file = models.FileField('Файл', upload_to='employee_documents/%Y/%m/')
+    uploaded_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='uploaded_documents', verbose_name='Загрузил',
+    )
+    created_at = models.DateTimeField('Дата загрузки', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Документ сотрудника'
+        verbose_name_plural = 'Документы сотрудников'
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f'{self.employee.full_name} — {self.get_kind_display()}'
+
+
 class ArtistCard(models.Model):
+
     employee = models.OneToOneField(Employee, on_delete=models.CASCADE, related_name='artist_card', verbose_name='Сотрудник')
     weight = models.CharField('Вес', max_length=50, blank=True)
     height = models.CharField('Рост', max_length=50, blank=True)
@@ -355,9 +538,19 @@ class Client(models.Model):
         ('low', 'Низкий'),
     ]
 
+    CONTACT_PHONE = 'phone'
+    CONTACT_TELEGRAM = 'telegram'
+
+    CONTACT_CHOICES = [
+        (CONTACT_PHONE, 'Телефон'),
+        (CONTACT_TELEGRAM, 'Телеграм'),
+    ]
+
     full_name = models.CharField('ФИО клиента', max_length=200)
     client_type = models.CharField('Тип клиента', max_length=10, choices=CLIENT_TYPE_CHOICES, default='organizer')
     agency = models.ForeignKey(Agency, on_delete=models.SET_NULL, null=True, blank=True, related_name='clients', verbose_name='Агентство')
+    agency_manager = models.ForeignKey(AgencyManager, on_delete=models.SET_NULL, null=True, blank=True, related_name='clients', verbose_name='Менеджер агентства')
+    contact_type = models.CharField('Тип контакта', max_length=10, choices=CONTACT_CHOICES, blank=True)
     phone = models.CharField('Номер телефона', max_length=20, blank=True)
     phone_normalized = models.CharField('Телефон (нормализованный)', max_length=20, blank=True, db_index=True, editable=False)
     telegram_username = models.CharField('Юзернейм в тг', max_length=100, blank=True)
@@ -391,15 +584,52 @@ class Client(models.Model):
         words = [word for word in (value or '').lower().replace('ё', 'е').split() if word]
         return ' '.join(sorted(words))
 
+    @staticmethod
+    def detect_contact_type(value):
+        text = (value or '').strip()
+
+        if not text:
+            return ''
+
+        if text.startswith('@'):
+            return Client.CONTACT_TELEGRAM
+
+        digits = Client.normalize_phone(text)
+
+        if digits and len(digits) >= 10:
+            return Client.CONTACT_PHONE
+
+        return Client.CONTACT_TELEGRAM
+
+    @staticmethod
+    def normalize_telegram(value):
+        text = (value or '').strip()
+
+        if not text:
+            return ''
+
+        text = re.sub(r'^https?://', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'^(www\.)?(t\.me/|telegram\.me/|telegram\.dog/)', '', text, flags=re.IGNORECASE)
+        text = text.split('?')[0].split('#')[0].strip('/').strip()
+
+        return text.lstrip('@').strip()
+
     def save(self, *args, **kwargs):
         self.phone_normalized = self.normalize_phone(self.phone)
         self.full_name_normalized = self.normalize_name(self.full_name)
+        self.telegram_username = self.normalize_telegram(self.telegram_username)
+
+        if not self.contact_type:
+            if self.phone:
+                self.contact_type = self.CONTACT_PHONE
+            elif self.telegram_username:
+                self.contact_type = self.CONTACT_TELEGRAM
 
         update_fields = kwargs.get('update_fields')
 
         if update_fields is not None:
             update_fields = set(update_fields)
-            update_fields.update({'phone_normalized', 'full_name_normalized'})
+            update_fields.update({'phone_normalized', 'full_name_normalized', 'contact_type'})
             kwargs['update_fields'] = list(update_fields)
 
         super().save(*args, **kwargs)
@@ -409,6 +639,13 @@ class Client(models.Model):
         if names:
             return ', '.join(names)
         return self.city or ''
+
+    def get_contact_display(self):
+        if self.contact_type == self.CONTACT_TELEGRAM and self.telegram_username:
+            handle = self.telegram_username if self.telegram_username.startswith('@') else f'@{self.telegram_username}'
+            return handle
+
+        return self.phone or self.telegram_username or ''
 
 
 class Service(models.Model):
@@ -488,13 +725,18 @@ class Order(models.Model):
     ]
 
     name = models.CharField('Название заказа', max_length=300, blank=True, default='')
+    auto_name = models.CharField('Название (автоматическое)', max_length=300, blank=True, default='')
+    name_is_manual = models.BooleanField('Название изменено вручную', default=False)
     client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name='orders', verbose_name='Клиент')
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name='Город')
     date = models.DateField('Дата проведения', null=True, blank=True)
+    start_datetime = models.DateTimeField('Начало мероприятия', null=True, blank=True)
+    end_datetime = models.DateTimeField('Окончание мероприятия', null=True, blank=True)
     address = models.CharField('Адрес', max_length=300, blank=True, default='')
     contact_name = models.CharField('Контактное лицо - имя', max_length=200, blank=True)
     contact_phone = models.CharField('Контактное лицо - номер телефона', max_length=20, blank=True)
     contact_telegram = models.CharField('Контактное лицо - телеграм', max_length=100, blank=True)
+    chat_number = models.CharField('Номер узкого чата', max_length=100, blank=True, default='')
     setup_time = models.CharField('Время чека', max_length=20, blank=True)
     dressing_room_comment = models.TextField('Комментарии к гримерке', blank=True)
     meal_comment = models.TextField('Комментарии к еде', blank=True)
@@ -508,9 +750,12 @@ class Order(models.Model):
     venue_comment = models.TextField('Комментарии к площадке', blank=True)
     props_comment = models.TextField('Комментарии к реквизиту', blank=True)
     manager = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='managed_orders', verbose_name='Менеджер', null=True, blank=True)
+    managers = models.ManyToManyField(Employee, related_name='co_managed_orders', verbose_name='Дополнительные менеджеры', blank=True)
     story_manager = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='story_orders', verbose_name='Сториз ответственный')
     cost = models.CharField('Общая стоимость', max_length=50, blank=True, default='—')
     payment_method = models.CharField('Способ оплаты', max_length=10, choices=PAYMENT_CHOICES, blank=True)
+    payment_due_date = models.DateField('Дата оплаты по заказу', null=True, blank=True)
+    payment_due_comment = models.CharField('Заметка к оплате', max_length=300, blank=True)
     status = models.CharField('Статус', max_length=20, choices=STATUS_CHOICES, default='request')
     duration = models.PositiveSmallIntegerField('Длительность (дней)', default=1)
     content_hash = models.CharField('Отпечаток данных', max_length=40, blank=True, default='')
@@ -527,12 +772,70 @@ class Order(models.Model):
         return f'Заказ #{self.id} - {self.name or self.client.full_name}'
 
     CONTENT_FIELDS = [
-        'name', 'client_id', 'city_id', 'date', 'address', 'contact_name', 'contact_phone', 'contact_telegram',
+        'name', 'client_id', 'city_id', 'date', 'start_datetime', 'end_datetime', 'address',
+        'contact_name', 'contact_phone', 'contact_telegram', 'chat_number',
         'setup_time', 'dressing_room_comment', 'meal_comment', 'concept',
         'tech_lamps', 'tech_laser', 'tech_hazer', 'tech_grid', 'tech_projection', 'tech_comment',
         'venue_comment', 'props_comment', 'manager_id', 'story_manager_id', 'cost',
-        'payment_method', 'status', 'duration',
+        'payment_method', 'status', 'duration', 'payment_due_date', 'payment_due_comment',
     ]
+
+    def build_auto_name(self):
+        from datetime import date as date_class
+
+        parts = []
+
+        if self.chat_number:
+            parts.append(self.chat_number.strip())
+
+        if self.date:
+            months = [
+                'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+                'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+            ]
+            label = f'{self.date.day} {months[self.date.month - 1]}'
+
+            if self.date.year != date_class.today().year:
+                label = f'{label} {str(self.date.year)[2:]}'
+
+            parts.append(label)
+
+        if self.city:
+            parts.append(self.city.name)
+
+        for item in self.estimate_items.all().order_by('id'):
+            if not item.service_name:
+                continue
+
+            title = item.service_name
+
+            if item.people_count:
+                title = f'{title} {item.people_count}'
+
+            parts.append(title)
+
+        return ', '.join(parts)
+
+    def refresh_auto_name(self):
+        self.auto_name = self.build_auto_name()
+
+        if self.name_is_manual and self.name:
+            return self.auto_name
+
+        self.name = self.auto_name
+        return self.auto_name
+
+    def total_paid(self):
+        return sum((payment.amount for payment in self.payments.filter(is_cancelled=False)), Decimal('0.00'))
+
+    def is_paid(self):
+        return self.total_paid() > 0
+
+    def get_cost_value(self):
+        try:
+            return Decimal(str(self.cost or '0').replace(' ', '').replace('₽', '').replace(',', '.')).quantize(Decimal('0.01'))
+        except (InvalidOperation, ValueError):
+            return Decimal('0.00')
 
     def get_content_signature(self):
         items = []
@@ -542,10 +845,10 @@ class Order(models.Model):
             items.append(f'{field}={value if value is not None else ""}')
 
         for item in self.estimate_items.all().order_by('id'):
-            items.append(f'est:{item.service_name}:{item.people_count}:{item.coefficient}:{item.price}:{item.comment}:{item.is_overridden}')
+            items.append(f'est:{item.service_name}:{item.people_count}:{item.coefficient}:{item.price}:{item.comment}:{item.is_overridden}:{item.is_main}')
 
         for item in self.employee_items.all().order_by('id'):
-            items.append(f'emp:{item.employee_name}:{item.employee_role}:{item.payment}:{item.comment}:{item.is_overridden}')
+            items.append(f'emp:{item.employee_name}:{item.employee_role}:{item.payment}:{item.comment}:{item.is_overridden}:{item.is_story}:{item.is_responsible}')
 
         return '|'.join(items)
 
@@ -627,10 +930,12 @@ class OrderEstimate(models.Model):
     service = models.ForeignKey(Service, on_delete=models.PROTECT, related_name='estimate_items', verbose_name='Услуга', null=True, blank=True)
     service_name = models.CharField('Название услуги', max_length=200)
     people_count = models.PositiveIntegerField('Количество человек', default=0)
+    people_count_unknown = models.BooleanField('Количество не указано', default=False)
     coefficient = models.DecimalField('Коэффициент', max_digits=10, decimal_places=2, default=1)
     price = models.DecimalField('Стоимость', max_digits=12, decimal_places=2, default=0)
     comment = models.TextField('Комментарий', blank=True)
     is_overridden = models.BooleanField('Переопределена вручную', default=False)
+    is_main = models.BooleanField('Основное шоу', default=False)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
 
@@ -646,14 +951,23 @@ class OrderEstimate(models.Model):
     def total(self):
         return float(self.price) * float(self.coefficient)
 
+    def get_people_label(self):
+        if self.people_count_unknown:
+            return ''
+        return str(self.people_count or '')
+
 
 class OrderEmployee(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='employee_items', verbose_name='Заказ')
     employee = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='order_items', verbose_name='Сотрудник')
     employee_name = models.CharField('ФИО сотрудника', max_length=200)
     employee_role = models.CharField('Роль', max_length=100, blank=True)
+    role_code = models.CharField('Код роли', max_length=30, blank=True, default='')
+    show = models.ForeignKey(OrderEstimate, on_delete=models.SET_NULL, null=True, blank=True, related_name='staff', verbose_name='Шоу')
     payment = models.DecimalField('Оплата', max_digits=10, decimal_places=2, default=0)
     is_overridden = models.BooleanField('Ставка изменена вручную', default=False)
+    is_story = models.BooleanField('Сториз', default=False)
+    is_responsible = models.BooleanField('Ответственный', default=False)
     comment = models.TextField('Комментарий', blank=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
@@ -665,6 +979,214 @@ class OrderEmployee(models.Model):
 
     def __str__(self):
         return f'{self.employee_name} - {self.payment}'
+
+    def get_show_label(self):
+        if self.show_id is None:
+            return ''
+
+        return self.show.service_name
+
+
+class OrderPayment(models.Model):
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payments', verbose_name='Заказ')
+    amount = models.DecimalField('Сумма', max_digits=12, decimal_places=2, default=0)
+    paid_at = models.DateField('Дата оплаты')
+    comment = models.CharField('Комментарий', max_length=300, blank=True)
+    is_cancelled = models.BooleanField('Отменена', default=False)
+    cancelled_at = models.DateTimeField('Когда отменена', null=True, blank=True)
+    created_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_order_payments', verbose_name='Зафиксировал',
+    )
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Оплата по заказу'
+        verbose_name_plural = 'Оплаты по заказам'
+        ordering = ['paid_at', 'id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(amount__gte=0), name='order_payment_amount_non_negative'),
+        ]
+        indexes = [
+            models.Index(fields=['order', 'paid_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.order_id} - {self.amount} - {self.paid_at}'
+
+
+class ChecklistTemplate(models.Model):
+    name = models.CharField('Название', max_length=200)
+    service = models.ForeignKey(
+        Service, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='checklist_templates', verbose_name='Шоу',
+    )
+    is_active = models.BooleanField('Активен', default=True)
+    is_default = models.BooleanField('Проверять в каждом заказе', default=False)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Шаблон чек-листа'
+        verbose_name_plural = 'Шаблоны чек-листов'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def matches_show(self, service, name):
+        if self.service_id and service is not None and self.service_id == service.id:
+            return True
+
+        if not self.service_id and name:
+            return ' '.join(self.name.lower().split()) == ' '.join(name.lower().split())
+
+        return False
+
+
+class ChecklistItem(models.Model):
+    template = models.ForeignKey(ChecklistTemplate, on_delete=models.CASCADE, null=True, blank=True, related_name='items', verbose_name='Шаблон')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='checklist_items', verbose_name='Заказ')
+    show = models.ForeignKey(OrderEstimate, on_delete=models.SET_NULL, null=True, blank=True, related_name='checklist_items', verbose_name='Шоу')
+    text = models.CharField('Пункт', max_length=500)
+    is_done = models.BooleanField('Выполнено', default=False)
+    order_index = models.PositiveIntegerField('Порядок', default=0)
+    created_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_checklist_items', verbose_name='Создал',
+    )
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Пункт чек-листа'
+        verbose_name_plural = 'Пункты чек-листов'
+        ordering = ['order_index', 'id']
+
+    def __str__(self):
+        return self.text
+
+
+class OrderShowTemplate(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='show_templates', verbose_name='Заказ')
+    template = models.ForeignKey(ChecklistTemplate, on_delete=models.CASCADE, related_name='show_orders', verbose_name='Шаблон')
+    show = models.ForeignKey(OrderEstimate, on_delete=models.CASCADE, null=True, blank=True, related_name='show_checklist_templates', verbose_name='Шоу')
+    is_detached = models.BooleanField('Отвязан от заказа', default=False)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Чек-лист заказа по шоу'
+        verbose_name_plural = 'Чек-листы заказов по шоу'
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.order_id} - {self.template.name}'
+
+
+class OrderFeedback(models.Model):
+    KIND_COMMENT = 'comment'
+    KIND_ISSUE = 'issue'
+    KIND_IDEA = 'idea'
+
+    KINDS = [
+        (KIND_COMMENT, 'Замечание'),
+        (KIND_ISSUE, 'Проблема'),
+        (KIND_IDEA, 'Идея'),
+    ]
+
+    STATUS_NEW = 'new'
+    STATUS_READ = 'read'
+    STATUS_DONE = 'done'
+
+    STATUSES = [
+        (STATUS_NEW, 'Новое'),
+        (STATUS_READ, 'Прочитано'),
+        (STATUS_DONE, 'Решено'),
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='feedback', verbose_name='Заказ')
+    author = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='feedback_sent', verbose_name='Автор')
+    kind = models.CharField('Тип', max_length=20, choices=KINDS, default=KIND_COMMENT)
+    text = models.TextField('Текст')
+    status = models.CharField('Статус', max_length=20, choices=STATUSES, default=STATUS_NEW)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Обратная связь по заказу'
+        verbose_name_plural = 'Обратная связь по заказам'
+        ordering = ['-created_at', '-id']
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['order']),
+        ]
+
+    def __str__(self):
+        return f'{self.order_id} - {self.get_kind_display()}'
+
+
+class OrderExpense(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_COMPANY = 'company'
+    STATUS_TEAM = 'team'
+
+    STATUSES = [
+        (STATUS_PENDING, 'На рассмотрении'),
+        (STATUS_COMPANY, 'Оплачено с корпоративного счёта'),
+        (STATUS_TEAM, 'Оплачено командой'),
+    ]
+
+    RESOLVED_STATUSES = [STATUS_COMPANY, STATUS_TEAM]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='expenses', verbose_name='Заказ')
+    payer_name = models.CharField('Кто оплатил', max_length=200)
+    amount = models.DecimalField('Сумма', max_digits=12, decimal_places=2, default=0)
+    comment = models.TextField('Комментарий', blank=True)
+    status = models.CharField('Статус', max_length=20, choices=STATUSES, default=STATUS_PENDING)
+    period_date = models.DateField('Дата расхода', null=True, blank=True)
+
+    decided_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='decided_expenses', verbose_name='Решение принял',
+    )
+    decided_at = models.DateTimeField('Когда решено', null=True, blank=True)
+
+    created_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_expenses', verbose_name='Создал',
+    )
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Расход по заказу'
+        verbose_name_plural = 'Расходы по заказам'
+        ordering = ['-id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(amount__gte=0), name='order_expense_amount_non_negative'),
+        ]
+        indexes = [
+            models.Index(fields=['order']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f'{self.order_id} - {self.payer_name} - {self.amount}'
+
+    @property
+    def is_pending(self):
+        return self.status == self.STATUS_PENDING
+
+    def get_status_class(self):
+        if self.status == self.STATUS_COMPANY:
+            return 'company'
+
+        if self.status == self.STATUS_TEAM:
+            return 'team'
+
+        return 'pending'
 
 
 class ArtistSchedule(models.Model):
@@ -945,7 +1467,7 @@ class MoneyAccrual(models.Model):
 
     ORDER_CATEGORIES = [CATEGORY_ORDER]
     MANUAL_CATEGORIES = [CATEGORY_SALARY, CATEGORY_HOURS, CATEGORY_DAILY, CATEGORY_BONUS, CATEGORY_DEDUCTION]
-    NEGATIVE_CATEGORIES = [CATEGORY_DEDUCTION]
+    NEGATIVE_CATEGORIES = [CATEGORY_DEDUCTION, CATEGORY_SOURCE]
 
     STATUS_ACTIVE = 'active'
     STATUS_CANCELLED = 'cancelled'

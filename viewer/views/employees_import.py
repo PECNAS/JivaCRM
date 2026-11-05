@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-from viewer.models import ArtistCard, Employee, Role, Skill, User
+from viewer.models import ArtistCard, Employee, Role, Skill, User, ROLE_ARTIST, ROLE_LABELS, ARTIST_ROLES
 
 DATASET_PATH = Path(settings.BASE_DIR) / 'viewer' / 'data' / 'employees_import.json'
 
@@ -80,7 +80,7 @@ def import_employees():
             skipped += 1
             continue
 
-        role = item.get('role') if item.get('role') in dict(Employee.USER_ROLES) else 'artist'
+        role = item.get('role') if item.get('role') in ROLE_LABELS else ROLE_ARTIST
 
         telegram = clean_name(item.get('telegram_username') or item.get('telegram'))
         phone_digits = ''.join(filter(str.isdigit, item.get('phone') or ''))
@@ -115,10 +115,13 @@ def import_employees():
             first_name=full_name,
             email=(item.get('email') or '').strip(),
             is_active=True,
-            is_staff=role != 'artist',
+            is_staff=role not in ARTIST_ROLES,
         )
 
-        Role.objects.get_or_create(name=item.get('role_name') or full_name)
+        role_obj = Role.objects.filter(name=item.get('role_name') or full_name).first()
+
+        if role_obj is None:
+            role_obj = Role.objects.create(name=item.get('role_name') or full_name)
 
         employee = Employee.objects.create(
             user=user,
@@ -136,7 +139,9 @@ def import_employees():
 
             employee.skills.add(skill)
 
-        if role == 'artist':
+        employee.roles.add(role_obj)
+
+        if role in ARTIST_ROLES:
             card_data = item.get('artist_card') or {}
 
             card, _ = ArtistCard.objects.get_or_create(employee=employee)

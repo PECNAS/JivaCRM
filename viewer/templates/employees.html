@@ -48,7 +48,7 @@
         <tbody id="employeesTableBody">
             {% for emp in employees %}
             <tr data-employee-id="{{ emp.id }}">
-                <td>{{ emp.full_name }}</td>
+                <td>{{ emp.full_name }}{% if emp.nickname %} <span class="text-muted">· {{ emp.nickname }}</span>{% endif %}</td>
                 <td>{{ emp.user.username }}</td>
                 <td>{{ emp.get_role_display }}</td>
                 <td>{{ emp.phone|default:"—" }}</td>
@@ -213,14 +213,19 @@
                             <input type="text" class="form-input" id="editFullName" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="editRole">Роль *</label>
-                            <select class="form-select" id="editRole" required>
-                                <option value="senior_admin">Старший администратор</option>
-                                <option value="admin">Администратор</option>
-                                <option value="manager">Менеджер</option>
-                                <option value="trainer">Тренер</option>
-                                <option value="artist">Артист</option>
-                            </select>
+                            <label class="form-label" for="editNickname">Имя для обращения</label>
+                            <input type="text" class="form-input" id="editNickname" placeholder="Как система называет сотрудника">
+                        </div>
+                        <div class="form-group detail-item--full">
+                            <label class="form-label">Роли</label>
+                            <div class="role-checks">
+                                {% for role in role_options %}
+                                <label class="role-check">
+                                    <input type="checkbox" name="roles" value="{{ role.code }}">
+                                    <span>{{ role.label }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="editPhone">Телефон</label>
@@ -231,8 +236,29 @@
                             <input type="text" class="form-input" id="editTelegram">
                         </div>
                         <div class="form-group">
+                            <label class="form-label" for="editRzdBonus">Номер РЖД бонус</label>
+                            <input type="text" class="form-input" id="editRzdBonus">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="editInstagram">Инстаграм</label>
+                            <input type="text" class="form-input" id="editInstagram">
+                        </div>
+                        <div class="form-group">
                             <label class="form-label" for="editIsActive">Активен</label>
                             <input type="checkbox" class="form-checkbox" id="editIsActive" checked>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h4 class="form-section__title">Загранпаспорт</h4>
+                        <div class="form-grid form-grid--2">
+                            <div class="form-group">
+                                <label class="form-label" for="editIntPassportSeries">Серия</label>
+                                <input type="text" class="form-input" id="editIntPassportSeries">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editIntPassportNumber">Номер</label>
+                                <input type="text" class="form-input" id="editIntPassportNumber">
+                            </div>
                         </div>
                     </div>
                     <div class="form-section">
@@ -269,6 +295,24 @@
                             <div class="form-group">
                                 <label class="form-label" for="editPassportSnils">СНИЛС</label>
                                 <input type="text" class="form-input" id="editPassportSnils">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h4 class="form-section__title">Фото документов</h4>
+                        <div class="employee-documents" id="employeeDocuments">
+                            <div class="employee-documents__list" id="employeeDocumentsList">
+                                <div class="employee-document__empty">Документы не загружены</div>
+                            </div>
+                            <div class="order-payments__form">
+                                <select class="form-select" id="employeeDocumentKind">
+                                    <option value="passport">Паспорт</option>
+                                    <option value="international_passport">Загранпаспорт</option>
+                                    <option value="other">Другое</option>
+                                </select>
+                                <input type="file" class="form-input" id="employeeDocumentFile" accept="image/*,application/pdf">
+                                <input type="text" class="form-input" id="employeeDocumentTitle" placeholder="Подпись">
+                                <button type="button" class="btn btn-outline btn-sm" id="employeeDocumentUploadBtn">Загрузить</button>
                             </div>
                         </div>
                     </div>
@@ -322,14 +366,19 @@
                         <input type="text" class="form-input" id="addFullName" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="addRole">Роль *</label>
-                        <select class="form-select" id="addRole" required>
-                            <option value="senior_admin">Старший администратор</option>
-                            <option value="admin">Администратор</option>
-                            <option value="manager">Менеджер</option>
-                            <option value="trainer">Тренер</option>
-                            <option value="artist" selected>Артист</option>
-                        </select>
+                        <label class="form-label" for="addNickname">Имя для обращения</label>
+                        <input type="text" class="form-input" id="addNickname" placeholder="Как система называет сотрудника">
+                    </div>
+                    <div class="form-group detail-item--full">
+                        <label class="form-label">Роли</label>
+                        <div class="role-checks">
+                            {% for role in role_options %}
+                            <label class="role-check">
+                                <input type="checkbox" name="roles" value="{{ role.code }}"{% if role.code == 'artist' %} data-default="1"{% endif %}>
+                                <span>{{ role.label }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="addPhone">Телефон</label>
@@ -340,8 +389,29 @@
                         <input type="text" class="form-input" id="addTelegram">
                     </div>
                     <div class="form-group">
+                        <label class="form-label" for="addRzdBonus">Номер РЖД бонус</label>
+                        <input type="text" class="form-input" id="addRzdBonus">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="addInstagram">Инстаграм</label>
+                        <input type="text" class="form-input" id="addInstagram">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label" for="addIsActive">Активен</label>
                         <input type="checkbox" class="form-checkbox" id="addIsActive" checked>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h4 class="form-section__title">Загранпаспорт</h4>
+                    <div class="form-grid form-grid--2">
+                        <div class="form-group">
+                            <label class="form-label" for="addIntPassportSeries">Серия</label>
+                            <input type="text" class="form-input" id="addIntPassportSeries">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="addIntPassportNumber">Номер</label>
+                            <input type="text" class="form-input" id="addIntPassportNumber">
+                        </div>
                     </div>
                 </div>
                 <div class="form-section">

@@ -35,8 +35,7 @@
     }
 
     function formatPrice(value) {
-        const num = parseFloat(value) || 0;
-        return num.toFixed(2).replace('.', ',') + ' ₽';
+        return window.formatMoney(value);
     }
 
     function formatDate(dateStr) {

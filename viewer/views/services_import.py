@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-from viewer.models import Employee, Service, ServiceStaffRow
+from viewer.models import Employee, Service, ServiceStaffRow, ROLE_SENIOR_ADMIN
 
 DATASET_PATH = Path(settings.BASE_DIR) / 'viewer' / 'data' / 'services_import.json'
 
@@ -23,7 +23,7 @@ def load_dataset():
 
 def pick_owner():
     return (
-        Employee.objects.filter(role='senior_admin', is_active=True).first()
+        Employee.objects.filter(role=ROLE_SENIOR_ADMIN, is_active=True).first()
         or Employee.objects.filter(role='manager', is_active=True).first()
         or Employee.objects.first()
     )

@@ -7,9 +7,9 @@ from ..models import Employee
 
 
 MANIFEST = {
-    'name': 'JIVA CRM',
+    'name': 'JIVA HUB',
     'short_name': 'JIVA',
-    'description': 'CRM театра «Джива»: расписание, заказы, клиенты, сотрудники',
+    'description': 'JIVA HUB: расписание, заказы, клиенты, сотрудники, деньги',
     'start_url': '/schedule/',
     'scope': '/',
     'display': 'standalone',

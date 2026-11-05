@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.views import View
 
 from ..models import (
-    Employee, Order, MoneyAccrual, MoneyPayout,
+    Employee, Order, MoneyAccrual, MoneyPayout, OrderExpense,
 )
 from .money_service import (
     ZERO, parse_amount, parse_iso_date, parse_month, month_bounds,
@@ -15,6 +15,7 @@ from .money_service import (
     accrue_order_items, cancel_accrual,
     employee_balance, create_month_payouts,
 )
+from .helpers import role_label
 
 
 def money_employee(request):
@@ -48,13 +49,59 @@ def serialize_employee_options():
     for employee in employees:
         data.append({
             'id': employee.id,
-            'name': employee.full_name,
+            'name': employee.display_name,
             'role': employee.role,
-            'role_display': employee.get_role_display(),
+            'role_display': role_label(employee.role),
             'is_active': employee.is_active,
         })
 
     return data
+
+
+def build_history(accrual_rows, payout_rows):
+    history = []
+
+    for row in accrual_rows:
+        if row.get('category') not in ('order', 'source'):
+            continue
+
+        history.append({
+            'kind': 'accrual',
+            'kind_label': 'Начисление',
+            'id': row['id'],
+            'employee_id': row['employee_id'],
+            'employee_name': row['employee_name'],
+            'title': row.get('title') or '',
+            'order_name': row.get('order_name') or '',
+            'order_date_display': row.get('order_date_display') or '',
+            'date': row['period_date'],
+            'date_display': row['period_date_display'],
+            'amount': row['signed_amount'],
+            'is_active': row['is_active'],
+        })
+
+    for row in payout_rows:
+        if row.get('is_reverted'):
+            continue
+
+        history.append({
+            'kind': 'payout',
+            'kind_label': 'Выплата',
+            'id': row['id'],
+            'employee_id': row['employee_id'],
+            'employee_name': row['employee_name'],
+            'title': row.get('method_display') or '',
+            'order_name': '',
+            'order_date_display': row.get('period_start_display') or '',
+            'date': row['period_date'],
+            'date_display': row['period_date_display'],
+            'amount': -row['amount'],
+            'is_active': True,
+        })
+
+    history.sort(key=lambda item: (item['date'], item['id']), reverse=True)
+
+    return history
 
 
 def serialize_accrual(accrual):
@@ -63,7 +110,7 @@ def serialize_accrual(accrual):
     return {
         'id': accrual.id,
         'employee_id': accrual.employee_id,
-        'employee_name': accrual.employee.full_name,
+        'employee_name': accrual.employee.display_name,
         'category': accrual.category,
         'category_display': accrual.get_category_display(),
         'amount': float(accrual.amount),
@@ -77,7 +124,7 @@ def serialize_accrual(accrual):
         'order_id': order.id if order else None,
         'order_name': (order.name or order.client.full_name) if order else '',
         'order_date_display': order.date.strftime('%d.%m.%Y') if order and order.date else '',
-        'created_by': accrual.created_by.full_name if accrual.created_by else '',
+        'created_by': accrual.created_by.display_name if accrual.created_by else '',
         'created_at': accrual.created_at.strftime('%d.%m.%Y %H:%M') if accrual.created_at else '',
         'can_edit': accrual.category != MoneyAccrual.CATEGORY_SOURCE and accrual.is_active,
     }
@@ -87,7 +134,7 @@ def serialize_payout(payout):
     return {
         'id': payout.id,
         'employee_id': payout.employee_id,
-        'employee_name': payout.employee.full_name,
+        'employee_name': payout.employee.display_name,
         'amount': float(payout.amount),
         'method': payout.method,
         'method_display': payout.get_method_display(),
@@ -100,7 +147,7 @@ def serialize_payout(payout):
         'comment': payout.comment or '',
         'is_reverted': payout.is_reverted,
         'reverted_display': payout.reverted_at.strftime('%d.%m.%Y %H:%M') if payout.reverted_at else '',
-        'created_by': payout.created_by.full_name if payout.created_by else '',
+        'created_by': payout.created_by.display_name if payout.created_by else '',
     }
 
 
@@ -131,8 +178,8 @@ def serialize_order_row(order):
 
         employees.append({
             'employee_id': item.employee_id,
-            'employee_name': item.employee.full_name,
-            'role_display': item.employee.get_role_display(),
+            'employee_name': item.employee.display_name,
+            'role_display': role_label(item.employee.role),
             'payment': float(item.payment),
             'is_overridden': item.is_overridden,
             'accrual_id': accrual.id if accrual else None,
@@ -315,6 +362,8 @@ class MoneyDataView(View):
         summary = build_summary(start, next_start)
         payroll = build_payroll(start, next_start)
 
+        expense_rows = build_expenses(start, next_start, search)
+
         stats = {
             'accrued': sum(row['signed_amount'] for row in accrual_rows if row['is_active']),
             'paid': sum(row['amount'] for row in payout_rows if not row['is_reverted']),
@@ -327,6 +376,8 @@ class MoneyDataView(View):
             ),
             'balance_total': sum(row['balance'] for row in summary),
             'payroll_total': payroll['total'],
+            'expense_total': sum(row['amount'] for row in expense_rows),
+            'expense_pending': sum(row['amount'] for row in expense_rows if row['status'] == 'pending'),
         }
 
         return JsonResponse({
@@ -338,10 +389,16 @@ class MoneyDataView(View):
             'accrual_filter': accrual_filter,
             'accruals': accrual_rows,
             'payouts': payout_rows,
+            'history': build_history(accrual_rows, payout_rows),
             'pending': orders,
+            'expenses': expense_rows,
             'summary': summary,
             'payroll': payroll,
             'stats': stats,
+            'expense_statuses': [
+                {'key': key, 'label': label}
+                for key, label in OrderExpense.STATUSES
+            ],
             'employees': serialize_employee_options(),
             'today': timezone.localdate().strftime('%Y-%m-%d'),
         })
@@ -353,8 +410,8 @@ def build_summary(start, end):
     for employee in Employee.objects.order_by('full_name'):
         rows[employee.id] = {
             'employee_id': employee.id,
-            'employee_name': employee.full_name,
-            'role_display': employee.get_role_display(),
+            'employee_name': employee.display_name,
+            'role_display': role_label(employee.role),
             'is_active': employee.is_active,
             'salary': 0.0,
             'hours': 0.0,
@@ -458,8 +515,8 @@ def build_payroll(start, end):
 
         rows[employee.id] = {
             'employee_id': employee.id,
-            'employee_name': employee.full_name,
-            'role_display': employee.get_role_display(),
+            'employee_name': employee.display_name,
+            'role_display': role_label(employee.role),
             'cells': {key: 0.0 for key in PAYROLL_COLUMNS},
             'accrued': 0.0,
             'paid': 0.0,
@@ -625,8 +682,8 @@ class MoneyEmployeeDetailView(View):
             'success': True,
             'employee': {
                 'id': target.id,
-                'name': target.full_name,
-                'role_display': target.get_role_display(),
+                'name': target.display_name,
+                'role_display': role_label(target.role),
             },
             'range_label': f'{start.strftime("%d.%m.%Y")} — {end.strftime("%d.%m.%Y")}',
             'accrued': float(accrued),
@@ -673,6 +730,87 @@ class MoneyPayoutListView(View):
             'rows': rows,
             'total': sum(row['balance'] for row in rows),
             'today': timezone.localdate().strftime('%Y-%m-%d'),
+        })
+
+
+def build_expenses(start, end, search=''):
+    rows = []
+
+    query = (
+        OrderExpense.objects
+        .filter(period_date__gte=start, period_date__lt=end)
+        .select_related('order', 'order__client', 'created_by', 'decided_by')
+        .order_by('-period_date', '-id')
+    )
+
+    for expense in query:
+        order_name = expense.order.name or expense.order.client.full_name
+
+        row = {
+            'id': expense.id,
+            'order_id': expense.order_id,
+            'order_name': order_name,
+            'order_date': expense.order.date.strftime('%d.%m.%Y') if expense.order.date else '',
+            'payer_name': expense.payer_name,
+            'amount': float(expense.amount),
+            'comment': expense.comment or '',
+            'status': expense.status,
+            'status_display': expense.get_status_display(),
+            'status_class': expense.get_status_class(),
+            'period_date': expense.period_date.strftime('%Y-%m-%d') if expense.period_date else '',
+            'period_date_display': expense.period_date.strftime('%d.%m.%Y') if expense.period_date else '',
+            'created_by': expense.created_by.display_name if expense.created_by else '',
+            'decided_by': expense.decided_by.display_name if expense.decided_by else '',
+            'decided_at': expense.decided_at.strftime('%d.%m.%Y %H:%M') if expense.decided_at else '',
+            'is_pending': expense.is_pending,
+        }
+
+        if search:
+            haystack = ' '.join([
+                row['payer_name'],
+                row['comment'],
+                row['order_name'],
+                row['status_display'],
+            ]).lower()
+
+            if search not in haystack:
+                continue
+
+        rows.append(row)
+
+    return rows
+
+
+class MoneyExpenseStatusView(View):
+    def post(self, request):
+        employee, error = money_guard(request)
+
+        if error:
+            return error
+
+        expense = OrderExpense.objects.filter(id=request.POST.get('id')).select_related('order').first()
+
+        if expense is None:
+            return JsonResponse({'error': 'Расход не найден'}, status=404)
+
+        status = request.POST.get('status', '')
+
+        valid = [key for key, label in OrderExpense.STATUSES]
+
+        if status not in valid:
+            return JsonResponse({'error': 'Неизвестный статус'}, status=400)
+
+        expense.status = status
+        expense.decided_by = employee
+        expense.decided_at = timezone.now() if status in OrderExpense.RESOLVED_STATUSES else None
+        expense.save(update_fields=['status', 'decided_by', 'decided_at', 'updated_at'])
+
+        return JsonResponse({
+            'success': True,
+            'id': expense.id,
+            'status': expense.status,
+            'status_display': expense.get_status_display(),
+            'status_class': expense.get_status_class(),
         })
 
 
@@ -742,8 +880,8 @@ class MoneyOrderPayView(View):
 
         return JsonResponse({
             'success': True,
-            'accrued': [item.full_name for item in created],
-            'skipped': [item.full_name for item in skipped],
+            'accrued': [item.display_name for item in created],
+            'skipped': [item.display_name for item in skipped],
             'accrued_total': float(total),
         })
 

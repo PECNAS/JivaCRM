@@ -5,6 +5,9 @@
 
 {% block css %}
 <link rel="stylesheet" href="{% static 'css/index.css' %}">
+<link rel="stylesheet" href="{% static 'css/clients.css' %}">
+<link rel="stylesheet" href="{% static 'css/orders.css' %}">
+<link rel="stylesheet" href="{% static 'css/orders-editor.css' %}">
 <link rel="stylesheet" href="{% static 'css/schedule.css' %}">
 {% endblock %}
 
@@ -54,19 +57,41 @@
     </div>
 
     <div class="toolbar-right">
+        {% if employee.can_manage_orders %}
+        <button class="btn btn-primary btn-sm" id="addOrderBtn" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Создать заказ
+        </button>
+        {% endif %}
+    </div>
+</section>
+
+<section class="dashboard-filters-row">
+    <div class="dashboard-filters dashboard-filters--list" id="dashboardFilters">
         <div class="dashboard-search">
-            <input type="text" id="dashboardSearch" class="dashboard-search__input" placeholder="Поиск по названию, клиенту, адресу">
+            <input type="text" id="dashboardSearch" class="dashboard-search__input" placeholder="Поиск по названию или клиенту">
             <svg class="dashboard-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
         </div>
+        <div class="dashboard-search dashboard-client-search">
+            <input type="text" id="dashboardClientFilter" class="dashboard-search__input" placeholder="Фильтр по заказчику" autocomplete="off">
+            <button type="button" class="dashboard-search__clear" id="dashboardClientClear" title="Сбросить заказчика" aria-label="Сбросить заказчика" style="display:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+            <div class="client-combobox__dropdown dashboard-client-dropdown" id="dashboardClientDropdown"></div>
+        </div>
         <select id="dashboardSort" class="dashboard-select">
-            <option value="date_asc">Дата (ранние сначала)</option>
-            <option value="date_desc">Дата (поздние сначала)</option>
-            <option value="name_asc">Название (А→Я)</option>
-            <option value="name_desc">Название (Я→А)</option>
-            <option value="client_asc">Клиент (А→Я)</option>
+            <option value="date_desc">Самые новые</option>
+            <option value="date_asc">Самые старые</option>
         </select>
         <select id="dashboardStatus" class="dashboard-select">
             <option value="all">Все статусы</option>
@@ -76,6 +101,23 @@
         </select>
         <label class="my-orders-toggle">
             <input type="checkbox" id="pastCompletedToggle">
+            <span>Выполненные ранее</span>
+        </label>
+    </div>
+    <div class="dashboard-filters dashboard-filters--calendar" id="dashboardCalendarFilters">
+        <select id="calendarStatus" class="dashboard-select">
+            <option value="all">Все статусы</option>
+            <option value="request">Запрос</option>
+            <option value="confirmed">Подтверждено</option>
+            <option value="completed">Выполнено</option>
+        </select>
+        <select id="calendarFilled" class="dashboard-select">
+            <option value="all">Все заказы</option>
+            <option value="full">Заполнены полностью</option>
+            <option value="partial">Не заполнены до конца</option>
+        </select>
+        <label class="my-orders-toggle">
+            <input type="checkbox" id="calendarPastToggle">
             <span>Выполненные ранее</span>
         </label>
     </div>
@@ -100,12 +142,13 @@
                 </svg>
             </button>
         </div>
+        <div class="calendar-notice" id="calendarNotice"></div>
         <div class="dashboard-calendar__grid" id="calendarGrid"></div>
     </div>
 </section>
 
 <div class="context-menu" id="scheduleContextMenu" style="display:none;">
-    {% if user.employee_profile.role in 'senior_admin,manager,sales_manager,production' %}
+    {% if user.employee_profile.can_manage_orders %}
     <div class="context-menu-item" data-action="create-order">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
@@ -115,7 +158,7 @@
         Создать заказ
     </div>
     {% endif %}
-    {% if user.employee_profile.role in 'senior_admin,choreographer' %}
+    {% if user.employee_profile.can_create_trainings %}
     <div class="context-menu-item" data-action="create-training">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
@@ -125,7 +168,16 @@
         Создать тренировку
     </div>
     {% endif %}
-    {% if user.employee_profile.role == 'senior_admin' %}
+    {% if user.employee_profile.can_create_trainings %}
+    <div class="context-menu-item" data-action="create-availability">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        Отметить занятость
+    </div>
+    {% endif %}
+    {% if user.employee_profile.can_manage_calendar_colors %}
     <div class="context-menu-divider"></div>
     <div class="context-menu-item" data-action="create-event">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -136,6 +188,57 @@
         Создать событие
     </div>
     {% endif %}
+</div>
+
+<div class="modal-overlay" id="availabilityModal">
+    <div class="modal modal--availability">
+        <div class="modal__header">
+            <h2 class="modal__title" id="availabilityModalTitle">Занятость</h2>
+            <button class="modal__close" type="button" id="availabilityCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <div class="form-group">
+                <label class="form-label" for="availabilityDate">Дата</label>
+                <input type="date" class="form-input" id="availabilityDate">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="availabilityEmployee">Сотрудник *</label>
+                <select class="form-select" id="availabilityEmployee"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="availabilityAction">Статус *</label>
+                <select class="form-select" id="availabilityAction">
+                    <option value="off">Занят весь день</option>
+                    <option value="partial">Занят с ... до ...</option>
+                    <option value="day">Свободен весь день</option>
+                </select>
+            </div>
+            <div class="form-grid form-grid--2" id="availabilityTimeGroup" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label" for="availabilityStart">С</label>
+                    <input type="time" class="form-input" id="availabilityStart" value="10:00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="availabilityEnd">До</label>
+                    <input type="time" class="form-input" id="availabilityEnd" value="18:00">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="availabilityComment">Комментарий</label>
+                <input type="text" class="form-input" id="availabilityComment" placeholder="Например, тренировка">
+            </div>
+            <div class="form-error" id="availabilityError" style="display:none;"></div>
+        </div>
+        <div class="modal__footer">
+            <button type="button" class="btn btn-outline" id="availabilityCancelBtn">Отмена</button>
+            <button type="button" class="btn btn-primary" id="availabilitySaveBtn">Сохранить</button>
+        </div>
+    </div>
 </div>
 
 <div class="modal-overlay" id="eventModal">
@@ -152,7 +255,610 @@
         <div class="modal__body" id="eventModalBody"></div>
         <div class="modal__footer">
             <button class="btn btn-outline" id="eventModalDismissBtn" type="button">Закрыть</button>
+            <button class="btn btn-outline" id="eventModalChecklistBtn" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 11 12 14 22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Чек-лист
+            </button>
             <button class="btn btn-primary" id="eventModalDetailsBtn" type="button">Подробнее</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay modal-overlay--stacked" id="eventChecklistModal">
+    <div class="modal modal--event-checklist">
+        <div class="modal__header">
+            <h2 class="modal__title" id="eventChecklistTitle">Чек-лист</h2>
+            <button class="modal__close" id="eventChecklistCloseBtn" type="button">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <div class="order-checklist__progress" id="eventChecklistProgress"></div>
+            <div class="order-checklist" id="eventChecklistList"></div>
+        </div>
+        <div class="modal__footer">
+            <button class="btn btn-outline" id="eventChecklistCloseBtnFooter" type="button">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<div class="notification-container" id="notificationContainer"></div>
+
+<div class="modal-overlay" id="createOrderModal">
+    <div class="modal modal--create-order">
+        <div class="modal__header">
+            <h2 class="modal__title">Создание заказа</h2>
+            <button class="modal__close" id="createModalCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="createOrderForm" class="create-order-form">
+                <div class="form-group">
+                    <label class="form-label" for="createOrderName">Название заказа *</label>
+                    <div class="single-city-picker" id="createOrderNamePicker">
+                        <input type="text" class="form-input" id="createOrderName" placeholder="Начните вводить название" autocomplete="off" required>
+                        <div class="single-city-picker__dropdown" id="createOrderNameDropdown"></div>
+                    </div>
+                    <span class="form-hint">Название услуги и количество артистов через пробел — услуга добавится в заказ</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="createOrderClientSearch">Заказчик *</label>
+                    <div class="client-combobox">
+                        <input type="text" class="form-input" id="createOrderClientSearch" placeholder="Начните вводить ФИО, телефон или агентство" autocomplete="off">
+                        <div class="client-combobox__dropdown"></div>
+                        <select class="form-select" id="createOrderClient" style="display:none;"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="createOrderCityInput">Город</label>
+                    <div class="single-city-picker" id="createOrderCityPicker">
+                        <input type="text" class="form-input" id="createOrderCityInput" placeholder="Начните вводить название города" autocomplete="off">
+                        <input type="hidden" id="createOrderCityId" value="">
+                        <input type="hidden" id="createOrderCityName" value="">
+                        <div class="single-city-picker__dropdown" id="createOrderCityDropdown"></div>
+                    </div>
+                    <span class="form-hint">Если города нет в списке, его можно создать</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="createOrderDate">Дата заказа</label>
+                    <input type="date" class="form-input" id="createOrderDate">
+                    <span class="form-hint">Можно оставить пустым — заказ попадёт в начало списка</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="createOrderConcept">Комментарий</label>
+                    <textarea class="form-textarea" id="createOrderConcept" rows="2" placeholder="Детали мероприятия"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="createModalCancelBtn">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        Создать
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="createClientModal">
+    <div class="modal modal--add modal--create-client">
+        <div class="modal__header">
+            <h2 class="modal__title">Добавление клиента</h2>
+            <button class="modal__close" id="createClientModalCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="createClientForm" class="add-client-form add-client-form--grid">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="form-label" for="newClientFullName">ФИО *</label>
+                    <input type="text" class="form-input" id="newClientFullName" placeholder="Иванов Иван Иванович" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newClientPhone">Телефон</label>
+                    <input type="tel" class="form-input" id="newClientPhone" placeholder="+7 (999) 123-45-67">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newClientTelegram">Телеграм</label>
+                    <input type="text" class="form-input" id="newClientTelegram" placeholder="@username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newClientType">Тип клиента *</label>
+                    <select class="form-select" id="newClientType" required>
+                        <option value="organizer">Организатор</option>
+                        <option value="agency">Агентство</option>
+                    </select>
+                    <span class="form-hint">Телефон или телеграм — обязательно хотя бы одно</span>
+                </div>
+                <div class="form-group" id="newClientAgencyGroup" style="display:none;">
+                    <label class="form-label" for="newClientAgencySearch">Агентство *</label>
+                    <input type="text" class="form-input" id="newClientAgencySearch" placeholder="Начните вводить название" autocomplete="off">
+                    <select class="form-select" id="newClientAgency" style="display:none;">
+                        <option value="">Не выбрано</option>
+                        {% for agency in agencies %}
+                        <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newClientEmail">Email</label>
+                    <input type="email" class="form-input" id="newClientEmail" placeholder="client@example.ru">
+                </div>
+                <div class="form-group form-group--wide">
+                    <label class="form-label">Города</label>
+                    <div class="city-selector" id="newClientCitySelector"></div>
+                    <input type="hidden" id="newClientCities" name="city_names">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="newClientRating">Рейтинг *</label>
+                    <select class="form-select" id="newClientRating" required>
+                        <option value="high">Высокий</option>
+                        <option value="medium" selected>Средний</option>
+                        <option value="low">Низкий</option>
+                    </select>
+                </div>
+                <div class="form-group form-group--wide">
+                    <label class="form-label" for="newClientComment">Комментарий</label>
+                    <textarea class="form-textarea" id="newClientComment" rows="2"></textarea>
+                </div>
+                <div class="form-actions form-actions--wide">
+                    <button type="button" class="btn btn-outline" id="createClientModalCancelBtn">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        Создать
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="orderEditorModal">
+    <div class="modal modal--editor">
+        <div class="modal__header">
+            <div class="modal__heading">
+                <h2 class="modal__title" id="editorOrderTitle">Заказ</h2>
+                <span class="modal__subtitle" id="editorOrderSubtitle" style="display:none;"></span>
+            </div>
+            <div class="modal__header-actions">
+                <button class="modal__close" id="editorModalCloseBtn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="modal__tabs" id="orderEditorTabs">
+            <button class="tab-btn active" data-tab="info">Информация</button>
+            <div class="tab-btn-wrap" id="orderShowsTabWrap">
+                <button class="tab-btn" data-tab="show" id="orderShowsTabBtn">Шоу<span class="tab-badge" id="orderShowsBadge">0</span></button>
+                <div class="tab-btn-dropdown" id="orderShowsDropdown"></div>
+            </div>
+            <button class="tab-btn" data-tab="extra">Дополнительная информация</button>
+            <button class="tab-btn" data-tab="payment">Оплата</button>
+            <button class="tab-btn" data-tab="checklist">Чек-листы</button>
+            <button class="tab-btn" data-tab="expenses">Расходы<span class="tab-badge" id="orderExpensesBadge" style="display:none;"></span></button>
+        </div>
+        <div class="modal__body">
+            <div class="tab-content active" id="tab-info">
+                <form id="orderInfoForm" class="order-info-form">
+                    <input type="hidden" id="editOrderId">
+
+                    <div class="info-section">
+                        <h3 class="info-section__title">Основная информация</h3>
+                        <div class="form-grid form-grid--3">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderName">Название заказа *</label>
+                                <input type="text" class="form-input" id="editOrderName" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderClientSearch">Клиент *</label>
+                                <div class="client-combobox">
+                                    <input type="text" class="form-input" id="editOrderClientSearch" placeholder="Начните вводить ФИО, телефон или агентство" autocomplete="off">
+                                    <div class="client-combobox__dropdown"></div>
+                                    <select class="form-select" id="editOrderClient" style="display:none;"></select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderStatus">Статус *</label>
+                                <select class="form-select" id="editOrderStatus" required>
+                                    <option value="request">Запрос</option>
+                                    <option value="confirmed">Подтвержденный</option>
+                                    <option value="completed">Выполненный</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderChat">Номер узкого чата</label>
+                                <input type="text" class="form-input" id="editOrderChat" placeholder="Номер Чата">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderCityInput">Город</label>
+                                <div class="single-city-picker" id="editOrderCityPicker">
+                                    <input type="text" class="form-input" id="editOrderCityInput" placeholder="Начните вводить название города" autocomplete="off">
+                                    <input type="hidden" id="editOrderCity" value="">
+                                    <div class="single-city-picker__dropdown" id="editOrderCityDropdown"></div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderDate">Дата проведения</label>
+                                <input type="date" class="form-input" id="editOrderDate">
+                                <div class="price-period-notice" id="pricePeriodNotice" style="display:none;"></div>
+                            </div>
+                            <div class="form-group detail-item--full">
+                                <label class="form-label" for="editOrderAddress">Адрес</label>
+                                <input type="text" class="form-input" id="editOrderAddress" placeholder="Город, улица, дом">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3 class="info-section__title">Услуги</h3>
+                        <div class="services-city-group">
+                            <label class="form-label" for="editOrderCityGroup">Группа городов</label>
+                            <select class="form-select" id="editOrderCityGroup">
+                                <option value="">По городу заказа</option>
+                            </select>
+                            <span class="form-hint" id="cityGroupHint"></span>
+                        </div>
+                        <div class="services-editor-container services-editor-container--inline">
+                            <div class="services-catalog-panel">
+                                <div class="panel-header">
+                                    <h3>Каталог услуг</h3>
+                                    <input type="text" class="search-input-sm" id="serviceSearchInput" placeholder="Поиск...">
+                                </div>
+                                <div class="services-catalog-list" id="servicesCatalogList"></div>
+                            </div>
+                            <div class="services-table-wrapper">
+                                <div class="panel-header">
+                                    <h3>Выбранные услуги</h3>
+                                    <div class="services-total">
+                                        Итого: <span id="servicesTotal">0.00₽</span>
+                                    </div>
+                                </div>
+                                <div class="services-table-container">
+                                    <table class="services-table-editor">
+                                        <thead>
+                                            <tr>
+                                                <th>Услуга</th>
+                                                <th style="width:80px;">Чел.</th>
+                                                <th style="width:120px;">Стоимость</th>
+                                                <th>Комментарий</th>
+                                                <th style="width:40px;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="servicesTableBody">
+                                            <tr class="empty-row">
+                                                <td colspan="5">Добавьте услуги из каталога</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-content" id="tab-show">
+                <div class="order-show-tab">
+                    <div class="order-show-head">
+                        <div class="order-show-selector" id="orderShowSelector">
+                            <button type="button" class="order-show-selector__btn" id="orderShowSelectorBtn">
+                                <span id="orderShowSelectorLabel">Выберите услугу</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </button>
+                            <div class="order-show-selector__list" id="orderShowSelectorList"></div>
+                        </div>
+                    </div>
+                    <div class="order-show-panel" id="orderShowPanel"></div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-extra">
+                <form id="orderExtraForm" class="order-info-form">
+                    <div class="info-section">
+                        <h3 class="info-section__title">Контактное лицо на площадке</h3>
+                        <div class="form-grid form-grid--2">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderContactName">Имя</label>
+                                <input type="text" class="form-input" id="editOrderContactName" placeholder="Например, Ирина">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderContactPhone">Телефон</label>
+                                <input type="tel" class="form-input" id="editOrderContactPhone" placeholder="+7 (999) 123-45-67">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderContactTelegram">Телеграм</label>
+                                <input type="text" class="form-input" id="editOrderContactTelegram" placeholder="@username">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3 class="info-section__title">Детали мероприятия</h3>
+                        <div class="form-grid form-grid--2">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderStart">Начало мероприятия</label>
+                                <input type="datetime-local" class="form-input" id="editOrderStart">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderEnd">Окончание мероприятия</label>
+                                <input type="datetime-local" class="form-input" id="editOrderEnd">
+                            </div>
+                        </div>
+                        <div class="form-grid form-grid--2" style="margin-top:1rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderSetupTime">Время чека/установки</label>
+                                <input type="text" class="form-input" id="editOrderSetupTime" placeholder="18:00">
+                            </div>
+                        </div>
+                        <div class="form-grid" style="margin-top:1rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderConcept">Концепция</label>
+                                <textarea class="form-textarea" id="editOrderConcept" rows="3" placeholder="Описание концепции мероприятия"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderDressingRoom">Комментарий к гримерке</label>
+                                <textarea class="form-textarea" id="editOrderDressingRoom" rows="2" placeholder="Гримерка, удобства"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderMeal">Комментарий к еде</label>
+                                <textarea class="form-textarea" id="editOrderMeal" rows="2" placeholder="Питание, предпочтения"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h3 class="info-section__title">Технические требования</h3>
+                        <div class="form-grid form-grid--2">
+                            <div class="form-group detail-item--full">
+                                <label class="form-label">Оборудование</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechLamps"> Лампы</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechLaser"> Лазер</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechHazer"> Хейзер</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechGrid"> Сетка</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechProjection"> Проекция</label>
+                                </div>
+                            </div>
+                            <div class="form-group detail-item--full">
+                                <label class="form-label" for="editOrderTechComment">Комментарий к техничке</label>
+                                <textarea class="form-textarea" id="editOrderTechComment" rows="2" placeholder="Дополнительные требования"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderVenueComment">Особенности площадки</label>
+                                <textarea class="form-textarea" id="editOrderVenueComment" rows="3" placeholder="Особенности площадки"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderPropsComment">Особенности по реквизиту</label>
+                                <textarea class="form-textarea" id="editOrderPropsComment" rows="3" placeholder="Особенности реквизита"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-content" id="tab-payment">
+                <div class="order-payment-tab">
+                    <div class="info-section">
+                        <div class="form-grid form-grid--2">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderCost">Общая стоимость</label>
+                                <input type="text" class="form-input form-input--readonly" id="editOrderCost" readonly title="Двойной клик для изменения">
+                                <span class="form-hint" id="editOrderCostHint">Двойной клик — изменить вручную</span>
+                            </div>
+                            <div class="form-group" id="editOrderManagerGroup">
+                                <label class="form-label" for="editOrderManager">Менеджер</label>
+                                <select class="form-select" id="editOrderManager"></select>
+                            </div>
+                        </div>
+                        <div class="form-grid form-grid--2" style="margin-top:1rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderPaymentMethod">Способ оплаты</label>
+                                <select class="form-select" id="editOrderPaymentMethod">
+                                    <option value="">Не указано</option>
+                                    <option value="self">Самозанятость</option>
+                                    <option value="ip">ИП</option>
+                                    <option value="cash">Наличные</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderPaymentComment">Заметка к оплате</label>
+                                <input type="text" class="form-input" id="editOrderPaymentComment" placeholder="Например, предоплата 50%">
+                            </div>
+                        </div>
+                        <div class="order-payment-tax" id="orderPaymentTax" style="display:none;"></div>
+                        <div class="form-grid form-grid--2" style="margin-top:1rem;">
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderPaymentDue">Срок оплаты</label>
+                                <input type="date" class="form-input" id="editOrderPaymentDue">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <div class="order-payments" id="orderPaymentsBlock">
+                            <div class="order-payments__head">
+                                <span class="order-payments__title">Фиксация оплат</span>
+                                <span class="order-payments__total" id="orderPaymentsTotal">0.00₽</span>
+                            </div>
+                            <div class="order-payments__list" id="orderPaymentsList"></div>
+                            <div class="order-payments__form">
+                                <input type="date" class="form-input" id="orderPaymentDate">
+                                <input type="text" class="form-input" id="orderPaymentAmount" placeholder="Сумма" inputmode="decimal">
+                                <input type="text" class="form-input" id="orderPaymentComment" placeholder="Комментарий">
+                                <button type="button" class="btn btn-outline btn-sm" id="orderPaymentAddBtn">Добавить оплату</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-checklist">
+                <div class="order-checklist-tab">
+                    <div class="order-checklist__search">
+                        <div class="order-checklist__picker">
+                            <input type="text" class="form-input" id="orderChecklistTemplateInput" placeholder="Поиск чек-листа" autocomplete="off">
+                            <svg class="order-checklist__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <div class="order-checklist__dropdown" id="orderChecklistTemplateDropdown"></div>
+                        </div>
+                        <div class="order-checklist__progress" id="orderChecklistProgress"></div>
+                    </div>
+                    <div class="order-checklist" id="orderChecklistList"></div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-expenses">
+                <div class="order-expenses-tab">
+                    <div class="order-expenses__head">
+                        <div class="order-expenses__summary" id="orderExpensesTotal"></div>
+                        <button type="button" class="btn btn-primary order-expenses__add" id="addOrderExpenseBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Добавить расход
+                        </button>
+                    </div>
+                    <div class="order-expenses" id="orderExpensesList"></div>
+                </div>
+            </div>
+        </div>
+        <div class="editor-footer editor-footer--global">
+            <div class="modal-footer-actions">
+                <div class="modal-footer-actions__left">
+                    <button type="button" class="btn btn-danger btn-sm" id="deleteOrderBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        Удалить
+                    </button>
+                </div>
+                <div class="modal-footer-actions__right">
+                    <button type="button" class="btn btn-outline" id="copyOrderBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        Копировать
+                    </button>
+                    <button type="button" class="btn btn-outline" id="cancelEditBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        Отменить
+                    </button>
+                    <button type="button" class="btn btn-primary" id="globalSaveBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="copyOrderModal">
+    <div class="modal modal--copy-order">
+        <div class="modal__header">
+            <h2 class="modal__title">Копирование заказа</h2>
+            <button class="modal__close" id="copyOrderModalCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <p class="copy-order-hint" id="copyOrderHint">Все данные заказа будут скопированы, кроме даты.</p>
+            <div class="form-group">
+                <label class="form-label" for="copyOrderDate">Дата копии</label>
+                <input type="date" class="form-input" id="copyOrderDate">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="copyOrderKeepDate"> Оставить ту же дату
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" id="copyOrderCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-primary" id="copyOrderConfirmBtn">Копировать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="orderExpenseModal">
+    <div class="modal modal--expense">
+        <div class="modal__header">
+            <h2 class="modal__title" id="orderExpenseModalTitle">Расход по заказу</h2>
+            <button class="modal__close" type="button" id="orderExpenseCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="orderExpenseForm" class="order-expense-form">
+                <div class="form-grid form-grid--2">
+                    <div class="form-group">
+                        <label class="form-label" for="orderExpensePayer">Имя (оплатил) *</label>
+                        <input type="text" class="form-input" id="orderExpensePayer" placeholder="Например, Ирина" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="orderExpenseAmount">Сумма *</label>
+                        <input type="number" class="form-input" id="orderExpenseAmount" min="0" step="0.01" placeholder="0" required>
+                    </div>
+                    <div class="form-group detail-item--full">
+                        <label class="form-label" for="orderExpenseComment">Комментарий</label>
+                        <textarea class="form-textarea" id="orderExpenseComment" rows="2" placeholder="Например, такси до площадки"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__left">
+                <button type="button" class="btn btn-danger btn-sm" id="orderExpenseDeleteBtn" style="display:none;">Удалить расход</button>
+            </div>
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="orderExpenseCancelBtn">Отмена</button>
+                <button type="submit" form="orderExpenseForm" class="btn btn-primary" id="orderExpenseSaveBtn">Сохранить</button>
+            </div>
         </div>
     </div>
 </div>
@@ -161,5 +867,7 @@
 {% endblock %}
 
 {% block js %}
+<script src="{% static 'js/orders.js' %}"></script>
+<script src="{% static 'js/orders-editor.js' %}"></script>
 <script src="{% static 'js/schedule.js' %}"></script>
 {% endblock %}

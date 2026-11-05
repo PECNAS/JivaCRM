@@ -1,0 +1,90 @@
+[
+  {
+    "k": "mm:grid-width",
+    "v": "{\"gridW\":346,\"viewport\":390,\"overflowX\":false}"
+  },
+  {
+    "k": "mm:cal-title",
+    "v": "Ноябрь 2026"
+  },
+  {
+    "k": "mm:events",
+    "v": 1
+  },
+  {
+    "k": "mm:visible-columns",
+    "v": "Пн,Вт,Ср,Чт,Пт,Сб,Вс"
+  },
+  {
+    "k": "mm:menu-toggle",
+    "v": "display=flex"
+  },
+  {
+    "k": "mm:menu-open",
+    "v": "block|navbar__menu open"
+  },
+  {
+    "k": "mm:menu-links",
+    "v": "Расписание:vis,Клиенты:vis,Сотрудники:vis,Услуги:vis,Деньги:vis,Отчёты:vis,Профиль:vis,Выйти:vis"
+  },
+  {
+    "k": "mm:list-rows",
+    "v": 1
+  },
+  {
+    "k": "mm:editor-open",
+    "v": true
+  },
+  {
+    "k": "mm:editor-fit",
+    "v": "{\"w\":390,\"h\":844,\"fitsW\":true}"
+  },
+  {
+    "k": "mm:editor-console",
+    "v": []
+  },
+  {
+    "k": "mm:money-tabs-visible",
+    "v": "Начисления:vis,К выплате:vis,Сводка:vis,История:CUT,Расходы:CUT"
+  },
+  {
+    "k": "mm:services-layout",
+    "v": "{\"treeFound\":true,\"panelFound\":false,\"treeH\":416,\"panelH\":0}"
+  },
+  {
+    "k": "mm:reports-content-len",
+    "v": 15
+  },
+  {
+    "k": "mm:reports-text",
+    "v": "JIVA·HUB Отчёты"
+  },
+  {
+    "k": "mm:client-modal",
+    "v": "{\"active\":true,\"w\":342,\"h\":802,\"fitsH\":true}"
+  },
+  {
+    "k": "mm:employee-modal",
+    "v": "{\"active\":true,\"w\":342,\"h\":802,\"fitsH\":true}"
+  },
+  {
+    "k": "mm:touch-schedule",
+    "v": "{\"total\":13,\"tooSmall\":0,\"samples\":[]}"
+  },
+  {
+    "k": "mm:touch-clients",
+    "v": "{\"total\":65,\"tooSmall\":50,\"samples\":[\"Подробнее:19\",\"Подробнее:19\",\"Подробнее:19\",\"Подробнее:19\"]}"
+  },
+  {
+    "k": "mm:touch-employees",
+    "v": "{\"total\":46,\"tooSmall\":33,\"samples\":[\"Подробнее:19\",\"Подробнее:19\",\"Подробнее:19\",\"Подробнее:19\"]}"
+  },
+  {
+    "k": "mm:touch-money",
+    "v": "{\"total\":27,\"tooSmall\":0,\"samples\":[]}"
+  },
+  {
+    "k": "mm:touch-profile",
+    "v": "{\"total\":16,\"tooSmall\":0,\"samples\":[]}"
+  }
+]

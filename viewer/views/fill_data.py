@@ -31,7 +31,7 @@ class FillDataView(View):
         except Employee.DoesNotExist:
             return redirect('logout')
 
-        if employee.role != 'senior_admin' and not request.user.is_superuser:
+        if not employee.can_manage_roles() and not request.user.is_superuser:
             return redirect('index')
 
         return render(request, 'fill_data.html', {'employee': employee})
@@ -45,7 +45,7 @@ class FillDataView(View):
         except Employee.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Профиль не найден'}, status=404)
 
-        if employee.role != 'senior_admin' and not request.user.is_superuser:
+        if not employee.can_manage_roles() and not request.user.is_superuser:
             return JsonResponse({'success': False, 'error': 'Недостаточно прав'}, status=403)
 
         action = request.POST.get('action', '')

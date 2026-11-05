@@ -3,7 +3,8 @@ from django.views import View
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db.models import Q
-from ..models import Employee, Order, OrderEmployee, City, CalendarColor
+from ..models import Employee, Order, OrderEmployee, City, CalendarColor, ARTIST_ROLES, ROLE_TECHNICIAN
+from .helpers import format_date_short, role_label
 
 
 def format_date(date_value):
@@ -14,11 +15,33 @@ def format_date(date_value):
     return str(date_value)
 
 
-def serialize_schedule_order(order, my_payment=None):
+def serialize_schedule_order(order, my_payment=None, can_see_cost=True):
+    checklist_items = list(order.checklist_items.all())
+    checklist_total = len(checklist_items)
+
+    staff = [
+        {
+            'id': item.id,
+            'employee_id': item.employee_id,
+            'name': item.employee.display_name if item.employee_id else item.employee_name,
+            'role_label': role_label(item.role_code) or item.employee_role,
+            'show_name': item.get_show_label(),
+            'comment': item.comment or '',
+            'is_responsible': item.is_responsible,
+            'is_story': item.is_story,
+        }
+        for item in order.employee_items.select_related('employee', 'show').order_by('id')
+    ]
+
     data = {
         'id': order.id,
         'name': order.name or '—',
         'name_display': (order.name or '—').upper() if order.status == 'confirmed' else (order.name or '—'),
+        'auto_name': order.auto_name or '',
+        'chat_number': order.chat_number or '',
+        'date_display': format_date_short(order.date),
+        'total_paid': float(order.total_paid()) if can_see_cost else None,
+        'is_paid': order.is_paid() if can_see_cost else None,
         'address': order.address or '',
         'date': format_date(order.date),
         'has_date': bool(order.date),
@@ -26,18 +49,30 @@ def serialize_schedule_order(order, my_payment=None):
         'client_id': order.client.id,
         'city_id': order.city.id if order.city else None,
         'city_name': order.city.name if order.city else '',
-        'cost': order.cost or '—',
+        'cost': (order.cost or '—') if can_see_cost else '',
         'status': order.status,
         'status_display': order.get_status_display(),
-        'manager': order.manager.full_name if order.manager else '',
+        'manager': order.manager.display_name if order.manager else '',
         'manager_id': order.manager.id if order.manager else None,
         'duration': order.duration or 1,
-        'services': [item.service_name for item in order.estimate_items.all() if item.service_name],
+        'services': [
+            {
+                'name': item.service_name,
+                'people_count': item.people_count,
+                'people_count_unknown': item.people_count_unknown,
+            }
+            for item in order.estimate_items.all()
+            if item.service_name
+        ],
+        'checklist_total': checklist_total,
+        'checklist_done': len([item for item in checklist_items if item.is_done]),
+        'staff': staff,
         'updated_at': order.updated_at.isoformat() if order.updated_at else None,
         'content_changed': bool(order.content_changed_at),
         'content_changed_at': order.content_changed_at.isoformat() if order.content_changed_at else None,
         'is_incomplete': order.is_incomplete(),
         'missing_fields': order.get_missing_fields(),
+        'can_see_cost': can_see_cost,
     }
 
     if my_payment is not None:
@@ -61,7 +96,9 @@ def serialize_calendar_colors():
 
 
 def order_queryset():
-    return Order.objects.prefetch_related('estimate_items').select_related('client', 'city', 'manager__user')
+    return Order.objects.prefetch_related(
+        'estimate_items', 'checklist_items', 'employee_items__employee', 'employee_items__show',
+    ).select_related('client', 'city', 'manager__user')
 
 
 class ScheduleView(View):
@@ -77,7 +114,7 @@ class ScheduleView(View):
         except:
             return redirect('logout')
 
-        is_artist_or_tech = employee.role in ['artist', 'technician']
+        is_artist_or_tech = employee.role in ARTIST_ROLES or employee.role == ROLE_TECHNICIAN
 
         context = {
             'employee': employee,
@@ -131,14 +168,17 @@ class MyOrdersListView(View):
 
         orders_list = []
 
+        can_see_cost = employee.can_see_costs()
+        can_see_rates = employee.can_see_rates()
+
         for order in ordered:
             my_payment = 0
 
             for item in order.employee_items.all():
                 if item.employee_id == employee.id:
-                    my_payment = float(item.payment)
+                    my_payment = float(item.payment) if can_see_rates else None
                     break
 
-            orders_list.append(serialize_schedule_order(order, my_payment))
+            orders_list.append(serialize_schedule_order(order, my_payment, can_see_cost))
 
         return JsonResponse({'orders': orders_list, 'colors': serialize_calendar_colors()})

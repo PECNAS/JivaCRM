@@ -33,7 +33,10 @@
 
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
-        return cookieValue ? cookieValue[2] : '';
+
+        if (cookieValue) return cookieValue[2];
+
+        return window.__csrfToken || '';
     }
 
     function showToast(message) {
@@ -56,73 +59,11 @@
         return div.innerHTML;
     }
 
-    function formatPhoneValue(value) {
-        let digits = String(value || '').replace(/\D/g, '');
+    window.UI.attachAllPhoneMasks(document);
 
-        if (digits.length > 11) {
-            digits = digits.slice(0, 11);
-        }
-
-        if (digits.length === 11 && (digits[0] === '7' || digits[0] === '8')) {
-            digits = digits.slice(1);
-        } else if (digits.length === 11) {
-            digits = digits.slice(0, 10);
-        }
-
-        if (!digits) {
-            return '';
-        }
-
-        let formatted = '+7';
-
-        if (digits.length > 0) {
-            formatted += ' (' + digits.slice(0, 3);
-            if (digits.length > 3) {
-                formatted += ') ' + digits.slice(3, 6);
-                if (digits.length > 6) {
-                    formatted += '-' + digits.slice(6, 8);
-                    if (digits.length > 8) {
-                        formatted += '-' + digits.slice(8, 10);
-                    }
-                }
-            }
-        }
-
-        return formatted;
+    function setPhoneField(id, value) {
+        window.UI.setPhoneValue(document.getElementById(id), value || '');
     }
-
-    function phoneMask(input) {
-        input.value = formatPhoneValue(input.value);
-        return input.value;
-    }
-
-    function attachPhoneMask(input) {
-        if (!input) return;
-        input.addEventListener('input', function() { phoneMask(this); });
-        input.addEventListener('paste', function(e) {
-            const clipboard = (e.clipboardData || window.clipboardData);
-
-            if (!clipboard) return;
-
-            const text = clipboard.getData('text');
-
-            if (!text) return;
-
-            e.preventDefault();
-
-            this.value = formatPhoneValue(text);
-            this.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-        input.addEventListener('focus', function() {
-            if (this.value === '') this.value = '+7';
-        });
-        input.addEventListener('blur', function() {
-            if (this.value === '+7') this.value = '';
-        });
-    }
-
-    attachPhoneMask(document.getElementById('addPhone'));
-    attachPhoneMask(document.getElementById('editPhone'));
 
     function switchTab(tabName) {
         const tabBtns = document.querySelectorAll('.modal-tab-btn');
@@ -171,10 +112,11 @@
                     return;
                 }
 
-                document.getElementById('modalEmployeeName').textContent = data.full_name;
-                document.getElementById('viewFullName').textContent = data.full_name;
+                document.getElementById('modalEmployeeName').textContent = data.display_name || data.full_name;
+                renderEmployeeDocuments(data.documents || []);
+                document.getElementById('viewFullName').textContent = data.full_name + (data.nickname ? ' · ' + data.nickname : '');
                 document.getElementById('viewUsername').textContent = data.username;
-                document.getElementById('viewRole').textContent = data.role_display;
+                document.getElementById('viewRole').textContent = data.role_display || data.role_label || '';
                 document.getElementById('viewPhone').textContent = data.phone || '—';
                 document.getElementById('viewTelegram').textContent = data.telegram || '—';
                 document.getElementById('viewStatus').textContent = data.is_active ? 'Активен' : 'Неактивен';
@@ -203,8 +145,10 @@
                 document.getElementById('editUsername').value = data.username;
                 document.getElementById('editPassword').value = '';
                 document.getElementById('editFullName').value = data.full_name;
-                document.getElementById('editRole').value = data.role;
-                document.getElementById('editPhone').value = data.phone || '';
+                const editNickname = document.getElementById('editNickname');
+                if (editNickname) editNickname.value = data.nickname || '';
+                setRoleCheckboxes(data.role_codes || [data.role]);
+                setPhoneField('editPhone', data.phone);
                 document.getElementById('editTelegram').value = data.telegram || '';
                 document.getElementById('editIsActive').checked = data.is_active;
                 document.getElementById('editPassportSeries').value = data.passport_series || '';
@@ -336,7 +280,6 @@
         document.body.style.overflow = 'hidden';
         addForm.reset();
         document.getElementById('addIsActive').checked = true;
-        document.getElementById('addRole').value = 'artist';
         document.getElementById('addPhone').value = '';
     }
 
@@ -375,7 +318,8 @@
                 username: document.getElementById('editUsername').value.trim(),
                 password: document.getElementById('editPassword').value.trim(),
                 full_name: document.getElementById('editFullName').value.trim(),
-                role: document.getElementById('editRole').value,
+                nickname: document.getElementById('editNickname') ? document.getElementById('editNickname').value.trim() : '',
+                roles: collectRoles(editForm).join(','),
                 phone: document.getElementById('editPhone').value.trim(),
                 telegram: document.getElementById('editTelegram').value.trim(),
                 is_active: document.getElementById('editIsActive').checked ? 'on' : 'off',
@@ -387,6 +331,10 @@
                 passport_registration: document.getElementById('editPassportRegistration').value.trim(),
                 passport_inn: document.getElementById('editPassportInn').value.trim(),
                 passport_snils: document.getElementById('editPassportSnils').value.trim(),
+                rzd_bonus_number: document.getElementById('editRzdBonus') ? document.getElementById('editRzdBonus').value.trim() : '',
+                instagram: document.getElementById('editInstagram') ? document.getElementById('editInstagram').value.trim() : '',
+                international_passport_series: document.getElementById('editIntPassportSeries') ? document.getElementById('editIntPassportSeries').value.trim() : '',
+                international_passport_number: document.getElementById('editIntPassportNumber') ? document.getElementById('editIntPassportNumber').value.trim() : '',
             };
 
             if (!data.username || !data.full_name) {
@@ -495,7 +443,8 @@
                 username: document.getElementById('addUsername').value.trim(),
                 password: document.getElementById('addPassword').value.trim(),
                 full_name: document.getElementById('addFullName').value.trim(),
-                role: document.getElementById('addRole').value,
+                nickname: document.getElementById('addNickname') ? document.getElementById('addNickname').value.trim() : '',
+                roles: collectRoles(addForm).join(','),
                 phone: document.getElementById('addPhone').value.trim(),
                 telegram: document.getElementById('addTelegram').value.trim(),
                 is_active: document.getElementById('addIsActive').checked ? 'on' : 'off',
@@ -507,6 +456,10 @@
                 passport_registration: document.getElementById('addPassportRegistration').value.trim(),
                 passport_inn: document.getElementById('addPassportInn').value.trim(),
                 passport_snils: document.getElementById('addPassportSnils').value.trim(),
+                rzd_bonus_number: document.getElementById('addRzdBonus') ? document.getElementById('addRzdBonus').value.trim() : '',
+                instagram: document.getElementById('addInstagram') ? document.getElementById('addInstagram').value.trim() : '',
+                international_passport_series: document.getElementById('addIntPassportSeries') ? document.getElementById('addIntPassportSeries').value.trim() : '',
+                international_passport_number: document.getElementById('addIntPassportNumber') ? document.getElementById('addIntPassportNumber').value.trim() : '',
             };
 
             if (!data.username || !data.password || !data.full_name) {
@@ -751,18 +704,131 @@
         });
     }
 
+
+    function setRoleCheckboxes(codes) {
+        document.querySelectorAll('input[name="roles"]').forEach(function (box) {
+            box.checked = codes.indexOf(box.value) !== -1;
+        });
+    }
+
+    function collectRoles(scope) {
+        const boxes = scope.querySelectorAll('input[name="roles"]:checked');
+        const codes = [];
+
+        boxes.forEach(function (box) {
+            codes.push(box.value);
+        });
+
+        return codes;
+    }
+
     const EMPLOYEES_PAGE = 50;
     let employeesOffset = 0;
 
     const loadMoreBox = document.getElementById('employeesLoadMore');
     const loadMoreBtn = document.getElementById('employeesLoadMoreBtn');
 
+    function renderEmployeeDocuments(documents) {
+        const list = document.getElementById('employeeDocumentsList');
+
+        if (!list) return;
+
+        if (!documents || !documents.length) {
+            list.innerHTML = '<div class="employee-document__empty">Документы не загружены</div>';
+            return;
+        }
+
+        list.innerHTML = documents.map(item => `
+            <div class="employee-document">
+                <div class="employee-document__meta">
+                    <span class="employee-document__kind">${escapeHtml(item.kind_display)}${item.title ? ' · ' + escapeHtml(item.title) : ''}</span>
+                    <span class="employee-document__date">${escapeHtml(item.uploaded_at)}</span>
+                </div>
+                <div class="employee-document__actions">
+                    <a class="employee-document__link" href="${item.url}" target="_blank" rel="noopener">Открыть</a>
+                    <button type="button" class="order-payment__remove" data-document-delete="${item.id}">Удалить</button>
+                </div>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('[data-document-delete]').forEach(button => {
+            button.addEventListener('click', function () {
+                const documentId = this.getAttribute('data-document-delete');
+
+                fetch(`/employees/${currentEmployeeId}/documents/${documentId}/delete/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCSRFToken() },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showToast(data.error);
+                        return;
+                    }
+
+                    loadEmployeeDocuments();
+                })
+                .catch(() => showToast('Не удалось удалить документ'));
+            });
+        });
+    }
+
+    function loadEmployeeDocuments() {
+        if (!currentEmployeeId) return;
+
+        fetch(`/employees/${currentEmployeeId}/documents/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) renderEmployeeDocuments(data.documents);
+            })
+            .catch(() => {});
+    }
+
+    function uploadEmployeeDocument() {
+        const fileInput = document.getElementById('employeeDocumentFile');
+
+        if (!currentEmployeeId || !fileInput || !fileInput.files.length) {
+            showToast('Выберите файл');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('kind', document.getElementById('employeeDocumentKind').value);
+        formData.append('title', document.getElementById('employeeDocumentTitle').value.trim());
+
+        fetch(`/employees/${currentEmployeeId}/documents/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error);
+                return;
+            }
+
+            fileInput.value = '';
+            document.getElementById('employeeDocumentTitle').value = '';
+            renderEmployeeDocuments(data.documents);
+            showToast('Документ загружен');
+        })
+        .catch(() => showToast('Не удалось загрузить документ'));
+    }
+
+    const employeeDocumentUploadBtn = document.getElementById('employeeDocumentUploadBtn');
+
+    if (employeeDocumentUploadBtn) {
+        employeeDocumentUploadBtn.addEventListener('click', uploadEmployeeDocument);
+    }
+
     function employeeRow(emp) {
         return `
             <tr data-employee-id="${emp.id}">
-                <td>${escapeHtml(emp.full_name)}</td>
+                <td>${escapeHtml(emp.full_name)}${emp.nickname ? ' · ' + escapeHtml(emp.nickname) : ''}</td>
                 <td>${escapeHtml(emp.username)}</td>
-                <td>${escapeHtml(emp.role_display)}</td>
+                <td>${escapeHtml(emp.role_display || '')}</td>
                 <td>${escapeHtml(emp.phone || '—')}</td>
                 <td>
                     <span class="status-badge status-badge--${emp.is_active ? 'active' : 'inactive'}">
@@ -855,6 +921,7 @@
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         if (document.getElementById('uiConfirmModal')) return;
+        if (e.defaultPrevented) return;
 
         if (artistCardModal && artistCardModal.classList.contains('active')) {
             e.preventDefault();

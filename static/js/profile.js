@@ -28,8 +28,7 @@
     }
 
     function formatMoney(value) {
-        const num = parseFloat(value) || 0;
-        return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₽';
+        return window.UI.formatMoney(value);
     }
 
     function switchTab(tabName) {
@@ -145,6 +144,7 @@
                     <button type="button" class="btn btn-primary btn-sm" data-profile-edit>Редактировать</button>
                 </div>
                 <div class="profile-grid">
+                    ${renderField('Имя для обращения', data.nickname || 'Не задано')}
                     ${renderField('ФИО', data.full_name)}
                     ${renderField('Логин', data.username)}
                     ${renderField('Роль', data.role_display)}
@@ -225,7 +225,11 @@
         if (!profileData) return;
 
         document.getElementById('profileFullName').value = profileData.full_name || '';
-        document.getElementById('profilePhone').value = profileData.phone || '';
+
+        const nicknameField = document.getElementById('profileNickname');
+        if (nicknameField) nicknameField.value = profileData.nickname || '';
+
+        window.UI.setPhoneValue(document.getElementById('profilePhone'), profileData.phone || '');
         document.getElementById('profileTelegram').value = profileData.telegram === '—' ? '' : (profileData.telegram || '');
         document.getElementById('profilePassportSeries').value = profileData.passport_series || '';
         document.getElementById('profilePassportNumber').value = profileData.passport_number || '';
@@ -250,6 +254,11 @@
             selectedShows = (card.known_shows || []).map(show => show.id);
             renderShowsPicker();
         }
+
+        document.getElementById('profileUsername').value = profileData.username || '';
+        document.getElementById('profileCurrentPassword').value = '';
+        document.getElementById('profileNewPassword').value = '';
+        document.getElementById('profileNewPasswordRepeat').value = '';
 
         editSnapshot = window.UI.snapshot(editForm);
         editModal.classList.add('active');
@@ -315,14 +324,78 @@
         input.value = formatted;
     }
 
-    if (phoneInput) {
-        phoneInput.addEventListener('input', function() { maskPhone(this); });
-        phoneInput.addEventListener('focus', function() {
-            if (this.value === '') this.value = '+7';
-        });
-        phoneInput.addEventListener('blur', function() {
-            if (this.value === '+7') this.value = '';
-        });
+
+    const credentialsForm = document.getElementById('profileCredentialsForm');
+    const credentialsSaveBtn = document.getElementById('profileCredentialsSaveBtn');
+
+    function submitCredentials(e) {
+        e.preventDefault();
+
+        if (!credentialsForm) return;
+
+        const username = document.getElementById('profileUsername').value.trim();
+        const currentPassword = document.getElementById('profileCurrentPassword').value;
+        const newPassword = document.getElementById('profileNewPassword').value;
+        const repeatPassword = document.getElementById('profileNewPasswordRepeat').value;
+
+        if (!currentPassword) {
+            showToast('Введите текущий пароль');
+            document.getElementById('profileCurrentPassword').focus();
+            return;
+        }
+
+        if (newPassword || repeatPassword) {
+            if (newPassword.length < 6) {
+                showToast('Пароль должен содержать минимум 6 символов');
+                document.getElementById('profileNewPassword').focus();
+                return;
+            }
+
+            if (newPassword !== repeatPassword) {
+                showToast('Пароли не совпадают');
+                document.getElementById('profileNewPasswordRepeat').focus();
+                return;
+            }
+        }
+
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('current_password', currentPassword);
+        formData.append('new_password', newPassword);
+        formData.append('repeat_password', repeatPassword);
+
+        if (credentialsSaveBtn) credentialsSaveBtn.disabled = true;
+
+        fetch('/profile/credentials/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': window.UI.getCSRFToken() },
+            body: formData
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (credentialsSaveBtn) credentialsSaveBtn.disabled = false;
+
+                if (data.error) {
+                    showToast(data.error);
+                    return;
+                }
+
+                if (profileData) profileData.username = data.username;
+
+                document.getElementById('profileCurrentPassword').value = '';
+                document.getElementById('profileNewPassword').value = '';
+                document.getElementById('profileNewPasswordRepeat').value = '';
+
+                showToast(data.password_changed ? 'Логин и пароль обновлены' : 'Логин обновлён');
+            })
+            .catch(() => {
+                if (credentialsSaveBtn) credentialsSaveBtn.disabled = false;
+                showToast('Ошибка сохранения');
+            });
+    }
+
+    if (credentialsForm) {
+        credentialsForm.addEventListener('submit', submitCredentials);
     }
 
     if (editForm) {
@@ -346,6 +419,7 @@
 
             const payload = {
                 full_name: fullName,
+                nickname: (document.getElementById('profileNickname') || {}).value || '',
                 phone: phone,
                 telegram_username: document.getElementById('profileTelegram').value.trim(),
                 passport_series: document.getElementById('profilePassportSeries').value.trim(),
@@ -440,32 +514,75 @@
         const operations = data.operations || [];
         const balance = parseFloat(data.balance) || 0;
         const balanceClass = balance < 0 ? 'money-amount money-amount--negative' : 'money-amount';
+        const showRates = !!data.show_rates;
 
-        const operationsHtml = operations.length
-            ? `<div class="profile-payment-list">
-                ${operations.map(op => `
-                    <div class="profile-payment-row ${op.is_active ? '' : 'profile-payment-row--cancelled'}">
-                        <div class="profile-payment-row__main">
-                            <span class="profile-payment-row__title">${escapeHtml(op.title || '—')}</span>
-                            <span class="profile-payment-row__meta">${escapeHtml(op.date_display)} · ${escapeHtml(op.subtitle || '')}</span>
-                        </div>
-                        <span class="profile-payment-row__amount ${op.amount < 0 ? 'profile-payment-row__amount--out' : ''}">${formatMoney(op.amount)}</span>
-                    </div>
-                `).join('')}
-            </div>`
-            : '<div class="profile-placeholder__text">Операций пока нет</div>';
+        const rowsHtml = operations.length
+            ? operations.map(op => {
+                const isPayout = op.type === 'payout';
+                const amountClass = op.amount < 0 ? 'profile-money-table__amount--out' : 'profile-money-table__amount--in';
+
+                return `
+                    <tr class="${op.is_active ? '' : 'profile-money-table__row--cancelled'}">
+                        <td class="profile-money-table__muted">${escapeHtml(op.date_display)}</td>
+                        <td>
+                            <div class="profile-money-table__main">
+                                <span class="profile-money-table__title">${escapeHtml(op.title || '—')}</span>
+                                <span class="profile-money-table__meta">${escapeHtml(op.subtitle || '')}</span>
+                            </div>
+                        </td>
+                        <td class="profile-money-table__type">${isPayout ? 'Выплата' : 'Начисление'}</td>
+                        <td class="profile-money-table__amount ${amountClass}">${formatMoney(op.amount)}</td>
+                    </tr>
+                `;
+            }).join('')
+            : '<tr><td colspan="4" class="profile-money-table__empty">Операций пока нет</td></tr>';
+
+        const summaryHtml = showRates
+            ? `
+                <div class="profile-money-summary__item">
+                    <span class="profile-money-summary__label">К выплате</span>
+                    <span class="profile-money-summary__value ${balanceClass}">${formatMoney(balance)}</span>
+                </div>
+                <div class="profile-money-summary__item">
+                    <span class="profile-money-summary__label">Начислено за месяц · ${escapeHtml(data.month_label || '')}</span>
+                    <span class="profile-money-summary__value">${formatMoney(data.month_accrued || 0)}</span>
+                </div>
+                <div class="profile-money-summary__item">
+                    <span class="profile-money-summary__label">Выплачено за месяц</span>
+                    <span class="profile-money-summary__value">${formatMoney(data.month_paid || 0)}</span>
+                </div>
+            `
+            : `
+                <div class="profile-money-summary__item">
+                    <span class="profile-money-summary__label">Начислено за месяц · ${escapeHtml(data.month_label || '')}</span>
+                    <span class="profile-money-summary__value">${formatMoney(data.month_accrued || 0)}</span>
+                </div>
+                <div class="profile-money-summary__item">
+                    <span class="profile-money-summary__label">Выплачено за месяц</span>
+                    <span class="profile-money-summary__value">${formatMoney(data.month_paid || 0)}</span>
+                </div>
+            `;
 
         container.innerHTML = `
             <div class="profile-card">
-                <h3 class="profile-card__title">Баланс</h3>
-                <div class="profile-payment-balance">
-                    <span class="profile-payment-balance__value ${balanceClass}">${formatMoney(balance)}</span>
-                    <span class="profile-payment-balance__hint">Сумма, которую ещё не выплатили</span>
-                </div>
+                <h3 class="profile-card__title">${showRates ? 'Баланс' : 'Мои деньги'}</h3>
+                <div class="profile-money-summary">${summaryHtml}</div>
             </div>
             <div class="profile-card">
                 <h3 class="profile-card__title">История операций</h3>
-                ${operationsHtml}
+                <div class="profile-money-table-wrap">
+                    <table class="profile-money-table">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Операция</th>
+                                <th>Тип</th>
+                                <th class="profile-money-table__amount">Сумма</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
@@ -930,6 +1047,7 @@
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         if (document.getElementById('uiConfirmModal')) return;
+        if (e.defaultPrevented) return;
 
         if (availabilityModal && availabilityModal.classList.contains('active')) {
             e.preventDefault();

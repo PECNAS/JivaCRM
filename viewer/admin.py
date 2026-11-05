@@ -1,22 +1,55 @@
 from django.contrib import admin
 from .models import (
-    Agency, Role, Skill, Employee, Client, Order,
-    OrderEstimate, OrderEmployee, Service, ServiceStaffRow, ArtistSchedule,
+    Agency, AgencyAlias, AgencyManager, Role, Skill, Employee, EmployeeDocument, Client, Order,
+    OrderEstimate, OrderEmployee, OrderPayment, OrderFeedback,
+    ChecklistTemplate, ChecklistItem, OrderShowTemplate,
+    Service, ServiceStaffRow, ArtistSchedule,
     City, CityGroup, ArtistCard, CalendarColor, PriceRisePeriod,
-    MoneyAccrual, MoneyPayout,
+    MoneyAccrual, MoneyPayout, OrderExpense,
 )
+
+admin.site.site_header = 'JIVA HUB'
+admin.site.site_title = 'JIVA HUB'
+admin.site.index_title = 'Управление данными'
+
+
+class AgencyAliasInline(admin.TabularInline):
+    model = AgencyAlias
+    extra = 0
+
+
+class AgencyManagerInline(admin.TabularInline):
+    model = AgencyManager
+    extra = 0
 
 
 @admin.register(Agency)
 class AgencyAdmin(admin.ModelAdmin):
     list_display = ['id', 'name']
     search_fields = ['name']
+    readonly_fields = ['normalized_name']
+    inlines = [AgencyAliasInline, AgencyManagerInline]
+
+
+@admin.register(AgencyAlias)
+class AgencyAliasAdmin(admin.ModelAdmin):
+    list_display = ['id', 'agency', 'name']
+    search_fields = ['name', 'agency__name']
+    readonly_fields = ['normalized_name']
+
+
+@admin.register(AgencyManager)
+class AgencyManagerAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'agency', 'phone', 'is_active']
+    list_filter = ['agency', 'is_active']
+    search_fields = ['name', 'phone']
 
 
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name']
-    search_fields = ['name']
+    list_display = ['id', 'name', 'code', 'is_system']
+    list_filter = ['is_system']
+    search_fields = ['name', 'code']
 
 
 @admin.register(Skill)
@@ -27,7 +60,7 @@ class SkillAdmin(admin.ModelAdmin):
 
 @admin.register(CityGroup)
 class CityGroupAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name', 'salary_bonus']
+    list_display = ['id', 'name', 'salary_bonus', 'price_coefficient', 'order']
     search_fields = ['name']
 
 
@@ -92,16 +125,27 @@ class PriceRisePeriodAdmin(admin.ModelAdmin):
         return request.user.is_superuser
 
 
+class EmployeeDocumentInline(admin.TabularInline):
+    model = EmployeeDocument
+    fk_name = 'employee'
+    extra = 0
+
+
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ['id', 'full_name', 'user', 'role', 'phone', 'is_active']
-    list_filter = ['role', 'is_active', 'skills']
-    search_fields = ['full_name', 'user__username', 'phone', 'telegram_username']
+    list_display = ['id', 'full_name', 'nickname', 'user', 'role', 'phone', 'is_active']
+    list_filter = ['role', 'is_active', 'skills', 'roles']
+    search_fields = ['full_name', 'nickname', 'user__username', 'phone', 'telegram_username']
     raw_id_fields = ['user']
+    filter_horizontal = ['roles']
     readonly_fields = ['created_at', 'updated_at']
+    inlines = [EmployeeDocumentInline]
     fieldsets = (
         ('Основное', {
-            'fields': ('user', 'full_name', 'role', 'phone', 'telegram_username', 'skills', 'is_active')
+            'fields': ('user', 'full_name', 'nickname', 'role', 'roles', 'phone', 'telegram_username', 'skills', 'is_active')
+        }),
+        ('Дополнительно', {
+            'fields': ('rzd_bonus_number', 'instagram', 'international_passport_series', 'international_passport_number')
         }),
         ('Паспортные данные', {
             'fields': ('passport_series', 'passport_number', 'passport_issued_by',
@@ -115,6 +159,14 @@ class EmployeeAdmin(admin.ModelAdmin):
     )
 
 
+@admin.register(EmployeeDocument)
+class EmployeeDocumentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'employee', 'kind', 'title', 'created_at']
+    list_filter = ['kind']
+    search_fields = ['employee__full_name', 'title']
+    readonly_fields = ['created_at']
+
+
 @admin.register(ArtistCard)
 class ArtistCardAdmin(admin.ModelAdmin):
     list_display = ['id', 'employee', 'weight', 'height', 'shoe_size']
@@ -124,11 +176,12 @@ class ArtistCardAdmin(admin.ModelAdmin):
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ['id', 'full_name', 'agency', 'phone', 'get_cities', 'rating', 'created_by']
-    list_filter = ['rating', 'cities', 'agency']
+    list_display = ['id', 'full_name', 'agency', 'agency_manager', 'contact_type', 'phone', 'get_cities', 'rating', 'created_by']
+    list_filter = ['rating', 'cities', 'agency', 'contact_type']
     search_fields = ['full_name', 'phone', 'telegram_username', 'cities__name', 'comment']
+    raw_id_fields = ['agency_manager']
     filter_horizontal = ['cities']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at', 'phone_normalized', 'full_name_normalized']
 
     def get_cities(self, obj):
         return obj.get_cities_display()
@@ -159,25 +212,76 @@ class OrderEmployeeInline(admin.TabularInline):
     extra = 0
 
 
+class OrderPaymentInline(admin.TabularInline):
+    model = OrderPayment
+    extra = 0
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name', 'client', 'city', 'date', 'status', 'cost', 'manager']
+    list_display = ['id', 'name', 'client', 'city', 'date', 'chat_number', 'status', 'cost', 'manager']
     list_filter = ['status', 'date', 'manager', 'client', 'city']
-    search_fields = ['name', 'address', 'client__full_name', 'manager__full_name']
-    readonly_fields = ['created_at', 'updated_at']
-    inlines = [OrderEstimateInline, OrderEmployeeInline]
+    search_fields = ['name', 'auto_name', 'chat_number', 'address', 'client__full_name', 'manager__full_name']
+    readonly_fields = ['created_at', 'updated_at', 'content_hash', 'content_changed_at']
+    filter_horizontal = ['managers']
+    inlines = [OrderEstimateInline, OrderEmployeeInline, OrderPaymentInline]
 
 
 @admin.register(OrderEstimate)
 class OrderEstimateAdmin(admin.ModelAdmin):
-    list_display = ['id', 'order', 'service_name', 'coefficient', 'price', 'total']
+    list_display = ['id', 'order', 'service_name', 'people_count', 'coefficient', 'price', 'total', 'is_main']
+    list_filter = ['is_main']
     search_fields = ['service_name', 'order__name']
 
 
 @admin.register(OrderEmployee)
 class OrderEmployeeAdmin(admin.ModelAdmin):
-    list_display = ['id', 'order', 'employee_name', 'employee_role', 'payment']
+    list_display = ['id', 'order', 'employee_name', 'employee_role', 'show', 'payment', 'is_story', 'is_responsible']
+    list_filter = ['is_story', 'is_responsible', 'role_code']
     search_fields = ['employee_name', 'order__name']
+
+
+@admin.register(OrderPayment)
+class OrderPaymentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'amount', 'paid_at', 'is_cancelled', 'created_by']
+    list_filter = ['is_cancelled', 'paid_at']
+    search_fields = ['order__name', 'comment']
+    readonly_fields = ['created_at', 'updated_at', 'cancelled_at']
+
+
+class ChecklistItemInline(admin.TabularInline):
+    model = ChecklistItem
+    extra = 0
+
+
+@admin.register(ChecklistTemplate)
+class ChecklistTemplateAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'service', 'is_default', 'is_active']
+    list_filter = ['is_active', 'is_default', 'service']
+    search_fields = ['name', 'service__name']
+    autocomplete_fields = ['service']
+    inlines = [ChecklistItemInline]
+
+
+@admin.register(ChecklistItem)
+class ChecklistItemAdmin(admin.ModelAdmin):
+    list_display = ['id', 'text', 'template', 'order', 'show', 'is_done', 'order_index']
+    list_filter = ['is_done']
+    search_fields = ['text']
+
+
+@admin.register(OrderShowTemplate)
+class OrderShowTemplateAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'template', 'show']
+    search_fields = ['order__name', 'template__name']
+
+
+@admin.register(OrderFeedback)
+class OrderFeedbackAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'author', 'kind', 'status', 'created_at']
+    list_filter = ['kind', 'status']
+    search_fields = ['text', 'order__name', 'author__full_name']
+    readonly_fields = ['created_at', 'updated_at']
 
 
 @admin.register(ArtistSchedule)
@@ -206,3 +310,11 @@ class MoneyPayoutAdmin(admin.ModelAdmin):
     list_filter = ['method', 'kind', 'is_reverted', 'period_date']
     search_fields = ['employee__full_name', 'comment']
     readonly_fields = ['created_at', 'updated_at', 'reverted_at']
+
+
+@admin.register(OrderExpense)
+class OrderExpenseAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'payer_name', 'amount', 'status', 'period_date', 'created_at']
+    list_filter = ['status', 'period_date']
+    search_fields = ['payer_name', 'comment', 'order__name']
+    readonly_fields = ['created_at', 'updated_at', 'decided_at']
