@@ -4,30 +4,55 @@ __pycache__/
 *$py.class
 *.so
 .Python
+*.pyd
+*.pyo
 
 # Виртуальные окружения
 env/
 venv/
 .venv/
 ENV/
+.ENV/
 .jiva_env/
+pip-wheel-metadata/
+*.egg
 
 # Переменные окружения и секреты
 .env
 .env.*
 !.env.example
 *.env
+secrets.*
+*.pem
+*.key
+*.crt
+*.pfx
 
 # Django
 *.log
+logs/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+db.sqlite3-shm
+db.sqlite3-wal
 /staticfiles/
 /static_collected/
 .django_files/
+/.mypy_cache/
+dump.psql
+dump.sql
+*.dump
+backup*.sql
+
+# Загруженные пользователями файлы
+/media/
 
 # Тесты и покрытие
+.Тесты/
+Тесты/
+.tests/
+/_reports/
 .pytest_cache/
 .coverage
 .coverage.*
@@ -36,27 +61,61 @@ coverage.xml
 *.cover
 .tox/
 .nox/
+test-results/
+playwright-report/
+_chrome*/
+_chrome*
+_*.py
+_*.js
+_*.png
+_*.html
+
+# Скрипты тестирования, не входящие в приложение
+/tests/
+/testsuite/
 
 # Сборка и упаковка
 build/
 dist/
 *.egg-info/
 .eggs/
+wheelhouse/
+
+# Node и фронтенд
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+package-lock.json.tmp
+.eslintcache
+.parcel-cache/
 
 # IDE и редакторы
 .idea/
 .vscode/
+*.iml
+*.code-workspace
 *.swp
 *.swo
-*~
 .sublime-project
 .sublime-workspace
+*.suo
+*.user
 
 # ОС
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 desktop.ini
 $RECYCLE.BIN/
+*.lnk
 
 # Графика и исходники, не влияющие на работу программы
 *.psd
@@ -66,19 +125,39 @@ $RECYCLE.BIN/
 *.fig
 *.sketch
 
+# Медиа и архивы, не относящиеся к проекту
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.mp4
+*.mov
+*.avi
+
 # Временные файлы и экспорты
 *.tmp
+*.temp
 *.bak
+*.backup
 *.orig
 *.rej
-.pdf_extract/
+*.old
+*.copy
+*.log.*
+*.pid
+*.seed
 *.pdf
+.pdf_extract/
 
 # Кэши инструментов
 .cache/
+.pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.eslintcache
+.pyre/
+.hypothesis/
+.ipynb_checkpoints/
 
 # Заметки и инструкции для ИИ-агентов
 AGENTS.md
@@ -87,3 +166,4 @@ PROJECT_KNOWLEDGE.md
 .cursorrules
 .windsurfrules
 .aider*
+.continue/
