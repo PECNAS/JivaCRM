@@ -171,41 +171,46 @@
                 </div>
             </div>
             <div id="editMode" style="display:none;">
-                <form id="editClientForm" class="edit-client-form">
+                <form id="editClientForm" class="add-client-form add-client-form--grid add-client-form--edit">
                     <div class="form-group">
-                        <label class="form-label" for="editFullName">ФИО *</label>
-                        <input type="text" class="form-input" id="editFullName" required>
+                        <label class="form-label" for="editFullName">Имя *</label>
+                        <input type="text" class="form-input" id="editFullName" placeholder="Иванов Иван Иванович" required>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editPhone">Телефон</label>
-                        <input type="tel" class="form-input" id="editPhone" placeholder="+7 (999) 123-45-67">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editClientType">Тип клиента *</label>
-                        <select class="form-select" id="editClientType" required>
-                            <option value="organizer">Организатор</option>
-                            <option value="agency">Агентство</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="editAgencyGroup">
-                        <label class="form-label" for="editAgencySearch">Агентство</label>
-                        <input type="text" class="form-input" id="editAgencySearch" placeholder="Начните вводить название" autocomplete="off">
-                        <select class="form-select" id="editAgency" style="display:none;">
-                            <option value="">Не выбрано</option>
-                            {% for agency in agencies %}
-                            <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editTelegram">Телеграм</label>
-                        <input type="text" class="form-input" id="editTelegram">
+                    <div class="form-group add-client-form__pair">
+                        <div>
+                            <label class="form-label" for="editPhone">Телефон</label>
+                            <input type="tel" class="form-input" id="editPhone" placeholder="+7 (999) 123-45-67" autocomplete="off">
+                        </div>
+                        <div>
+                            <label class="form-label" for="editTelegram">Телеграм</label>
+                            <input type="text" class="form-input" id="editTelegram" placeholder="@username" autocomplete="off">
+                        </div>
+                        <span class="form-hint">Телефон или телеграм — обязательно хотя бы одно</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="editEmail">Email</label>
-                        <input type="email" class="form-input" id="editEmail">
+                        <input type="email" class="form-input" id="editEmail" placeholder="client@example.ru">
                     </div>
-                    <div class="form-group">
+                    <div class="add-client-form__row">
+                        <div class="form-group add-client-form__col">
+                            <label class="form-label" for="editClientType">Тип клиента *</label>
+                            <select class="form-select" id="editClientType" required>
+                                <option value="organizer">Организатор</option>
+                                <option value="agency">Агентство</option>
+                            </select>
+                        </div>
+                        <div class="form-group add-client-form__col" id="editAgencyGroup">
+                            <label class="form-label" for="editAgencySearch">Агентство *</label>
+                            <input type="text" class="form-input" id="editAgencySearch" placeholder="Начните вводить название" autocomplete="off">
+                            <select class="form-select" id="editAgency" style="display:none;">
+                                <option value="">Не выбрано</option>
+                                {% for agency in agencies %}
+                                <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group form-group--wide">
                         <label class="form-label">Города</label>
                         <div class="city-selector" id="editCitySelector"></div>
                         <input type="hidden" id="editCityNames" name="city_names">
@@ -218,11 +223,11 @@
                             <option value="low">Низкий</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group form-group--wide">
                         <label class="form-label" for="editComment">Комментарий</label>
-                        <textarea class="form-textarea" id="editComment" rows="3"></textarea>
+                        <textarea class="form-textarea" id="editComment" rows="2"></textarea>
                     </div>
-                    <div class="modal__footer modal-footer-actions">
+                    <div class="modal-footer-actions add-client-form__actions--wide">
                         <div class="modal-footer-actions__left">
                             <button type="button" class="btn btn-danger btn-sm" id="editDeleteBtn">Удалить</button>
                         </div>

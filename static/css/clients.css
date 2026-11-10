@@ -444,6 +444,16 @@
   gap: 1rem;
 }
 
+.add-client-form--edit {
+  gap: 0.7rem;
+}
+
+.add-client-form__actions--wide {
+  margin-top: 0.6rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #23201b;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -710,6 +720,14 @@
   padding-top: 0.85rem;
 }
 
+.add-client-form--grid .form-group--wide {
+  grid-column: 1 / -1;
+}
+
+.add-client-form--grid .add-client-form__actions--wide {
+  grid-column: 1 / -1;
+}
+
 .duplicate-form__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -728,10 +746,29 @@
   overflow-x: hidden;
 }
 
+#addClientModal .modal--add,
+#clientModal .modal--client {
+  max-width: 620px;
+}
+
+#addClientModal .modal__body,
+#clientModal .modal__body {
+  overflow-x: hidden;
+}
+
 #addClientModal .add-client-form--grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.7rem;
+}
+
+#addClientModal .add-client-form__pair,
+#addClientModal .add-client-form__row,
+#editClientForm.add-client-form__pair,
+#editClientForm .add-client-form__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.6rem 1rem;
 }
 
 #addClientModal .add-client-form__pair,
