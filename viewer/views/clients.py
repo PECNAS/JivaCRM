@@ -2,7 +2,8 @@ from django.http import JsonResponse
 from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, F
+from django.db.models.functions import Lower
 from django.contrib import messages
 from django.db.models import ProtectedError
 from django.utils import timezone
@@ -47,6 +48,7 @@ def phone_search_variants(value):
         variants.add(tail)
         variants.add('7' + tail)
         variants.add('8' + tail)
+        variants.add(digits[1:])
 
     return [item for item in variants if item]
 
@@ -54,7 +56,15 @@ def phone_search_variants(value):
 def phone_query(value):
     query = Q()
 
-    for variant in phone_search_variants(value):
+    variants = phone_search_variants(value)
+
+    if not variants:
+        digits = phone_digits(value)
+
+        if len(digits) >= 3:
+            variants = [digits]
+
+    for variant in variants:
         query |= Q(phone_normalized__contains=variant)
 
     return query
@@ -429,6 +439,7 @@ class ClientsView(View):
         city_filter = request.GET.get('city', 'all')
         agency_filter = request.GET.get('agency', 'all')
         group_by = request.GET.get('group', '')
+        sort_by = request.GET.get('sort', '')
 
         if search_query:
             search_filter = (
@@ -466,6 +477,14 @@ class ClientsView(View):
 
             clients = clients.filter(city_query).distinct()
 
+        if sort_by == 'agency':
+            clients = clients.annotate(
+                agency_sort_name=Lower('agency__name'),
+            ).order_by(
+                F('agency_sort_name').asc(nulls_last=True),
+                F('full_name').asc(),
+            )
+
         grouped = []
 
         if group_by == 'agency':
@@ -501,6 +520,7 @@ class ClientsView(View):
             'city_filter': city_filter,
             'agency_filter': agency_filter,
             'group_by': group_by,
+            'sort_by': sort_by,
             'grouped': grouped,
         }
         return render(request, "clients.html", context)
@@ -726,6 +746,7 @@ class ClientListView(View):
         rating = request.GET.get('rating', 'all')
         city = request.GET.get('city', 'all')
         agency = request.GET.get('agency', 'all')
+        sort = request.GET.get('sort', '')
 
         if search:
             search_filter = (
@@ -753,6 +774,14 @@ class ClientListView(View):
 
         if city != 'all' and city.isdigit():
             clients = clients.filter(cities__id=int(city)).distinct()
+
+        if sort == 'agency':
+            clients = clients.annotate(
+                agency_sort_name=Lower('agency__name'),
+            ).order_by(
+                F('agency_sort_name').asc(nulls_last=True),
+                F('full_name').asc(),
+            )
 
         total = clients.count()
         offset = parse_int(request.GET.get('offset')) or 0

@@ -7,7 +7,7 @@
         dateFrom: '',
         dateTo: '',
         sort: 'date_desc',
-        accrualFilter: 'pending',
+        accrualFilter: 'all',
         expenseFilter: 'all',
         data: null,
         employees: [],
@@ -21,7 +21,6 @@
     const searchInput = document.getElementById('moneySearchInput');
     const categoryFilter = document.getElementById('moneyCategoryFilter');
     const sortSelect = document.getElementById('moneySortSelect');
-    const accrualFilterBox = document.getElementById('moneyAccrualFilter');
     const statsBox = document.getElementById('moneyStats');
     const tabs = document.querySelectorAll('.money-tab');
     const panels = {
@@ -69,8 +68,6 @@
     const employeeOperations = document.getElementById('moneyEmployeeOperations');
 
     let editingAccrualId = null;
-    let orderModalElement = null;
-
     const escapeHtml = function(text) {
         return window.UI.escapeHtml(text);
     };
@@ -213,8 +210,6 @@
         params.set('date_from', state.dateFrom || monthDates().from);
         params.set('date_to', state.dateTo || monthDates().to);
         params.set('sort', state.sort);
-        params.set('accrual_filter', state.accrualFilter);
-
         if (searchInput && searchInput.value.trim()) {
             params.set('search', searchInput.value.trim());
         }
@@ -264,12 +259,8 @@
 
         statsBox.innerHTML = `
             <div class="money-stat">
-                <span class="money-stat__label">Начислено · ${escapeHtml(label)}</span>
-                <span class="money-stat__value money-stat__value--accent">${formatMoney(stats.accrued)}</span>
-            </div>
-            <div class="money-stat">
-                <span class="money-stat__label">Ждёт начисления</span>
-                <span class="money-stat__value">${formatMoney(stats.pending_amount || 0)}</span>
+                <span class="money-stat__label">Выполнено заказов · ${escapeHtml(label)}</span>
+                <span class="money-stat__value">${stats.completed_orders || 0} на ${formatMoney(stats.completed_amount || 0)}</span>
             </div>
             <div class="money-stat">
                 <span class="money-stat__label">Выплачено · ${escapeHtml(label)}</span>
@@ -319,93 +310,35 @@
     }
 
     function renderAccruals() {
-        const orders = (state.data && state.data.pending) || [];
-        const accruals = (state.data && state.data.accruals) || [];
-        const ordersHtml = state.accrualFilter === 'accrued' ? '' : orders.map(renderOrderCard).join('');
+        const orders = (state.data && (state.data.orders || state.data.pending)) || [];
 
-        const showAccrualRows = state.accrualFilter !== 'pending';
-
-        if (!ordersHtml && !showAccrualRows) {
-            accrualsList.innerHTML = '<div class="money-empty">Нет заказов, ожидающих начисления</div>';
+        if (!orders.length) {
+            accrualsList.innerHTML = '<div class="money-empty">Нет выполненных заказов с сотрудниками за выбранный период</div>';
             return;
         }
 
-        const rowsHtml = showAccrualRows && accruals.length
-            ? `
-                <div class="money-group">
-                    <div class="money-group__head">
-                        <div class="money-group__title">
-                            <span class="money-group__name">Начисления за период</span>
-                        </div>
-                        <span class="money-group__badge">${accruals.length}</span>
-                    </div>
-                    <div class="money-table-wrap">
-                        <table class="money-table">
-                            <thead>
-                                <tr>
-                                    <th>Дата</th>
-                                    <th>Сотрудник</th>
-                                    <th>Статья</th>
-                                    <th>За что</th>
-                                    <th class="money-table__num">Сумма</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${accruals.map(accrualRow).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `
-            : '';
-
-        if (!ordersHtml && !rowsHtml) {
-            accrualsList.innerHTML = '<div class="money-empty">Нет заказов и начислений за выбранный период</div>';
-            return;
-        }
-
-        accrualsList.innerHTML = ordersHtml + rowsHtml;
+        accrualsList.innerHTML = orders.map(renderOrderCard).join('');
         attachAccrualEvents();
     }
 
     function renderOrderCard(order) {
         const expanded = isExpanded(order.id);
-        const badgeClass = order.is_full
-            ? 'money-group__badge--done'
-            : (order.is_accrued ? 'money-group__badge--accent' : '');
+        const badgeClass = 'money-group__badge--done';
 
-        const badgeText = order.is_full
-            ? 'Начислено'
-            : (order.is_accrued ? `Начислено ${order.employees_accrued} из ${order.employees_total}` : 'Ждёт начисления');
-
-        const rows = order.employees.map(item => {
-            const accrued = !!item.accrual_id;
-
-            return `
-                <tr class="${accrued ? 'money-row--accrued' : ''}">
-                    <td data-label="Сотрудник">
-                        <div class="money-order-employee">
-                            <span class="money-order-employee__name">${escapeHtml(item.employee_name)}</span>
-                            <span class="money-order-employee__meta">${escapeHtml(item.role_display || '')}</span>
-                        </div>
-                    </td>
-                    <td data-label="Ставка" class="money-table__num">${formatMoney(item.payment)}</td>
-                    <td data-label="Статус">
-                        ${accrued
-                            ? '<span class="money-group__badge money-group__badge--done">Начислено</span>'
-                            : '<span class="money-group__badge">Ждёт</span>'}
-                    </td>
-                    <td data-label="Действие" class="money-table__actions">
-                        ${accrued
-                            ? '<span class="money-table__muted">—</span>'
-                            : `<button class="btn btn-outline btn-sm money-accrue-btn" type="button" data-order-id="${order.id}" data-employee="${item.employee_id}">
-                                Начислить
-                            </button>`}
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        const rows = order.employees.map(item => `
+            <tr class="money-row--accrued">
+                <td data-label="Сотрудник">
+                    <div class="money-order-employee">
+                        <span class="money-order-employee__name">${escapeHtml(item.employee_name)}</span>
+                        <span class="money-order-employee__meta">${escapeHtml(item.role_display || '')}</span>
+                    </div>
+                </td>
+                <td data-label="Ставка" class="money-table__num">${formatMoney(item.payment)}</td>
+                <td data-label="Статус">
+                    <span class="money-group__badge money-group__badge--done">На балансе</span>
+                </td>
+            </tr>
+        `).join('');
 
         return `
             <div class="money-group money-order ${expanded ? 'money-order--expanded' : ''}" data-order-card="${order.id}">
@@ -426,7 +359,7 @@
                     </span>
                     <span class="money-order__side">
                         <span class="money-order__amount">${formatMoney(order.total)}</span>
-                        <span class="money-group__badge ${badgeClass}">${escapeHtml(badgeText)}</span>
+                        <span class="money-group__badge ${badgeClass}">${order.employees.length} сотр.</span>
                     </span>
                 </button>
                 <div class="money-order__body">
@@ -437,58 +370,19 @@
                                     <th>Сотрудник</th>
                                     <th class="money-table__num">Ставка</th>
                                     <th>Статус</th>
-                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>${rows}</tbody>
                         </table>
                     </div>
                     <div class="money-order__footer">
-                        <span class="money-order__total">Ставки сотрудников: <b>${formatMoney(order.total)}</b></span>
+                        <span class="money-order__total">Зачислено сотрудникам: <b>${formatMoney(order.total)}</b></span>
                         <div class="money-table__actions">
                             <a class="btn btn-outline btn-sm" href="/schedule/?open_order=${order.id}">Открыть заказ</a>
-                            <button class="btn btn-primary btn-sm" type="button" data-order-all="${order.id}" ${order.is_full ? 'disabled' : ''}>
-                                Начислить всем
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-        `;
-    }
-
-    function accrualRow(row) {
-        const amountClass = row.signed_amount < 0 ? 'money-amount money-amount--negative' : 'money-amount';
-
-        return `
-            <tr class="${row.is_active ? '' : 'money-row--cancelled'}">
-                <td data-label="Дата" class="money-table__muted">${escapeHtml(row.period_date_display)}</td>
-                <td data-label="Сотрудник">${escapeHtml(row.employee_name)}</td>
-                <td data-label="Статья" class="money-table__muted">${escapeHtml(row.category_display)}</td>
-                <td data-label="За что">
-                    <div class="money-order-employee">
-                        <span class="money-order-employee__name">${escapeHtml(row.title || '—')}</span>
-                        ${row.comment ? '<span class="money-order-employee__meta">' + escapeHtml(row.comment) + '</span>' : ''}
-                    </div>
-                </td>
-                <td data-label="Сумма" class="money-table__num ${amountClass}">${formatMoney(row.signed_amount)}</td>
-                <td data-label="Действие" class="money-table__actions">
-                    ${row.can_edit ? `
-                        <button class="money-icon-btn" type="button" data-accrual-edit="${row.id}" aria-label="Изменить">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
-                        </button>
-                        <button class="money-icon-btn money-icon-btn--danger" type="button" data-accrual-cancel="${row.id}" aria-label="Отменить начисление">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                            </svg>
-                        </button>
-                    ` : ''}
-                </td>
-            </tr>
         `;
     }
 
@@ -795,30 +689,6 @@
                 toggleExpanded(parseInt(this.dataset.orderToggle, 10));
             });
         });
-
-        accrualsList.querySelectorAll('[data-accrual-edit]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                openAccrualModal(parseInt(this.dataset.accrualEdit, 10));
-            });
-        });
-
-        accrualsList.querySelectorAll('[data-accrual-cancel]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                cancelAccrual(parseInt(this.dataset.accrualCancel, 10));
-            });
-        });
-
-        accrualsList.querySelectorAll('[data-employee]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                openOrderAccrualModal(parseInt(this.dataset.orderId, 10), parseInt(this.dataset.employee, 10));
-            });
-        });
-
-        accrualsList.querySelectorAll('[data-order-all]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                openOrderAccrualModal(parseInt(this.dataset.orderAll, 10), null);
-            });
-        });
     }
 
     function openAccrualModal(accrualId) {
@@ -1095,167 +965,6 @@
         employeeModal.classList.remove('active');
     }
 
-    function buildOrderModal() {
-        if (orderModalElement) return orderModalElement;
-
-        orderModalElement = document.createElement('div');
-        orderModalElement.className = 'modal-overlay';
-        orderModalElement.id = 'moneyOrderModal';
-        orderModalElement.innerHTML = `
-            <div class="modal modal--money-order">
-                <div class="modal__header">
-                    <h2 class="modal__title" data-order-title>Начисление по заказу</h2>
-                    <button class="modal__close" type="button" data-order-close>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="modal__body">
-                    <div class="money-month-toolbar money-month-toolbar--single">
-                        <div class="form-group">
-                            <label class="form-label" for="moneyOrderDate">Дата начисления на баланс</label>
-                            <input type="date" class="form-input" id="moneyOrderDate">
-                        </div>
-                    </div>
-                    <div class="money-month-list" data-order-list></div>
-                </div>
-                <div class="modal__footer modal-footer-actions">
-                    <div class="modal-footer-actions__left">
-                        <span class="money-month-total" data-order-total></span>
-                    </div>
-                    <div class="modal-footer-actions__right">
-                        <button type="button" class="btn btn-outline" data-order-cancel>Отмена</button>
-                        <button type="button" class="btn btn-primary" data-order-submit>Начислить</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(orderModalElement);
-
-        orderModalElement.querySelector('[data-order-close]').addEventListener('click', closeOrderModal);
-        orderModalElement.querySelector('[data-order-cancel]').addEventListener('click', closeOrderModal);
-        orderModalElement.addEventListener('click', function(e) {
-            if (e.target === orderModalElement) closeOrderModal();
-        });
-
-        orderModalElement.querySelector('[data-order-list]').addEventListener('input', recalcOrderTotal);
-
-        return orderModalElement;
-    }
-
-    function openOrderAccrualModal(orderId, employeeId) {
-        request('/money/orders/' + orderId + '/payment/')
-            .then(result => {
-                if (!result.ok) {
-                    showToast((result.data && result.data.error) || 'Заказ не найден');
-                    return;
-                }
-
-                const order = result.data.order;
-                const selected = employeeId
-                    ? order.employees.filter(item => item.employee_id === employeeId)
-                    : order.employees;
-
-                const available = selected.filter(item => !item.accrual_id);
-
-                if (!available.length) {
-                    showToast('По этому заказу уже всё начислено');
-                    return;
-                }
-
-                renderOrderAccrualModal(order, available, orderId);
-            })
-            .catch(() => showToast('Ошибка загрузки заказа'));
-    }
-
-    function renderOrderAccrualModal(order, items, orderId) {
-        const modal = buildOrderModal();
-
-        modal.querySelector('[data-order-title]').textContent = order.name;
-        modal.querySelector('[data-order-list]').innerHTML = items.map(item => `
-            <div class="money-month-row">
-                <div class="money-month-row__name">
-                    <span class="money-month-row__title">${escapeHtml(item.employee_name)}</span>
-                    <span class="money-month-row__meta">${escapeHtml(item.role_display || '')} · ставка в заказе ${formatMoney(item.payment)}</span>
-                </div>
-                <input type="number" class="form-input money-input-amount" min="0" step="0.01" value="${formatAmountInput(item.payment)}" data-employee-id="${item.employee_id}">
-                <span class="money-month-row__meta">${escapeHtml(order.date_display || '')}</span>
-            </div>
-        `).join('');
-
-        const dateInput = modal.querySelector('#moneyOrderDate');
-        dateInput.value = order.date || (state.data ? state.data.today : '');
-
-        modal.dataset.orderId = String(orderId);
-        modal.classList.add('active');
-
-        recalcOrderTotal();
-
-        modal.querySelector('[data-order-submit]').onclick = function() {
-            submitOrderAccrual(orderId, modal);
-        };
-    }
-
-    function recalcOrderTotal() {
-        const modal = orderModalElement;
-
-        if (!modal) return;
-
-        let total = 0;
-
-        modal.querySelectorAll('[data-employee-id]').forEach(input => {
-            total += parseFloat(input.value) || 0;
-        });
-
-        modal.querySelector('[data-order-total]').innerHTML = 'Итого к начислению: <b>' + formatMoney(total) + '</b>';
-    }
-
-    function closeOrderModal() {
-        if (orderModalElement) orderModalElement.classList.remove('active');
-    }
-
-    function submitOrderAccrual(orderId, modal) {
-        const formData = new FormData();
-        formData.append('period_date', modal.querySelector('#moneyOrderDate').value);
-
-        modal.querySelectorAll('[data-employee-id]').forEach(input => {
-            formData.append('employee_id', input.dataset.employeeId);
-            formData.append('amount', input.value);
-        });
-
-        const submitBtn = modal.querySelector('[data-order-submit]');
-        submitBtn.disabled = true;
-
-        request('/money/orders/' + orderId + '/pay/', { method: 'POST', body: formData })
-            .then(result => {
-                submitBtn.disabled = false;
-
-                if (!result.ok) {
-                    showToast((result.data && result.data.error) || 'Не удалось начислить');
-                    return;
-                }
-
-                const names = result.data.accrued || [];
-
-                closeOrderModal();
-
-                if (names.length) {
-                    showToast('Начислено ' + formatMoney(result.data.accrued_total) + ': ' + names.join(', '));
-                } else {
-                    showToast('Начислять нечего');
-                }
-
-                loadData();
-            })
-            .catch(() => {
-                submitBtn.disabled = false;
-                showToast('Ошибка начисления');
-            });
-    }
-
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             switchTab(this.dataset.tab);
@@ -1321,16 +1030,6 @@
                 state.expenseFilter = this.dataset.expenseFilter;
                 setActiveButton(expenseFilterBox, '[data-expense-filter]', 'expenseFilter', state.expenseFilter);
                 renderExpenses();
-            });
-        });
-    }
-
-    if (accrualFilterBox) {
-        accrualFilterBox.querySelectorAll('[data-filter]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                state.accrualFilter = this.dataset.filter;
-                setActiveButton(accrualFilterBox, '[data-filter]', 'filter', state.accrualFilter);
-                loadData();
             });
         });
     }
@@ -1401,12 +1100,17 @@
 
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-        if (document.getElementById('uiConfirmModal')) return;
-        if (e.defaultPrevented) return;
 
-        if (orderModalElement && orderModalElement.classList.contains('active')) {
-            e.preventDefault();
-            closeOrderModal();
+        const confirmElement = document.getElementById('uiConfirmModal');
+
+        if (confirmElement && confirmElement.classList.contains('active')) {
+            const hasStacked =
+                (employeeModal && employeeModal.classList.contains('active')) ||
+                (accrualModal && accrualModal.classList.contains('active')) ||
+                (payoutModal && payoutModal.classList.contains('active'));
+
+            if (hasStacked) e.preventDefault();
+
             return;
         }
 
@@ -1427,8 +1131,6 @@
             closePayoutModal();
         }
     }, true);
-
-    setActiveButton(accrualFilterBox, '[data-filter]', 'filter', state.accrualFilter);
 
     loadExpanded();
     loadData();

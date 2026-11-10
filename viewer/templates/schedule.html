@@ -116,10 +116,6 @@
             <option value="full">Заполнены полностью</option>
             <option value="partial">Не заполнены до конца</option>
         </select>
-        <label class="my-orders-toggle">
-            <input type="checkbox" id="calendarPastToggle">
-            <span>Выполненные ранее</span>
-        </label>
     </div>
 </section>
 
@@ -255,6 +251,13 @@
         <div class="modal__body" id="eventModalBody"></div>
         <div class="modal__footer">
             <button class="btn btn-outline" id="eventModalDismissBtn" type="button">Закрыть</button>
+            <button class="btn btn-outline" id="eventModalCopyLinkBtn" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                Скопировать ссылку
+            </button>
             <button class="btn btn-outline" id="eventModalChecklistBtn" type="button">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="9 11 12 14 22 4"/>
@@ -452,15 +455,19 @@
             </div>
         </div>
         <div class="modal__tabs" id="orderEditorTabs">
-            <button class="tab-btn active" data-tab="info">Информация</button>
-            <div class="tab-btn-wrap" id="orderShowsTabWrap">
-                <button class="tab-btn" data-tab="show" id="orderShowsTabBtn">Шоу<span class="tab-badge" id="orderShowsBadge">0</span></button>
-                <div class="tab-btn-dropdown" id="orderShowsDropdown"></div>
+            <div class="modal__tabs-group">
+                <button class="tab-btn active" data-tab="info">Информация</button>
+                <div class="tab-btn-wrap" id="orderShowsTabWrap">
+                    <button class="tab-btn" data-tab="show" id="orderShowsTabBtn">Шоу<span class="tab-badge" id="orderShowsBadge">0</span></button>
+                    <div class="tab-btn-dropdown" id="orderShowsDropdown"></div>
+                </div>
             </div>
-            <button class="tab-btn" data-tab="extra">Дополнительная информация</button>
-            <button class="tab-btn" data-tab="payment">Оплата</button>
-            <button class="tab-btn" data-tab="checklist">Чек-листы</button>
-            <button class="tab-btn" data-tab="expenses">Расходы<span class="tab-badge" id="orderExpensesBadge" style="display:none;"></span></button>
+            <div class="modal__tabs-group modal__tabs-group--end">
+                <button class="tab-btn" data-tab="extra">Дополнительная информация</button>
+                <button class="tab-btn" data-tab="payment">Оплата</button>
+                <button class="tab-btn" data-tab="checklist">Чек-листы</button>
+                <button class="tab-btn" data-tab="expenses">Расходы<span class="tab-badge" id="orderExpensesBadge" style="display:none;"></span></button>
+            </div>
         </div>
         <div class="modal__body">
             <div class="tab-content active" id="tab-info">
@@ -515,6 +522,11 @@
                     </div>
 
                     <div class="info-section">
+                        <h3 class="info-section__title">Комментарий</h3>
+                        <textarea class="form-textarea order-comment-field" id="editOrderConcept" rows="1" placeholder="Комментарий к заказу (Enter — новая строка)"></textarea>
+                    </div>
+
+                    <div class="info-section">
                         <h3 class="info-section__title">Услуги</h3>
                         <div class="services-city-group">
                             <label class="form-label" for="editOrderCityGroup">Группа городов</label>
@@ -535,7 +547,7 @@
                                 <div class="panel-header">
                                     <h3>Выбранные услуги</h3>
                                     <div class="services-total">
-                                        Итого: <span id="servicesTotal">0.00₽</span>
+                                        Итого: <span id="servicesTotal" class="services-total__value" title="Двойной клик для изменения">0.00₽</span>
                                     </div>
                                 </div>
                                 <div class="services-table-container">
@@ -619,10 +631,6 @@
                         </div>
                         <div class="form-grid" style="margin-top:1rem;">
                             <div class="form-group">
-                                <label class="form-label" for="editOrderConcept">Концепция</label>
-                                <textarea class="form-textarea" id="editOrderConcept" rows="3" placeholder="Описание концепции мероприятия"></textarea>
-                            </div>
-                            <div class="form-group">
                                 <label class="form-label" for="editOrderDressingRoom">Комментарий к гримерке</label>
                                 <textarea class="form-textarea" id="editOrderDressingRoom" rows="2" placeholder="Гримерка, удобства"></textarea>
                             </div>
@@ -675,6 +683,18 @@
                             <div class="form-group" id="editOrderManagerGroup">
                                 <label class="form-label" for="editOrderManager">Менеджер</label>
                                 <select class="form-select" id="editOrderManager"></select>
+                            </div>
+                        </div>
+                        <div class="form-grid form-grid--2" style="margin-top:1rem;" id="editOrderExtraManagersGroup">
+                            <div class="form-group">
+                                <label class="form-label">Дополнительные менеджеры</label>
+                                <div class="manager-chips" id="editOrderManagerChips"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderManagerAdd">Добавить менеджера</label>
+                                <select class="form-select" id="editOrderManagerAdd">
+                                    <option value="">Выберите сотрудника</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-grid form-grid--2" style="margin-top:1rem;">

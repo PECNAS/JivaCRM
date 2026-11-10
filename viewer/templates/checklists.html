@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Чек-листы{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/checklists.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="cl-header">
+    <div class="cl-header__top">
+        <h1 class="cl-title">Чек-листы</h1>
+        <button class="btn btn-primary" id="clCreateBtn" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Новый чек-лист
+        </button>
+    </div>
+</section>
+
+<section class="cl-layout">
+    <aside class="cl-list" id="clList"></aside>
+    <div class="cl-editor" id="clEditor">
+        <div class="cl-empty">Выберите чек-лист слева или создайте новый</div>
+    </div>
+</section>
+
+<div class="modal-overlay" id="clTemplateModal">
+    <div class="modal modal--cl">
+        <div class="modal__header">
+            <h2 class="modal__title" id="clTemplateModalTitle">Чек-лист</h2>
+            <button class="modal__close" type="button" id="clTemplateModalClose">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <div class="form-group">
+                <label class="form-label" for="clTemplateName">Название *</label>
+                <input type="text" class="form-input" id="clTemplateName" placeholder="Например, Монтаж света">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="clTemplateService">Шоу</label>
+                <select class="form-select" id="clTemplateService">
+                    <option value="">Не привязан к шоу</option>
+                    {% for service in services %}
+                    <option value="{{ service.id }}">{{ service.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <label class="cl-check">
+                <input type="checkbox" id="clTemplateDefault">
+                <span>Проверять в каждом заказе</span>
+            </label>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__left"></div>
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="clTemplateCancel">Отмена</button>
+                <button type="button" class="btn btn-primary" id="clTemplateSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script type="application/json" data-checklists>{{ templates_json|safe }}</script>
+<script src="{% static 'js/checklists.js' %}"></script>
+{% endblock %}

@@ -200,9 +200,21 @@ class AvailabilityView(View):
         if not can_view_employee(actor, rule.employee):
             return JsonResponse({'error': 'Недостаточно прав'}, status=403)
 
+        employee = rule.employee
+        kind = rule.kind
+        exception_dates = []
+
+        if kind == ArtistAvailability.KIND_EXCEPTION:
+            current = rule.start_date
+            limit = rule.end_date or rule.start_date
+
+            while current is not None and limit is not None and current <= limit:
+                exception_dates.append(current.strftime('%Y-%m-%d'))
+                current += timedelta(days=1)
+
         rule.delete()
 
-        return JsonResponse({'success': True})
+        return JsonResponse({'success': True, 'kind': kind, 'exception_dates': exception_dates})
 
 
 class AvailabilityDetailView(View):
@@ -255,9 +267,41 @@ class AvailabilityDetailView(View):
 
         current = month_start
 
+        weekly_cache = {}
+
+        for rule in target.availability_rules.filter(kind=ArtistAvailability.KIND_WEEKLY):
+            if rule.weekday is not None:
+                weekly_cache[rule.weekday] = rule
+
+        exception_rules = list(target.availability_rules.filter(kind=ArtistAvailability.KIND_EXCEPTION))
+
         while current <= month_end:
             row = resolve_availability(target, current)
             row['empty'] = False
+            row['date'] = current.strftime('%Y-%m-%d')
+            row['date_display'] = current.strftime('%d.%m.%Y')
+            row['exception_ids'] = []
+            matched = None
+
+            for rule in exception_rules:
+                if rule.start_date and rule.end_date and rule.start_date <= current <= rule.end_date:
+                    row['exception_ids'].append(rule.id)
+
+                    if matched is None or (rule.updated_at, rule.id) > (matched.updated_at, matched.id):
+                        matched = rule
+
+            weekly_rule = weekly_cache.get(current.weekday())
+
+            if matched is not None:
+                row['source_kind'] = ArtistAvailability.KIND_EXCEPTION
+                row['source_id'] = matched.id
+            elif weekly_rule is not None:
+                row['source_kind'] = ArtistAvailability.KIND_WEEKLY
+                row['source_id'] = weekly_rule.id
+            else:
+                row['source_kind'] = ''
+                row['source_id'] = None
+
             row['is_today'] = current == today
             row['weekday'] = current.weekday()
             row['day_label'] = current.strftime('%d')

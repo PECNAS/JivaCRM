@@ -73,8 +73,8 @@
 }
 
 .orders-date-range__reset:hover {
-  color: #ef9a9a;
-  border-color: #ef9a9a;
+  color: #e05252;
+  border-color: rgba(224, 82, 82, 0.5);
 }
 
 .orders-filters {

@@ -51,10 +51,17 @@
                     {% endif %}
 
                     {% if user.employee_profile.can_manage_services %}
-                    <li class="menu__item">
-                        <a href="{% url 'services' %}" class="menu__link {% if request.resolver_match.url_name == 'services' %}active{% endif %}">
+                    <li class="menu__item menu__item--dropdown">
+                        <a href="{% url 'services' %}" class="menu__link menu__link--dropdown {% if request.resolver_match.url_name == 'services' or request.resolver_match.url_name == 'checklists' %}active{% endif %}">
                             Услуги
+                            <svg class="menu__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
                         </a>
+                        <ul class="menu__sublist">
+                            <li><a href="{% url 'services' %}" class="menu__sublink">Шоу</a></li>
+                            <li><a href="{% url 'checklists' %}" class="menu__sublink">Чек-листы</a></li>
+                        </ul>
                     </li>
                     {% endif %}
 

@@ -920,8 +920,18 @@
 
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-        if (document.getElementById('uiConfirmModal')) return;
-        if (e.defaultPrevented) return;
+
+        const confirmElement = document.getElementById('uiConfirmModal');
+
+        if (confirmElement && confirmElement.classList.contains('active')) {
+            if ((artistCardModal && artistCardModal.classList.contains('active')) ||
+                (modal && modal.classList.contains('active')) ||
+                (addModal && addModal.classList.contains('active'))) {
+                e.preventDefault();
+            }
+
+            return;
+        }
 
         if (artistCardModal && artistCardModal.classList.contains('active')) {
             e.preventDefault();

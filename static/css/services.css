@@ -68,13 +68,14 @@
 
 .btn-sm.btn-danger {
     background: transparent;
-    border: 1px solid #7a2a2a;
-    color: #ef9a9a;
+    border: 1px solid rgba(224, 82, 82, 0.45);
+    color: #e05252;
 }
 
 .btn-sm.btn-danger:hover {
-    background: rgba(191, 54, 12, 0.15);
-    border-color: #ef9a9a;
+    background: rgba(224, 82, 82, 0.12);
+    border-color: #e05252;
+    color: #f5efe7;
 }
 
 .btn-sm svg {
@@ -559,15 +560,15 @@
 }
 
 .context-menu-danger {
-    color: #ef9a9a;
+    color: #e05252;
 }
 
 .context-menu-danger:hover {
-    background: rgba(191, 54, 12, 0.2);
+    background: rgba(224, 82, 82, 0.12);
 }
 
 .context-menu-danger svg {
-    color: #ef9a9a;
+    color: #e05252;
 }
 
 .loading-overlay {

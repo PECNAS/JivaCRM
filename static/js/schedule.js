@@ -76,7 +76,6 @@
     const calendarFilters = document.getElementById('dashboardCalendarFilters');
     const calendarStatusSelect = document.getElementById('calendarStatus');
     const calendarFilledSelect = document.getElementById('calendarFilled');
-    const calendarPastToggle = document.getElementById('calendarPastToggle');
     const dashboardFilters = document.getElementById('dashboardFilters');
     const dashboardList = document.getElementById('dashboardList');
     const dashboardCalendar = document.getElementById('dashboardCalendar');
@@ -99,6 +98,7 @@
     const eventChecklistProgress = document.getElementById('eventChecklistProgress');
     const eventChecklistList = document.getElementById('eventChecklistList');
     const eventModalChecklistBtn = document.getElementById('eventModalChecklistBtn');
+    const eventModalCopyLinkBtn = document.getElementById('eventModalCopyLinkBtn');
     const eventChecklistCloseBtn = document.getElementById('eventChecklistCloseBtn');
     const eventChecklistCloseBtnFooter = document.getElementById('eventChecklistCloseBtnFooter');
 
@@ -260,6 +260,71 @@
         return document.body.dataset.canManageOrders === '1';
     }
 
+    function orderShareLink(orderId) {
+        return window.location.origin + '/schedule/?order=' + encodeURIComponent(orderId);
+    }
+
+    function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+
+        return new Promise(function(resolve, reject) {
+            const area = document.createElement('textarea');
+            area.value = text;
+            area.setAttribute('readonly', '');
+            area.style.position = 'fixed';
+            area.style.top = '-1000px';
+            document.body.appendChild(area);
+            area.select();
+
+            try {
+                const ok = document.execCommand('copy');
+                document.body.removeChild(area);
+                ok ? resolve() : reject(new Error('copy failed'));
+            } catch (error) {
+                document.body.removeChild(area);
+                reject(error);
+            }
+        });
+    }
+
+    function copyOrderLink(orderId) {
+        if (!orderId) return;
+
+        copyTextToClipboard(orderShareLink(orderId))
+            .then(function() {
+                window.UI.showToast('Ссылка на заказ скопирована');
+            })
+            .catch(function() {
+                window.UI.showToast('Не удалось скопировать ссылку');
+            });
+    }
+
+    function openOrderFromLink(order) {
+        if (canManageOrders() && openOrderEditor(order.id)) {
+            return;
+        }
+
+        markOrderViewed(order.id, order.updated_at);
+        renderEventModal(order);
+    }
+
+    function openOrderByLink(orderId, attempts) {
+        const linkOrder = currentOrders.find(item => String(item.id) === String(orderId));
+
+        if (linkOrder) {
+            openOrderFromLink(linkOrder);
+            return;
+        }
+
+        if (attempts <= 0) return;
+
+        setTimeout(function() {
+            openOrderByLink(orderId, attempts - 1);
+        }, 300);
+    }
+
     function openOrderEditor(orderId) {
         if (!orderId || !window.openOrderEditor) return false;
 
@@ -370,6 +435,24 @@
             ? `<div class="event-modal__checklist-line">Чек-лист: <b>${order.checklist_done} из ${order.checklist_total}</b></div>`
             : '';
 
+        const detailsRows = [
+            ['Контакт', [order.contact_name, order.contact_phone, order.contact_telegram].filter(Boolean).join(' · ')],
+            ['Время чека/установки', order.setup_time],
+            ['Комментарий к гримерке', order.dressing_room_comment],
+            ['Комментарий к еде', order.meal_comment],
+            ['Техничка', order.tech_comment],
+            ['Особенности площадки', order.venue_comment]
+        ].filter(row => row[1]);
+
+        const detailsHtml = detailsRows.length
+            ? `<div class="event-modal__details">${detailsRows.map(([label, value]) => `
+                <div class="event-modal__detail">
+                    <span class="event-modal__detail-label">${escapeHtml(label)}:</span>
+                    <span class="event-modal__detail-value">${escapeHtml(value)}</span>
+                </div>
+            `).join('')}</div>`
+            : '';
+
         eventModalBody.innerHTML = `
             ${changedBanner}
             ${incompleteBanner}
@@ -387,6 +470,10 @@
                 <div class="event-modal__section-title">Сотрудники</div>
                 <div class="event-modal__staff">${modalStaffHtml(order)}</div>
             </div>
+            ${detailsHtml ? `<div class="event-modal__section">
+                <div class="event-modal__section-title">Организация</div>
+                ${detailsHtml}
+            </div>` : ''}
             <div class="event-modal__status-line">
                 <span class="order-row__status order-row__status--${order.status}">${getStatusLabel(order.status)}</span>
             </div>
@@ -821,13 +908,8 @@
     function applyCalendarFilters(orders) {
         const status = calendarStatusSelect ? calendarStatusSelect.value : 'all';
         const filled = calendarFilledSelect ? calendarFilledSelect.value : 'all';
-        const showPast = calendarPastToggle ? calendarPastToggle.checked : false;
 
         let result = orders.slice();
-
-        if (!showPast) {
-            result = result.filter(o => !isPastCompleted(o));
-        }
 
         if (status !== 'all') {
             result = result.filter(o => o.status === status);
@@ -996,6 +1078,10 @@
             ? `${order.checklist_done || 0}/${order.checklist_total}`
             : '';
 
+        const clientLinkHtml = canManageOrders()
+            ? `<span class="order-row__meta-item order-row__client-link" data-client-id="${order.client_id || ''}" title="Открыть карточку клиента">`
+            : `<span class="order-row__meta-item">`;
+
         return `
             <div class="${getRowClasses(order, extra)}" data-order-id="${order.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
                 <div class="order-row__head">
@@ -1005,7 +1091,7 @@
                     <span class="order-row__status">${escapeHtml(getStatusLabel(order.status))}</span>
                 </div>
                 <div class="order-row__meta">
-                    <span class="order-row__meta-item order-row__client-link" data-client-id="${order.client_id || ''}" title="Открыть карточку клиента">
+                    ${clientLinkHtml}
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                             <circle cx="12" cy="7" r="4"/>
@@ -1435,6 +1521,14 @@
         eventModalChecklistBtn.addEventListener('click', openEventChecklist);
     }
 
+    if (eventModalCopyLinkBtn) {
+        eventModalCopyLinkBtn.addEventListener('click', function() {
+            if (!activeOrderId) return;
+
+            copyOrderLink(activeOrderId);
+        });
+    }
+
     if (eventChecklistCloseBtn) {
         eventChecklistCloseBtn.addEventListener('click', closeEventChecklist);
     }
@@ -1451,7 +1545,17 @@
 
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-        if (e.defaultPrevented) return;
+
+        const confirmElement = document.getElementById('uiConfirmModal');
+
+        if (confirmElement && confirmElement.classList.contains('active')) {
+            if ((eventChecklistModal && eventChecklistModal.classList.contains('active')) ||
+                (eventModal && eventModal.classList.contains('active'))) {
+                e.preventDefault();
+            }
+
+            return;
+        }
 
         if (eventChecklistModal && eventChecklistModal.classList.contains('active')) {
             e.preventDefault();
@@ -1463,7 +1567,7 @@
             e.preventDefault();
             closeEventModal();
         }
-    });
+    }, true);
 
     function closeClientFilterDropdown() {
         if (!clientFilterDropdown) return;
@@ -1568,7 +1672,6 @@
 
     if (calendarStatusSelect) calendarStatusSelect.addEventListener('change', render);
     if (calendarFilledSelect) calendarFilledSelect.addEventListener('change', render);
-    if (calendarPastToggle) calendarPastToggle.addEventListener('change', render);
 
     document.addEventListener('click', function(e) {
         if (!clientFilterInput) return;
@@ -1717,21 +1820,27 @@
     window.openAvailabilityModal = openAvailabilityModal;
 
     const startParams = new URLSearchParams(window.location.search);
-    const openingOrderId = parseInt(startParams.get('open_order'), 10);
+    const openingOrderId = parseInt(startParams.get('open_order') || startParams.get('order'), 10);
 
     if (!isNaN(openingOrderId)) {
         window.history.replaceState({}, '', window.location.pathname);
 
-        let attempts = 20;
+        if (startParams.get('order')) {
+            setTimeout(function() {
+                openOrderByLink(openingOrderId, 20);
+            }, 0);
+        } else {
+            let attempts = 20;
 
-        const openWhenReady = function() {
-            if (openOrderEditor(openingOrderId) || attempts <= 0) return;
+            const openWhenReady = function() {
+                if (openOrderEditor(openingOrderId) || attempts <= 0) return;
 
-            attempts -= 1;
-            setTimeout(openWhenReady, 150);
-        };
+                attempts -= 1;
+                setTimeout(openWhenReady, 150);
+            };
 
-        openWhenReady();
+            openWhenReady();
+        }
     }
 
     applyInitialView();

@@ -521,12 +521,9 @@
         return collectFields(root).every(field => !fieldValue(field));
     }
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && confirmModal && confirmModal.classList.contains('active')) {
-            e.preventDefault();
-            settle(false);
-        }
-    }, true);
+    function isConfirmOpen() {
+        return !!(confirmModal && confirmModal.classList.contains('active'));
+    }
     document.addEventListener('DOMContentLoaded', function() {
         attachAllPhoneMasks(document);
     });

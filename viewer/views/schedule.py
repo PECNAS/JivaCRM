@@ -50,6 +50,7 @@ def serialize_schedule_order(order, my_payment=None, can_see_cost=True):
         'city_id': order.city.id if order.city else None,
         'city_name': order.city.name if order.city else '',
         'cost': (order.cost or '—') if can_see_cost else '',
+        'comment': order.concept or '',
         'status': order.status,
         'status_display': order.get_status_display(),
         'manager': order.manager.display_name if order.manager else '',
@@ -73,6 +74,14 @@ def serialize_schedule_order(order, my_payment=None, can_see_cost=True):
         'is_incomplete': order.is_incomplete(),
         'missing_fields': order.get_missing_fields(),
         'can_see_cost': can_see_cost,
+        'contact_name': order.contact_name or '',
+        'contact_phone': order.contact_phone or '',
+        'contact_telegram': order.contact_telegram or '',
+        'setup_time': order.setup_time or '',
+        'dressing_room_comment': order.dressing_room_comment or '',
+        'meal_comment': order.meal_comment or '',
+        'tech_comment': order.tech_comment or '',
+        'venue_comment': order.venue_comment or '',
     }
 
     if my_payment is not None:

@@ -56,15 +56,15 @@
 }
 
 .btn-danger {
-  background: #b71c1c;
-  border-color: #b71c1c;
-  color: #fff;
+  background: rgba(224, 82, 82, 0.12);
+  border-color: rgba(224, 82, 82, 0.45);
+  color: #e05252;
 }
 
 .btn-danger:hover {
-  background: #d32f2f;
-  border-color: #d32f2f;
-  transform: scale(1.02);
+  background: rgba(224, 82, 82, 0.2);
+  border-color: #e05252;
+  color: #f5efe7;
 }
 
 .employees-filters {

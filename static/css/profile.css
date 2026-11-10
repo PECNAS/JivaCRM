@@ -36,9 +36,8 @@
     flex-direction: column;
     gap: 0.2rem;
     text-align: left;
-    background: #14120f;
-    border: 1px solid #2b2620;
-    border-left: 3px solid #2e7d32;
+    background: rgba(46, 125, 50, 0.1);
+    border: 1px solid rgba(46, 125, 50, 0.28);
     border-radius: 12px;
     padding: 0.6rem 0.75rem;
     color: #ddd4c7;
@@ -49,14 +48,17 @@
 
 .availability-week:hover {
     border-color: rgba(240, 168, 104, 0.55);
+    background: rgba(240, 168, 104, 0.08);
 }
 
 .availability-week--partial {
-    border-left-color: #c8963c;
+    background: rgba(200, 150, 60, 0.1);
+    border-color: rgba(200, 150, 60, 0.3);
 }
 
 .availability-week--off {
-    border-left-color: #e05252;
+    background: rgba(224, 82, 82, 0.1);
+    border-color: rgba(224, 82, 82, 0.3);
 }
 
 .availability-week__name {
@@ -139,26 +141,50 @@
     min-height: 58px;
     padding: 0.35rem 0.4rem;
     border-radius: 10px;
-    background: #14120f;
-    border: 1px solid #23201b;
-    border-top: 3px solid #2e7d32;
+    background: rgba(46, 125, 50, 0.1);
+    border: 1px solid rgba(46, 125, 50, 0.24);
+    color: inherit;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.availability-day:hover {
+    background: rgba(240, 168, 104, 0.1);
+    border-color: rgba(240, 168, 104, 0.5);
 }
 
 .availability-day--empty {
     background: transparent;
     border: none;
+    cursor: default;
+    pointer-events: none;
 }
 
 .availability-day--partial {
-    border-top-color: #c8963c;
+    background: rgba(200, 150, 60, 0.1);
+    border-color: rgba(200, 150, 60, 0.28);
 }
 
 .availability-day--off {
-    border-top-color: #e05252;
+    background: rgba(224, 82, 82, 0.1);
+    border-color: rgba(224, 82, 82, 0.28);
+}
+
+.availability-day--partial:hover {
+    background: rgba(200, 150, 60, 0.16);
+    border-color: rgba(240, 168, 104, 0.5);
+}
+
+.availability-day--off:hover {
+    background: rgba(224, 82, 82, 0.16);
+    border-color: rgba(240, 168, 104, 0.5);
 }
 
 .availability-day--today {
-    box-shadow: 0 0 0 1px #f0a868;
+    box-shadow: inset 0 0 0 1px rgba(240, 168, 104, 0.7);
+    border-color: rgba(240, 168, 104, 0.55);
 }
 
 .availability-day__date {

@@ -11,6 +11,8 @@ from .views import (
     OrderPaymentView, OrderChecklistView, OrderFeedbackView, OrderFeedbackStatusView,
     FeedbackListView, ChecklistTemplateListView, CityCreateForOrderView,
     ScheduleView, MyOrdersListView,
+    ChecklistsPageView, ChecklistTemplateCreateView, ChecklistTemplateDetailView, ChecklistItemView,
+    ChecklistSectionView, ChecklistItemsOrderView,
     ServicesView, ServiceTreeView, ServiceCreateView, ServiceDetailView,
     ServiceUpdateView, ServiceDeleteView,
     CityListView,
@@ -92,6 +94,12 @@ urlpatterns = [
     path('orders/services/<int:service_id>/employees/', ServiceEmployeesForOrderView.as_view(), name='order_service_employees'),
 
     path('checklists/', ChecklistTemplateListView.as_view(), name='checklist_templates'),
+    path('checklists/manage/', ChecklistsPageView.as_view(), name='checklists'),
+    path('checklists/manage/create/', ChecklistTemplateCreateView.as_view(), name='checklist_create'),
+    path('checklists/manage/<int:template_id>/', ChecklistTemplateDetailView.as_view(), name='checklist_detail'),
+    path('checklists/items/', ChecklistItemView.as_view(), name='checklist_item'),
+    path('checklists/items/order/', ChecklistItemsOrderView.as_view(), name='checklist_items_order'),
+    path('checklists/section/', ChecklistSectionView.as_view(), name='checklist_section'),
     path('feedback/', FeedbackListView.as_view(), name='feedback_list'),
     path('feedback/<int:feedback_id>/status/', OrderFeedbackStatusView.as_view(), name='feedback_status'),
 

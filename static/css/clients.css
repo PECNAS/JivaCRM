@@ -122,6 +122,24 @@
   border-bottom: 1px solid #2b2620;
 }
 
+.clients-table__sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.clients-table__sortable:hover,
+.clients-table__sortable--active {
+  color: #f0a868;
+}
+
+.clients-table__sortable .sort-indicator {
+  display: inline-block;
+  margin-left: 0.2rem;
+  font-size: 0.75rem;
+}
+
 .clients-table tbody td {
   padding: 0.7rem 0.75rem;
   border-bottom: 1px solid #1f1b17;
@@ -957,15 +975,15 @@
 }
 
 .btn-danger {
-  background: #b71c1c;
-  border-color: #b71c1c;
-  color: #ef9a9a;
+  background: rgba(224, 82, 82, 0.12);
+  border-color: rgba(224, 82, 82, 0.45);
+  color: #e05252;
 }
 
 .btn-danger:hover {
-  background: #d32f2f;
-  border-color: #d32f2f;
-  color: #ffcdd2;
+  background: rgba(224, 82, 82, 0.2);
+  border-color: #e05252;
+  color: #f5efe7;
 }
 
 .modal--duplicate {

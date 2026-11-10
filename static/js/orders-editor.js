@@ -13,6 +13,10 @@
     let expandedCats = new Set();
     let costOverride = false;
     let manualCost = '';
+    let servicesTotalManual = false;
+    let servicesTotalManualBase = 0;
+    let servicesTotalBaseMaterial = 0;
+    let servicesTotalOpen = false;
     let pricePeriodPercent = 0;
     let pricePeriodInfo = null;
     let formSnapshot = null;
@@ -164,6 +168,9 @@
     const editOrderVenueComment = document.getElementById('editOrderVenueComment');
     const editOrderPropsComment = document.getElementById('editOrderPropsComment');
     const editOrderManager = document.getElementById('editOrderManager');
+    const editOrderManagerAdd = document.getElementById('editOrderManagerAdd');
+    const editOrderManagerChips = document.getElementById('editOrderManagerChips');
+    const editOrderExtraManagersGroup = document.getElementById('editOrderExtraManagersGroup');
     const editOrderCost = document.getElementById('editOrderCost');
     const editOrderPaymentMethod = document.getElementById('editOrderPaymentMethod');
     const cancelEditBtn = document.getElementById('cancelEditBtn');
@@ -229,6 +236,13 @@
     function formatPrice(value) {
         const num = parseFloat(value) || 0;
         return window.UI.formatMoney(num);
+    }
+
+    function autoSizeConcept() {
+        if (!editOrderConcept) return;
+
+        editOrderConcept.style.height = 'auto';
+        editOrderConcept.style.height = Math.max(editOrderConcept.scrollHeight, 38) + 'px';
     }
 
     function switchTab(tabName) {
@@ -517,6 +531,7 @@
         currentOrderId = orderId;
         costOverride = false;
         manualCost = '';
+        resetServicesTotalOverride();
         pricePeriodPercent = 0;
         pricePeriodInfo = null;
         isSavingOrder = false;
@@ -562,6 +577,7 @@
         employeeAvailability = {};
         costOverride = false;
         manualCost = '';
+        resetServicesTotalOverride();
 
         if (typeof orderExpenses !== 'undefined') {
             orderExpenses = [];
@@ -1095,6 +1111,10 @@
     }
 
     function populateForm(data) {
+        costOverride = false;
+        manualCost = '';
+        resetServicesTotalOverride();
+
         editOrderName.value = data.name || '';
         editOrderDate.value = data.date || '';
 
@@ -1133,6 +1153,8 @@
         editOrderDressingRoom.value = data.dressing_room_comment || '';
         editOrderMeal.value = data.meal_comment || '';
         editOrderConcept.value = data.concept || '';
+        setTimeout(autoSizeConcept, 0);
+
         editOrderTechLamps.checked = data.tech_lamps || false;
         editOrderTechLaser.checked = data.tech_laser || false;
         editOrderTechHazer.checked = data.tech_hazer || false;
@@ -1142,6 +1164,9 @@
         editOrderVenueComment.value = data.venue_comment || '';
         editOrderPropsComment.value = data.props_comment || '';
         editOrderManager.value = data.manager_id || '';
+        extraManagerIds = (data.manager_ids || [])
+            .map(item => String(item))
+            .filter(item => String(item) !== String(data.manager_id || ''));
         editOrderPaymentMethod.value = data.payment_method || '';
 
         const managerGroup = document.getElementById('editOrderManagerGroup');
@@ -1149,6 +1174,12 @@
         if (managerGroup) {
             managerGroup.style.display = canManageOrders() ? '' : 'none';
         }
+
+        if (editOrderExtraManagersGroup) {
+            editOrderExtraManagersGroup.style.display = canManageOrders() ? '' : 'none';
+        }
+
+        renderExtraManagers();
 
         renderPaymentTax();
 
@@ -1196,6 +1227,19 @@
 
         renderServices();
         renderEmployees();
+
+        if (canSeeRates() && currentOrderData && currentOrderData.cost_is_manual) {
+            const stored = currentOrderData.cost && currentOrderData.cost !== '—'
+                ? formatPrice(parseCostValue(currentOrderData.cost) || 0)
+                : '';
+            costOverride = true;
+            manualCost = stored;
+
+            if (editOrderCost) {
+                editOrderCost.value = stored;
+            }
+        }
+
         updateCostField();
 
         itemsSnapshot = JSON.stringify(estimateItems);
@@ -1325,6 +1369,115 @@
             .catch(err => console.error('Ошибка загрузки городов:', err));
     }
 
+    let extraManagerIds = [];
+
+    const MAX_ORDER_MANAGERS = 2;
+
+    function employeeLabelById(employeeId) {
+        const employee = allEmployees.find(item => String(item.id) === String(employeeId));
+
+        return employee ? (employee.display_name || employee.full_name) : 'Сотрудник';
+    }
+
+    function managerCount() {
+        const mainId = editOrderManager ? editOrderManager.value : '';
+        const ids = extraManagerIds.map(item => String(item));
+
+        if (mainId && !ids.includes(String(mainId))) ids.push(String(mainId));
+
+        return ids.length;
+    }
+
+    function renderExtraManagers() {
+        if (!editOrderManagerChips) return;
+
+        const mainId = editOrderManager ? editOrderManager.value : '';
+
+        editOrderManagerChips.innerHTML = extraManagerIds.map(employeeId => `
+            <span class="manager-chip" data-extra-manager="${employeeId}">
+                <span class="manager-chip__name">${escapeHtml(employeeLabelById(employeeId))}</span>
+                <button type="button" class="manager-chip__remove" data-extra-manager-remove="${employeeId}" aria-label="Убрать менеджера">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </span>
+        `).join('');
+
+        if (!extraManagerIds.length) {
+            editOrderManagerChips.innerHTML = '<span class="manager-chips__empty">Менеджер не выбран</span>';
+        }
+
+        editOrderManagerChips.querySelectorAll('[data-extra-manager-remove]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetId = String(this.dataset.extraManagerRemove);
+
+                extraManagerIds = extraManagerIds.filter(item => String(item) !== targetId);
+                renderExtraManagers();
+                fillExtraManagerOptions();
+            });
+        });
+
+        fillExtraManagerOptions(mainId);
+    }
+
+    function fillExtraManagerOptions(mainId) {
+        if (!editOrderManagerAdd) return;
+
+        const selectedMain = String(mainId !== undefined ? mainId : (editOrderManager ? editOrderManager.value : ''));
+        const taken = new Set(extraManagerIds.map(item => String(item)));
+
+        if (selectedMain) taken.add(selectedMain);
+
+        const limitReached = managerCount() >= MAX_ORDER_MANAGERS;
+
+        editOrderManagerAdd.disabled = limitReached;
+
+        if (limitReached) {
+            editOrderManagerAdd.innerHTML = '<option value="">В заказе уже два менеджера</option>';
+            return;
+        }
+
+        const options = allEmployees
+            .filter(item => !taken.has(String(item.id)))
+            .map(item => `<option value="${item.id}">${escapeHtml(item.display_name || item.full_name)}</option>`)
+            .join('');
+
+        editOrderManagerAdd.innerHTML = '<option value="">Выберите сотрудника</option>' + options;
+    }
+
+    if (editOrderManagerAdd) {
+        editOrderManagerAdd.addEventListener('change', function() {
+            const employeeId = this.value;
+
+            if (!employeeId) return;
+
+            if (managerCount() >= MAX_ORDER_MANAGERS) {
+                showToast('В заказе может быть не больше двух менеджеров');
+                this.value = '';
+                fillExtraManagerOptions();
+                return;
+            }
+
+            if (!extraManagerIds.some(item => String(item) === String(employeeId))) {
+                extraManagerIds.push(employeeId);
+            }
+
+            this.value = '';
+            renderExtraManagers();
+        });
+    }
+
+    if (editOrderManager) {
+        editOrderManager.addEventListener('change', function() {
+            const mainId = this.value;
+
+            extraManagerIds = extraManagerIds.filter(item => String(item) !== String(mainId));
+            renderExtraManagers();
+        });
+    }
+
     function loadEmployeesForSelects() {
         if (!canManageOrders()) return;
 
@@ -1334,12 +1487,13 @@
                 if (data.employees) {
                     allEmployees = data.employees;
                     const managerOptions = data.employees.map(e =>
-                        `<option value="${e.id}">${escapeHtml(e.full_name)}</option>`
+                        `<option value="${e.id}">${escapeHtml(e.display_name || e.full_name)}</option>`
                     ).join('');
                     editOrderManager.innerHTML = '<option value="">Выберите менеджера</option>' + managerOptions;
                     if (currentOrderData) {
                         editOrderManager.value = currentOrderData.manager_id || '';
                     }
+                    renderExtraManagers();
                     renderShowsTab();
                 }
             })
@@ -1510,9 +1664,16 @@
     function updateServicesTotal() {
         if (!servicesTotal) return;
 
-        const total = estimateItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        if (servicesTotalOpen) {
+            if (document.activeElement !== servicesTotal) {
+                servicesTotal.textContent = formatPrice(getServicesTotal());
+            }
 
-        servicesTotal.textContent = canSeeRates() ? formatPrice(total) : '—';
+            updateCostField();
+            return;
+        }
+
+        servicesTotal.textContent = canSeeRates() ? formatPrice(getServicesTotal()) : '—';
         updateCostField();
     }
 
@@ -1521,7 +1682,101 @@
     }
 
     function getServicesTotal() {
-        return estimateItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        const material = estimateItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+
+        if (!servicesTotalManual) {
+            return material;
+        }
+
+        return Math.max(0, servicesTotalManualBase + (material - servicesTotalBaseMaterial));
+    }
+
+    function resetServicesTotalOverride() {
+        servicesTotalManual = false;
+        servicesTotalManualBase = 0;
+        servicesTotalBaseMaterial = 0;
+    }
+
+    function enterServicesTotalEdit() {
+        if (!servicesTotal || !canSeeRates()) return;
+
+        servicesTotalManual = true;
+        servicesTotalManualBase = getServicesTotal();
+        servicesTotalBaseMaterial = estimateItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        servicesTotalOpen = true;
+        servicesTotal.classList.add('services-total__value--editing');
+        servicesTotal.setAttribute('contenteditable', 'true');
+        servicesTotal.focus();
+
+        const range = document.createRange();
+        range.selectNodeContents(servicesTotal);
+
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
+    function exitServicesTotalEdit() {
+        if (!servicesTotal) return;
+
+        if (servicesTotal.getAttribute('contenteditable') !== 'true') return;
+
+        const parsed = parseCostValue(servicesTotal.textContent);
+
+        servicesTotalOpen = false;
+        servicesTotal.removeAttribute('contenteditable');
+        servicesTotal.classList.remove('services-total__value--editing');
+
+        if (parsed !== null && parsed >= 0) {
+            servicesTotalManual = true;
+            servicesTotalManualBase = parsed;
+            servicesTotalBaseMaterial = estimateItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        } else {
+            resetServicesTotalOverride();
+        }
+
+        servicesTotal.textContent = formatPrice(getServicesTotal());
+        updateCostField();
+        renderPaymentTax();
+    }
+
+    if (editOrderConcept) {
+        editOrderConcept.addEventListener('input', autoSizeConcept);
+
+        editOrderConcept.addEventListener('focus', function() {
+            this.classList.add('order-comment-field--active');
+            autoSizeConcept();
+        });
+
+        editOrderConcept.addEventListener('blur', function() {
+            this.classList.remove('order-comment-field--active');
+            autoSizeConcept();
+        });
+    }
+
+    if (servicesTotal) {
+        servicesTotal.addEventListener('dblclick', function(e) {
+            e.preventDefault();
+            enterServicesTotalEdit();
+        });
+
+        servicesTotal.addEventListener('blur', function() {
+            exitServicesTotalEdit();
+        });
+
+        servicesTotal.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                servicesTotal.blur();
+            }
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                resetServicesTotalOverride();
+                servicesTotal.textContent = formatPrice(getServicesTotal());
+                servicesTotal.blur();
+            }
+        });
     }
 
     function loadEmployeeAvailability() {
@@ -2670,7 +2925,8 @@
         });
 
         editOrderCost.addEventListener('input', function() {
-            if (costOverride) manualCost = this.value;
+            costOverride = true;
+            manualCost = this.value;
         });
 
         editOrderCost.addEventListener('blur', function() {
@@ -2704,8 +2960,9 @@
 
                 costOverride = false;
                 manualCost = '';
+                resetServicesTotalOverride();
 
-                        if (editOrderCost) {
+                if (editOrderCost) {
                     editOrderCost.readOnly = true;
                     editOrderCost.classList.add('form-input--readonly');
                 }
@@ -2885,7 +3142,9 @@
                 venue_comment: editOrderVenueComment.value.trim(),
                 props_comment: editOrderPropsComment.value.trim(),
                 manager_id: editOrderManager.value,
+                manager_ids: extraManagerIds.join(','),
                 cost: serializeCostForServer(),
+                cost_is_manual: costOverride ? '1' : '0',
                 payment_method: editOrderPaymentMethod.value,
                 chat_number: editOrderChat ? editOrderChat.value.trim() : '',
                 start_datetime: editOrderStart ? editOrderStart.value : '',
@@ -3027,8 +3286,16 @@
 
     document.addEventListener('keydown', e => {
         if (e.key !== 'Escape') return;
-        if (document.getElementById('uiConfirmModal')) return;
-        if (e.defaultPrevented) return;
+
+        const confirmElement = document.getElementById('uiConfirmModal');
+
+        if (confirmElement && confirmElement.classList.contains('active')) {
+            if (editorModal.classList.contains('active')) {
+                e.preventDefault();
+            }
+
+            return;
+        }
 
         if (orderExpenseModal && orderExpenseModal.classList.contains('active')) {
             e.preventDefault();

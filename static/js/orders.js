@@ -1942,8 +1942,17 @@
 
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-        if (document.getElementById('uiConfirmModal')) return;
-        if (e.defaultPrevented) return;
+
+        const confirmElement = document.getElementById('uiConfirmModal');
+
+        if (confirmElement && confirmElement.classList.contains('active')) {
+            if ((createClientModal && createClientModal.classList.contains('active')) ||
+                (createModal && createModal.classList.contains('active'))) {
+                e.preventDefault();
+            }
+
+            return;
+        }
 
         const openDropdowns = document.querySelectorAll('.city-selector__dropdown.open, .client-combobox__dropdown.open');
 

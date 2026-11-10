@@ -231,7 +231,7 @@
 .event-modal__banner--incomplete {
     background: rgba(224, 82, 82, 0.1);
     border: 1px solid rgba(224, 82, 82, 0.45);
-    color: #ef9a9a;
+    color: #e05252;
 }
 
 .context-menu {
@@ -1476,6 +1476,57 @@
 .event-modal__checklist-line {
     font-size: 0.82rem;
     color: #9e9487;
+}
+
+.event-modal__comment {
+    font-size: 0.82rem;
+    color: #ddd4c7;
+    line-height: 1.45;
+    background: #17140f;
+    border: 1px solid #2b2620;
+    border-radius: 10px;
+    padding: 0.45rem 0.6rem;
+    margin-top: 0.15rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.event-modal__comment-label {
+    color: #9e9487;
+}
+
+.event-modal__comment--empty {
+    color: #7a7267;
+    font-style: italic;
+    background: transparent;
+    border-style: dashed;
+}
+
+.event-modal__details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.event-modal__detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.4rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    padding: 0.4rem 0.6rem;
+    background: #17140f;
+    border: 1px solid #2b2620;
+    border-radius: 10px;
+}
+
+.event-modal__detail-label {
+    color: #9e9487;
+}
+
+.event-modal__detail-value {
+    color: #ddd4c7;
+    overflow-wrap: anywhere;
 }
 
 .event-modal__manager b,

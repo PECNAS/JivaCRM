@@ -753,6 +753,7 @@ class Order(models.Model):
     managers = models.ManyToManyField(Employee, related_name='co_managed_orders', verbose_name='Дополнительные менеджеры', blank=True)
     story_manager = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='story_orders', verbose_name='Сториз ответственный')
     cost = models.CharField('Общая стоимость', max_length=50, blank=True, default='—')
+    cost_is_manual = models.BooleanField('Цена задана вручную', default=False)
     payment_method = models.CharField('Способ оплаты', max_length=10, choices=PAYMENT_CHOICES, blank=True)
     payment_due_date = models.DateField('Дата оплаты по заказу', null=True, blank=True)
     payment_due_comment = models.CharField('Заметка к оплате', max_length=300, blank=True)

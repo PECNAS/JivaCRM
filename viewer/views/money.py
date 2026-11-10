@@ -153,25 +153,11 @@ def serialize_payout(payout):
 
 def serialize_order_row(order):
     employees = []
-    busy = 0
     total = ZERO
-
-    accruals = {
-        accrual.employee_id: accrual
-        for accrual in order.money_accruals.filter(
-            status=MoneyAccrual.STATUS_ACTIVE,
-            category=MoneyAccrual.CATEGORY_ORDER,
-        )
-    }
 
     for item in order.employee_items.select_related('employee').order_by('id'):
         if not item.employee_id:
             continue
-
-        accrual = accruals.get(item.employee_id)
-
-        if accrual:
-            busy += 1
 
         amount = Decimal(item.payment)
         total += amount
@@ -182,8 +168,6 @@ def serialize_order_row(order):
             'role_display': role_label(item.employee.role),
             'payment': float(item.payment),
             'is_overridden': item.is_overridden,
-            'accrual_id': accrual.id if accrual else None,
-            'accrual_amount': float(accrual.amount) if accrual else None,
         })
 
     services = [item.service_name for item in order.estimate_items.all() if item.service_name]
@@ -202,10 +186,18 @@ def serialize_order_row(order):
         'total': float(total),
         'employees': employees,
         'employees_total': len(employees),
-        'employees_accrued': busy,
-        'is_accrued': bool(employees) and busy > 0,
-        'is_full': bool(employees) and busy == len(employees),
+        'employees_accrued': len(employees),
+        'is_accrued': bool(employees),
+        'is_full': bool(employees),
+        'is_completed': order.status == 'completed',
     }
+
+
+def serialize_pending_order(order):
+    row = serialize_order_row(order)
+    row['is_full'] = bool(row['employees']) and row['employees_accrued'] == len(row['employees'])
+    row['amount'] = row['total']
+    return row
 
 
 class MoneyView(View):
@@ -269,13 +261,6 @@ def sort_rows(rows, sort_key, date_field='date', amount_field='amount', name_fie
     return sorted(rows, key=lambda row: (row.get(date_field) or '', row.get('id') or 0), reverse=True)
 
 
-def serialize_pending_order(order):
-    row = serialize_order_row(order)
-    row['is_full'] = bool(row['employees']) and row['employees_accrued'] == len(row['employees'])
-    row['amount'] = row['total']
-    return row
-
-
 class MoneyDataView(View):
     def get(self, request):
         employee, error = money_guard(request)
@@ -288,33 +273,24 @@ class MoneyDataView(View):
 
         search = request.GET.get('search', '').strip().lower()
         category = request.GET.get('category', 'all')
-        accrual_filter = request.GET.get('accrual_filter', 'all')
         sort_key = request.GET.get('sort', SORT_DEFAULT)
 
         if sort_key not in SORTS:
             sort_key = SORT_DEFAULT
 
         orders = [
-            serialize_pending_order(order)
+            serialize_order_row(order)
             for order in (
                 Order.objects
                 .filter(status='completed', date__gte=start, date__lte=end)
                 .select_related('client', 'city', 'manager')
-                .prefetch_related('employee_items__employee', 'estimate_items', 'money_accruals')
+                .prefetch_related('employee_items__employee', 'estimate_items')
                 .order_by('date', 'id')
             )
             if order.employee_items.exists()
         ]
 
-        pending_orders = [row for row in orders if not row['is_full']]
-        accrued_orders = [row for row in orders if row['is_full']]
-
-        if accrual_filter == 'pending':
-            orders = pending_orders
-        elif accrual_filter == 'accrued':
-            orders = []
-
-        orders = sort_rows(orders, sort_key, date_field='date', amount_field='amount')
+        orders = sort_rows(orders, sort_key, date_field='date', amount_field='total')
 
         accruals = (
             MoneyAccrual.objects
@@ -367,13 +343,8 @@ class MoneyDataView(View):
         stats = {
             'accrued': sum(row['signed_amount'] for row in accrual_rows if row['is_active']),
             'paid': sum(row['amount'] for row in payout_rows if not row['is_reverted']),
-            'pending_orders': len(pending_orders),
-            'pending_amount': sum(
-                item['payment'] - (item['accrual_amount'] or 0)
-                for row in pending_orders
-                for item in row['employees']
-                if not item['accrual_id']
-            ),
+            'completed_orders': len(orders),
+            'completed_amount': sum(row['total'] for row in orders),
             'balance_total': sum(row['balance'] for row in summary),
             'payroll_total': payroll['total'],
             'expense_total': sum(row['amount'] for row in expense_rows),
@@ -386,10 +357,10 @@ class MoneyDataView(View):
             'range_end': end.strftime('%Y-%m-%d'),
             'range_label': f'{start.strftime("%d.%m.%Y")} — {end.strftime("%d.%m.%Y")}',
             'sort': sort_key,
-            'accrual_filter': accrual_filter,
             'accruals': accrual_rows,
             'payouts': payout_rows,
             'history': build_history(accrual_rows, payout_rows),
+            'orders': orders,
             'pending': orders,
             'expenses': expense_rows,
             'summary': summary,

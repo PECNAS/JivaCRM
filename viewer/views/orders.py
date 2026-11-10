@@ -172,6 +172,14 @@ def serialize_order_line(order):
         if item.service_name
     )
     data['comment'] = order.concept or order.venue_comment or ''
+    data['contact_name'] = order.contact_name or ''
+    data['contact_phone'] = order.contact_phone or ''
+    data['contact_telegram'] = order.contact_telegram or ''
+    data['setup_time'] = order.setup_time or ''
+    data['dressing_room_comment'] = order.dressing_room_comment or ''
+    data['meal_comment'] = order.meal_comment or ''
+    data['tech_comment'] = order.tech_comment or ''
+    data['venue_comment'] = order.venue_comment or ''
     return data
 
 
@@ -508,6 +516,7 @@ class OrderDetailView(View):
                     {'id': item.id, 'name': item.display_name} for item in order.managers.all()
                 ],
                 'cost': order.cost or '—',
+                'cost_is_manual': order.cost_is_manual,
                 'payment_method': order.payment_method or '',
                 'payment_method_display': order.get_payment_method_display() if order.payment_method else '',
                 'payment_due_date': format_date(order.payment_due_date),
@@ -647,6 +656,9 @@ class OrderUpdateView(View):
                     else:
                         order.cost = '0.00'
 
+                if 'cost_is_manual' in request.POST:
+                    order.cost_is_manual = request.POST.get('cost_is_manual') == '1'
+
             order.payment_method = request.POST.get('payment_method', '').strip()
 
             previous_status = order.status
@@ -699,9 +711,24 @@ class OrderUpdateView(View):
                     int(part) for part in managers_raw.split(',')
                     if part.strip().isdigit()
                 ]
-                order.managers.set(Employee.objects.filter(id__in=manager_ids))
+
+                main_id = order.manager_id
+                if main_id and main_id not in manager_ids:
+                    manager_ids = [main_id] + manager_ids
+
+                unique_ids = []
+
+                for value in manager_ids:
+                    if value not in unique_ids:
+                        unique_ids.append(value)
+
+                order.managers.set(Employee.objects.filter(id__in=unique_ids[:1]))
             elif 'manager_ids' in request.POST:
                 order.managers.clear()
+
+            if not order.manager_id:
+                order.manager = employee
+                order.save(update_fields=['manager'])
 
             estimate_items_str = request.POST.get('estimate_items', '')
             if estimate_items_str:

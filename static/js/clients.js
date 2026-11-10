@@ -1306,7 +1306,40 @@
 
     const clientsLoadMore = document.getElementById('clientsLoadMore');
     const clientsLoadMoreBtn = document.getElementById('clientsLoadMoreBtn');
+    const agencySortBtn = document.getElementById('agencySortBtn');
+    const agencySortIndicator = document.getElementById('agencySortIndicator');
+    let clientsSort = new URLSearchParams(window.location.search).get('sort') === 'agency' ? 'agency' : '';
     let clientsOffset = document.querySelectorAll('#clientsTableBody tr[data-client-id]').length;
+
+    function renderClientsSortState() {
+        if (!agencySortBtn) return;
+
+        const active = clientsSort === 'agency';
+        agencySortBtn.classList.toggle('clients-table__sortable--active', active);
+        agencySortBtn.setAttribute('aria-sort', active ? 'ascending' : 'none');
+
+        if (agencySortIndicator) {
+            agencySortIndicator.textContent = active ? '↑' : '';
+        }
+    }
+
+    if (agencySortBtn) {
+        const toggleSort = function() {
+            clientsSort = clientsSort === 'agency' ? '' : 'agency';
+            renderClientsSortState();
+            loadClientsLive();
+        };
+
+        agencySortBtn.addEventListener('click', toggleSort);
+        agencySortBtn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleSort();
+            }
+        });
+    }
+
+    renderClientsSortState();
 
     function loadClientsLive(reset) {
         const search = searchInput.value.trim();
@@ -1321,6 +1354,7 @@
         if (search) params.append('search', search);
         if (rating && rating !== 'all') params.append('rating', rating);
         if (city && city !== 'all') params.append('city', city);
+        if (clientsSort) params.append('sort', clientsSort);
         params.append('offset', String(clientsOffset));
         params.append('limit', String(CLIENTS_PAGE));
 
@@ -1366,6 +1400,7 @@
                 if (search) filterParams.append('search', search);
                 if (rating && rating !== 'all') filterParams.append('rating', rating);
                 if (city && city !== 'all') filterParams.append('city', city);
+                if (clientsSort) filterParams.append('sort', clientsSort);
 
                 const url = filterParams.toString() ? `/clients/?${filterParams.toString()}` : '/clients/';
                 window.history.replaceState({}, '', url);
@@ -1508,8 +1543,18 @@
 
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-        if (document.getElementById('uiConfirmModal')) return;
-        if (e.defaultPrevented) return;
+
+        const confirmElement = document.getElementById('uiConfirmModal');
+
+        if (confirmElement && confirmElement.classList.contains('active')) {
+            if ((duplicateModal && duplicateModal.classList.contains('active')) ||
+                (modal && modal.classList.contains('active')) ||
+                (addModal && addModal.classList.contains('active'))) {
+                e.preventDefault();
+            }
+
+            return;
+        }
 
         const openDropdowns = document.querySelectorAll('.city-selector__dropdown.open');
 
