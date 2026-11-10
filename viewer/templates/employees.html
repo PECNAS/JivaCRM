@@ -21,7 +21,7 @@
         </button>
     </div>
     <div class="employees-filters">
-        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, логину или телефону" value="{{ search_query }}">
+        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, логину, телеге или телефону" value="{{ search_query }}">
         <select class="filter-select" id="roleFilter">
             <option value="all" {% if role_filter == 'all' %}selected{% endif %}>Все роли</option>
             <option value="senior_admin" {% if role_filter == 'senior_admin' %}selected{% endif %}>Старший администратор</option>

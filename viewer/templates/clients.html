@@ -21,7 +21,7 @@
         </button>
     </div>
     <div class="clients-filters">
-        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, агентству или телефону" value="{{ search_query }}">
+        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, агентству, телеге или телефону" value="{{ search_query }}">
         <select class="filter-select" id="ratingFilter">
             <option value="all" {% if rating_filter == 'all' %}selected{% endif %}>Все рейтинги</option>
             <option value="high" {% if rating_filter == 'high' %}selected{% endif %}>Высокий</option>
