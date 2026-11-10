@@ -118,6 +118,7 @@ urlpatterns = [
     path('services/', ServicesView.as_view(), name='services'),
     path('services/tree/', ServiceTreeView.as_view(), name='service_tree'),
     path('services/create/', ServiceCreateView.as_view(), name='service_create'),
+    path('cities/list/', CityListView.as_view(), name='cities_list'),
     path('services/cities/', CityListView.as_view(), name='city_list'),
     path('services/<int:service_id>/', ServiceDetailView.as_view(), name='service_detail'),
     path('services/<int:service_id>/update/', ServiceUpdateView.as_view(), name='service_update'),

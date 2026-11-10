@@ -150,7 +150,6 @@
                     ${renderField('Роль', data.role_display)}
                     ${renderField('Телефон', data.phone)}
                     ${renderField('Телеграм', data.telegram)}
-                    ${renderField('Статус', data.is_active ? 'Активен' : 'Неактивен')}
                     ${renderField('Дата регистрации', data.date_joined)}
                     <div class="profile-field profile-field--full">
                         <span class="profile-field__label">Навыки (общие)</span>
@@ -953,7 +952,21 @@
         }
 
         renderIntervals();
+
+        if (availabilityDeleteBtn) {
+            availabilityDeleteBtn.style.display = availabilityState.editingId ? '' : 'none';
+        }
+
         availabilityModal.classList.add('active');
+    }
+
+    function deleteFromAvailabilityModal() {
+        if (!availabilityState.editingId) return;
+
+        const ruleId = availabilityState.editingId;
+
+        closeAvailabilityModal();
+        deleteAvailabilityRule(ruleId);
     }
 
     function closeAvailabilityModal() {
@@ -1076,10 +1089,12 @@
     const availabilityCloseBtn = document.getElementById('availabilityCloseBtn');
     const availabilityCancelBtn = document.getElementById('availabilityCancelBtn');
     const availabilitySaveBtn = document.getElementById('availabilitySaveBtn');
+    const availabilityDeleteBtn = document.getElementById('availabilityDeleteBtn');
 
     if (availabilityCloseBtn) availabilityCloseBtn.addEventListener('click', closeAvailabilityModal);
     if (availabilityCancelBtn) availabilityCancelBtn.addEventListener('click', closeAvailabilityModal);
     if (availabilitySaveBtn) availabilitySaveBtn.addEventListener('click', saveAvailabilityRule);
+    if (availabilityDeleteBtn) availabilityDeleteBtn.addEventListener('click', deleteFromAvailabilityModal);
 
     if (availabilityModal) {
         availabilityModal.addEventListener('click', function(e) {

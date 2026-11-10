@@ -120,6 +120,36 @@ def normalize_name(value):
     return ' '.join((value or '').lower().replace('ё', 'е').split())
 
 
+def apply_client_conditions(text):
+    text = (text or '').strip()
+
+    conditions = (
+        Q(full_name__icontains=text) |
+        Q(phone__icontains=text) |
+        Q(telegram_username__icontains=text) |
+        Q(email__icontains=text) |
+        Q(agency__name__icontains=text) |
+        Q(agency__aliases__name__icontains=text) |
+        Q(agency_manager__name__icontains=text)
+    )
+
+    if len(phone_digits(text)) >= 3:
+        conditions |= phone_query(text)
+
+    conditions |= telegram_query(text)
+
+    return conditions
+
+
+def apply_client_search(clients, search):
+    text = (search or '').strip()
+
+    if not text:
+        return clients
+
+    return clients.filter(apply_client_conditions(text)).distinct()
+
+
 def name_keys(value):
     words = [word for word in normalize_name(value).split() if word]
 
@@ -442,24 +472,10 @@ class ClientsView(View):
         sort_by = request.GET.get('sort', '')
 
         if search_query:
-            search_filter = (
-                Q(full_name__icontains=search_query) |
-                Q(phone__icontains=search_query) |
-                Q(agency__name__icontains=search_query) |
-                Q(agency__aliases__name__icontains=search_query) |
-                Q(agency_manager__name__icontains=search_query) |
-                Q(telegram_username__icontains=search_query) |
-                Q(email__icontains=search_query) |
-                Q(cities__name__icontains=search_query) |
-                Q(city__icontains=search_query)
-            )
-
-            if len(phone_digits(search_query)) >= 3:
-                search_filter |= phone_query(search_query)
-
-            search_filter |= telegram_query(search_query)
-
-            clients = clients.filter(search_filter).distinct()
+            text = (search_query or '').strip()
+            clients = clients.filter(
+                apply_client_conditions(text) | Q(cities__name__icontains=text) | Q(city__icontains=text)
+            ).distinct()
 
         if rating_filter != 'all':
             clients = clients.filter(rating=rating_filter)
@@ -484,6 +500,9 @@ class ClientsView(View):
                 F('agency_sort_name').asc(nulls_last=True),
                 F('full_name').asc(),
             )
+        elif sort_by in ('requests', 'orders'):
+            field = 'requests_count' if sort_by == 'requests' else 'orders_count'
+            clients = clients.order_by(F(field).desc(), F('full_name').asc())
 
         grouped = []
 
@@ -749,22 +768,7 @@ class ClientListView(View):
         sort = request.GET.get('sort', '')
 
         if search:
-            search_filter = (
-                Q(full_name__icontains=search) |
-                Q(phone__icontains=search) |
-                Q(telegram_username__icontains=search) |
-                Q(email__icontains=search) |
-                Q(agency__name__icontains=search) |
-                Q(agency__aliases__name__icontains=search) |
-                Q(agency_manager__name__icontains=search)
-            )
-
-            if len(phone_digits(search)) >= 3:
-                search_filter |= phone_query(search)
-
-            search_filter |= telegram_query(search)
-
-            clients = clients.filter(search_filter).distinct()
+            clients = apply_client_search(clients, search)
 
         if rating != 'all':
             clients = clients.filter(rating=rating)
@@ -782,6 +786,9 @@ class ClientListView(View):
                 F('agency_sort_name').asc(nulls_last=True),
                 F('full_name').asc(),
             )
+        elif sort in ('requests', 'orders'):
+            field = 'requests_count' if sort == 'requests' else 'orders_count'
+            clients = clients.order_by(F(field).desc(), F('full_name').asc())
 
         total = clients.count()
         offset = parse_int(request.GET.get('offset')) or 0

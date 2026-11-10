@@ -60,6 +60,8 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   margin-bottom: 1.25rem;
+  position: relative;
+  z-index: 30;
 }
 
 .search-input {
@@ -103,6 +105,8 @@
   overflow-x: auto;
   margin: 0 -0.5rem;
   padding: 0 0.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .clients-table {
@@ -153,6 +157,74 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.clients-table__index {
+  width: 44px;
+  color: #7a7267;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.clients-table__name {
+  min-width: 160px;
+  max-width: 240px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.clients-table__phone,
+.clients-table__telegram,
+.clients-table__num {
+  white-space: nowrap;
+}
+
+.clients-table__num {
+  font-variant-numeric: tabular-nums;
+}
+
+.clients-table__telegram a {
+  color: #f0a868;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.clients-table__telegram a:hover {
+  color: #f5b87a;
+  text-decoration: underline;
+}
+
+.clients-table thead th.clients-table__agency,
+.clients-table td.clients-table__agency {
+  background: #17140f;
+  border-left: 1px solid #23201b;
+  border-right: 1px solid #23201b;
+  white-space: nowrap;
+}
+
+.clients-table tbody tr:hover td.clients-table__agency {
+  background: #1c1813;
+}
+
+.clients-table__agency {
+  color: #cec3b4;
+}
+
+.city-filter {
+  position: relative;
+  min-width: 190px;
+  z-index: 35;
+}
+
+.city-filter__input {
+  width: 100%;
+}
+
+.city-filter__dropdown {
+  z-index: 60;
+  max-height: 260px;
+  min-width: 220px;
 }
 
 .clients-table tbody tr {
@@ -998,6 +1070,17 @@
 
 .detail-value {
   white-space: pre-wrap;
+}
+
+.detail-value--link a {
+  color: #f0a868;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.detail-value--link a:hover {
+  color: #f5b87a;
+  text-decoration: underline;
 }
 
 @media (max-width: 760px) {

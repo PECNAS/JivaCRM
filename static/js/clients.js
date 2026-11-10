@@ -605,11 +605,25 @@
                 document.getElementById('viewPhone').textContent = data.phone || '—';
                 document.getElementById('viewClientType').textContent = data.client_type_display || '—';
                 document.getElementById('viewAgency').textContent = data.agency || '—';
-                const viewAgencyManager = document.getElementById('viewAgencyManager');
-                if (viewAgencyManager) viewAgencyManager.textContent = data.agency_manager || '—';
                 document.getElementById('viewRating').textContent = data.rating_display;
                 document.getElementById('viewEmail').textContent = data.email || '—';
-                document.getElementById('viewTelegram').textContent = data.telegram || '—';
+
+                const telegramValue = (data.telegram === '—' ? '' : (data.telegram || '')).replace(/^@/, '');
+                const viewTelegram = document.getElementById('viewTelegram');
+
+                viewTelegram.innerHTML = '';
+
+                if (telegramValue) {
+                    const link = document.createElement('a');
+                    link.href = 'https://t.me/' + encodeURIComponent(telegramValue);
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.textContent = '@' + telegramValue;
+                    viewTelegram.appendChild(link);
+                } else {
+                    viewTelegram.textContent = '—';
+                }
+
                 document.getElementById('viewCity').textContent = data.city || '—';
                 document.getElementById('viewComment').textContent = data.comment || '—';
 
@@ -1313,13 +1327,7 @@
     });
 
     tableBody.addEventListener('click', function(e) {
-        const viewLink = e.target.closest('.view-link');
-        if (viewLink) {
-            e.stopPropagation();
-            const id = parseInt(viewLink.getAttribute('data-id'));
-            openClientModal(id);
-            return;
-        }
+        if (e.target.closest('a[href^="https://t.me/"]')) return;
 
         const row = e.target.closest('tr[data-client-id]');
         if (row) {
@@ -1334,36 +1342,53 @@
     const clientsLoadMoreBtn = document.getElementById('clientsLoadMoreBtn');
     const agencySortBtn = document.getElementById('agencySortBtn');
     const agencySortIndicator = document.getElementById('agencySortIndicator');
-    let clientsSort = new URLSearchParams(window.location.search).get('sort') === 'agency' ? 'agency' : '';
+    const requestsSortBtn = document.getElementById('requestsSortBtn');
+    const requestsSortIndicator = document.getElementById('requestsSortIndicator');
+    const ordersSortBtn = document.getElementById('ordersSortBtn');
+    const ordersSortIndicator = document.getElementById('ordersSortIndicator');
+    let clientsSort = new URLSearchParams(window.location.search).get('sort') || '';
     let clientsOffset = document.querySelectorAll('#clientsTableBody tr[data-client-id]').length;
 
     function renderClientsSortState() {
-        if (!agencySortBtn) return;
+        [
+            ['agency', agencySortBtn, agencySortIndicator],
+            ['requests', requestsSortBtn, requestsSortIndicator],
+            ['orders', ordersSortBtn, ordersSortIndicator],
+        ].forEach(function(entry) {
+            const active = clientsSort === entry[0];
 
-        const active = clientsSort === 'agency';
-        agencySortBtn.classList.toggle('clients-table__sortable--active', active);
-        agencySortBtn.setAttribute('aria-sort', active ? 'ascending' : 'none');
+            if (entry[1]) {
+                entry[1].classList.toggle('clients-table__sortable--active', active);
+                entry[1].setAttribute('aria-sort', active ? 'descending' : 'none');
+            }
 
-        if (agencySortIndicator) {
-            agencySortIndicator.textContent = active ? '↑' : '';
-        }
+            if (entry[2]) {
+                entry[2].textContent = active ? '↓' : '';
+            }
+        });
     }
 
-    if (agencySortBtn) {
-        const toggleSort = function() {
-            clientsSort = clientsSort === 'agency' ? '' : 'agency';
+    function bindSortButton(button, key) {
+        if (!button) return;
+
+        const toggle = function() {
+            clientsSort = clientsSort === key ? '' : key;
             renderClientsSortState();
             loadClientsLive();
         };
 
-        agencySortBtn.addEventListener('click', toggleSort);
-        agencySortBtn.addEventListener('keydown', function(e) {
+        button.addEventListener('click', toggle);
+        button.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                toggleSort();
+                toggle();
             }
         });
     }
+
+    bindSortButton(agencySortBtn, 'agency');
+    bindSortButton(requestsSortBtn, 'requests');
+    bindSortButton(ordersSortBtn, 'orders');
 
     renderClientsSortState();
 
@@ -1405,16 +1430,17 @@
                     if (!rows.length) {
                         tableBody.innerHTML = `
                             <tr>
-                                <td colspan="8" class="load-more__empty">Клиенты не найдены</td>
+                                <td colspan="9" class="load-more__empty">Клиенты не найдены</td>
                             </tr>
                         `;
                     } else {
-                        tableBody.innerHTML = rows.map(clientRow).join('');
+                        tableBody.innerHTML = numberedRows(rows);
                     }
                 } else if (rows.length) {
-                    tableBody.insertAdjacentHTML('beforeend', rows.map(clientRow).join(''));
+                    tableBody.insertAdjacentHTML('beforeend', numberedRows(rows));
                 }
 
+                updateRowNumbers();
                 clientsOffset += rows.length;
 
                 if (clientsLoadMore) {
@@ -1440,19 +1466,39 @@
             });
     }
 
-    function clientRow(client) {
+    function numberedRows(rows) {
+        return rows.map(function(client, index) {
+            return clientRow(client, clientsOffset + index + 1);
+        }).join('');
+    }
+
+    function updateRowNumbers() {
+        tableBody.querySelectorAll('tr[data-client-id]').forEach(function(row, index) {
+            const cell = row.querySelector('.clients-table__index');
+
+            if (cell) cell.textContent = String(index + 1);
+        });
+    }
+
+    function clientRow(client, index) {
+        const telegram = (client.telegram || '').replace(/^@/, '');
+        const telegramHtml = telegram
+            ? `<a href="https://t.me/${encodeURIComponent(telegram)}" target="_blank" rel="noopener">@${escapeHtml(telegram)}</a>`
+            : '—';
+
         return `
             <tr data-client-id="${client.id}">
-                <td>${escapeHtml(client.full_name)}</td>
-                <td>${escapeHtml(client.phone || '—')}</td>
-                <td>${escapeHtml(client.agency || '—')}</td>
+                <td class="clients-table__index">${index}</td>
+                <td class="clients-table__name">${escapeHtml(client.full_name)}</td>
+                <td class="clients-table__phone">${escapeHtml(client.phone || '—')}</td>
+                <td class="clients-table__telegram">${telegramHtml}</td>
+                <td class="clients-table__agency">${escapeHtml(client.agency || '—')}</td>
                 <td class="clients-table__cities" title="${escapeHtml(client.city || '')}">${escapeHtml(client.city || '—')}</td>
                 <td>
                     <span class="rating-badge rating-badge--${client.rating}">${escapeHtml(client.rating_display)}</span>
                 </td>
-                <td>${client.requests_count || 0}</td>
-                <td>${client.orders_count || 0}</td>
-                <td><button class="view-link" data-id="${client.id}">Подробнее</button></td>
+                <td class="clients-table__num">${client.requests_count || 0}</td>
+                <td class="clients-table__num">${client.orders_count || 0}</td>
             </tr>
         `;
     }
@@ -1475,6 +1521,129 @@
         cityFilter.addEventListener('change', function() {
             loadClientsLive();
         });
+    }
+
+    function mountCityFilterPicker() {
+        const input = document.getElementById('cityFilterSearch');
+        const hidden = document.getElementById('cityFilter');
+        const dropdown = document.getElementById('cityFilterDropdown');
+
+        if (!input || !hidden || !dropdown || input.dataset.mounted === '1') return;
+
+        input.dataset.mounted = '1';
+
+        let items = [];
+        let index = -1;
+        let timer = null;
+        let counter = 0;
+
+        function close() {
+            dropdown.classList.remove('open');
+            dropdown.innerHTML = '';
+            index = -1;
+        }
+
+        function pick(id, name) {
+            hidden.value = id ? String(id) : 'all';
+            input.value = name || '';
+            close();
+            loadClientsLive();
+        }
+
+        function render() {
+            const options = [{ id: '', name: 'Все города' }].concat(items);
+
+            dropdown.innerHTML = options.map(function(item, position) {
+                const active = position === index ? ' active' : '';
+
+                return `<button type="button" class="city-selector__option${active}" data-city-id="${item.id}" data-city-name="${escapeHtml(item.name)}">${escapeHtml(item.name)}</button>`;
+            }).join('');
+
+            dropdown.classList.add('open');
+
+            dropdown.querySelectorAll('[data-city-id]').forEach(function(button) {
+                button.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    pick(this.dataset.cityId, this.dataset.cityName);
+                });
+            });
+        }
+
+        function load() {
+            const currentRequest = ++counter;
+
+            fetch('/cities/list/')
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (currentRequest !== counter) return;
+
+                    const all = (data.cities || []).map(function(item) {
+                        return { id: item.id, name: item.name };
+                    });
+
+                    const query = input.value.trim().toLowerCase().replace('ё', 'е');
+
+                    items = query
+                        ? all.filter(function(item) {
+                            return item.name.toLowerCase().replace('ё', 'е').includes(query);
+                        })
+                        : all;
+
+                    index = -1;
+                    render();
+                })
+                .catch(function(error) { console.error(error); });
+        }
+
+        input.addEventListener('focus', function() {
+            clearTimeout(timer);
+            timer = setTimeout(load, 60);
+        });
+
+        input.addEventListener('input', function() {
+            if (!this.value.trim()) {
+                hidden.value = 'all';
+            }
+
+            clearTimeout(timer);
+            timer = setTimeout(load, 150);
+        });
+
+        input.addEventListener('keydown', function(e) {
+            const options = dropdown.querySelectorAll('.city-selector__option');
+
+            if (e.key === 'ArrowDown' && options.length) {
+                e.preventDefault();
+                index = (index + 1) % options.length;
+                options.forEach(function(option, position) {
+                    option.classList.toggle('active', position === index);
+                });
+            } else if (e.key === 'ArrowUp' && options.length) {
+                e.preventDefault();
+                index = index <= 0 ? options.length - 1 : index - 1;
+                options.forEach(function(option, position) {
+                    option.classList.toggle('active', position === index);
+                });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const active = options[index >= 0 ? index : 0];
+                if (active) pick(active.dataset.cityId, active.dataset.cityName);
+            } else if (e.key === 'Escape') {
+                e.stopPropagation();
+                close();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            const box = document.getElementById('cityFilterBox');
+
+            if (box && !box.contains(e.target)) close();
+        });
+
+        if (hidden && hidden.value && hidden.value !== 'all') {
+            const preset = document.querySelector('#cityFilter option[value="' + hidden.value + '"]');
+            input.value = preset ? preset.textContent : '';
+        }
     }
 
     let searchTimeout;

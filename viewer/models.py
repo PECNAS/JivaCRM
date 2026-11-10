@@ -556,6 +556,7 @@ class Client(models.Model):
     CLIENT_TYPE_CHOICES = [
         ('organizer', 'Организатор'),
         ('agency', 'Агентство'),
+        ('unknown', '—'),
     ]
 
     RATING_CHOICES = [
