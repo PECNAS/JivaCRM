@@ -489,6 +489,32 @@
         window.UI.attachPhoneMask(phoneInput);
     }
 
+    if (editPhoneInput && window.UI && window.UI.attachPhoneMask) {
+        window.UI.attachPhoneMask(editPhoneInput);
+    }
+
+    if (duplicatePhoneInput && window.UI && window.UI.attachPhoneMask) {
+        window.UI.attachPhoneMask(duplicatePhoneInput);
+    }
+
+    function attachOpenModalMasks() {
+        ['addClientModal', 'duplicateModal'].forEach(function(modalId) {
+            const modal = document.getElementById(modalId);
+
+            if (!modal || !window.UI || !window.UI.attachAllPhoneMasks) return;
+
+            const observer = new MutationObserver(function() {
+                if (modal.classList.contains('active')) {
+                    window.UI.attachAllPhoneMasks(modal);
+                }
+            });
+
+            observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+        });
+    }
+
+    attachOpenModalMasks();
+
     function applyContactDetection(input, typeField) {
         if (!input) return;
 

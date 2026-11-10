@@ -228,8 +228,8 @@ def import_orders():
                 order=order,
                 employee=employee,
                 employee_name=employee.display_name,
-                employee_role=role_label(employee.role),
-                role_code=employee.role,
+                employee_role=role_label(employee.primary_role()),
+                role_code=employee.primary_role(),
                 payment=entry.get('payment') or default_rate,
                 comment=(entry.get('comment') or '').strip(),
             )

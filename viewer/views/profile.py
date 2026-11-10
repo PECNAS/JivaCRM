@@ -84,7 +84,7 @@ class ProfileDetailView(View):
 			return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
 		card = None
-		if employee.role in ARTIST_ROLES:
+		if employee.is_artist():
 			card_obj, _ = ArtistCard.objects.get_or_create(employee=employee)
 			card = serialize_artist_card(card_obj)
 
@@ -96,8 +96,8 @@ class ProfileDetailView(View):
 			'full_name': employee.full_name,
 			'nickname': employee.nickname or '',
 			'display_name': employee.display_name,
-			'role': employee.role,
-			'role_display': role_label(employee.role),
+			'role': employee.primary_role(),
+			'role_display': role_label(employee.primary_role()),
 			'phone': employee.phone or '',
 			'telegram': employee.telegram_username or '',
 			'is_active': employee.is_active,
@@ -112,7 +112,7 @@ class ProfileDetailView(View):
 			'passport_registration': employee.passport_registration or '',
 			'passport_inn': employee.passport_inn or '',
 			'passport_snils': employee.passport_snils or '',
-			'is_artist': employee.role in ARTIST_ROLES,
+			'is_artist': employee.is_artist(),
 			'artist_card': card,
 			'available_shows': [{'id': s.id, 'name': s.name} for s in shows],
 		})
@@ -166,7 +166,7 @@ class ProfileUpdateView(View):
 
 		employee.save()
 
-		if employee.role in ARTIST_ROLES:
+		if employee.is_artist():
 			card, _ = ArtistCard.objects.get_or_create(employee=employee)
 
 			if 'weight' in request.POST:

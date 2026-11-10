@@ -98,14 +98,14 @@ def serialize_employee(employee_obj, with_card=False):
         'full_name': employee_obj.full_name,
         'nickname': employee_obj.nickname or '',
         'display_name': employee_obj.display_name,
-        'role': employee_obj.role,
-        'role_label': role_label(employee_obj.role),
-        'role_display': role_label(employee_obj.role),
+        'role': employee_obj.primary_role(),
+        'role_label': role_label(employee_obj.primary_role()),
+        'role_display': role_label(employee_obj.primary_role()),
         'role_codes': employee_obj.role_codes(),
         'phone': normalize_phone_display(employee_obj.phone),
         'telegram': employee_obj.telegram_username or '',
         'is_active': employee_obj.is_active,
-        'is_artist': employee_obj.role in ARTIST_ROLES,
+        'is_artist': employee_obj.is_artist(),
         'rzd_bonus_number': employee_obj.rzd_bonus_number or '',
         'instagram': employee_obj.instagram or '',
         'international_passport_series': employee_obj.international_passport_series or '',
@@ -123,7 +123,7 @@ def serialize_employee(employee_obj, with_card=False):
     if with_card:
         card = None
 
-        if employee_obj.role in ARTIST_ROLES:
+        if employee_obj.is_artist():
             card_obj, _ = ArtistCard.objects.get_or_create(employee=employee_obj)
             card = serialize_artist_card(card_obj)
 
@@ -254,7 +254,7 @@ class EmployeesView(View):
             if User.objects.filter(username=username).exists():
                 return JsonResponse({'error': 'Пользователь с таким логином уже существует'}, status=400)
 
-            if employee.role not in [ROLE_SENIOR_ADMIN, 'boss'] and not employee.can_manage_roles():
+            if not employee.can_manage_roles():
                 if 'senior_admin' in role_codes or 'boss' in role_codes:
                     return JsonResponse({'error': 'Только старший администратор может назначать эту роль'}, status=403)
 
@@ -444,7 +444,7 @@ class EmployeeDeleteView(View):
             if employee_obj.user.id == request.user.id:
                 return JsonResponse({'error': 'Нельзя удалить самого себя'}, status=400)
 
-            if employee_obj.role == 'senior_admin' and current_employee.role != 'senior_admin':
+            if employee_obj.primary_role() == 'senior_admin' and current_employee.primary_role() != 'senior_admin':
                 return JsonResponse({'error': 'Нельзя удалить старшего администратора'}, status=403)
 
             user = employee_obj.user
@@ -511,9 +511,9 @@ class EmployeeListView(View):
                 'nickname': emp.nickname or '',
                 'display_name': emp.display_name,
                 'username': emp.user.username,
-                'role': emp.role,
-                'role_label': role_label(emp.role),
-                'role_display': role_label(emp.role),
+                'role': emp.primary_role(),
+                'role_label': role_label(emp.primary_role()),
+                'role_display': role_label(emp.primary_role()),
                 'role_codes': emp.role_codes(),
                 'phone': normalize_phone_display(emp.phone),
                 'is_active': emp.is_active,
@@ -573,7 +573,7 @@ class ArtistCardUpdateView(View):
 
         try:
             employee_obj = get_object_or_404(Employee, id=employee_id)
-            if employee_obj.role not in ARTIST_ROLES:
+            if not employee_obj.is_artist():
                 return JsonResponse({'error': 'Карточка доступна только для артистов'}, status=400)
 
             card, _ = ArtistCard.objects.get_or_create(employee=employee_obj)
@@ -616,7 +616,7 @@ class ArtistCardDetailView(View):
 
         try:
             employee_obj = get_object_or_404(Employee, id=employee_id)
-            if employee_obj.role not in ARTIST_ROLES:
+            if not employee_obj.is_artist():
                 return JsonResponse({'error': 'Карточка доступна только для артистов'}, status=400)
 
             card, _ = ArtistCard.objects.get_or_create(employee=employee_obj)

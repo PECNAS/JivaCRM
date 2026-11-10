@@ -297,7 +297,7 @@
                 window.UI.showToast('Ссылка на заказ скопирована');
             })
             .catch(function() {
-                window.UI.showToast('Не удалось скопировать ссылку');
+                showShareLink(orderId);
             });
     }
 
@@ -306,8 +306,7 @@
             return;
         }
 
-        markOrderViewed(order.id, order.updated_at);
-        renderEventModal(order);
+        handleOrderOpen(order.id);
     }
 
     function openOrderByLink(orderId, attempts) {
@@ -318,11 +317,60 @@
             return;
         }
 
-        if (attempts <= 0) return;
+        if (attempts <= 0) {
+            window.UI.showToast('Заказ не найден в расписании');
+            return;
+        }
 
-        setTimeout(function() {
+        fetchOrdersForLink(function() {
             openOrderByLink(orderId, attempts - 1);
-        }, 300);
+        });
+    }
+
+    function showShareLink(orderId) {
+        const link = orderShareLink(orderId);
+
+        window.UI.showToast('Ссылка на заказ скопирована');
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay share-link';
+        modal.innerHTML = `
+            <div class="modal modal--confirm">
+                <div class="modal__header">
+                    <h2 class="modal__title">Ссылка на заказ</h2>
+                    <button type="button" class="modal__close" data-share-close>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal__body">
+                    <p class="confirm-text">Скопируйте ссылку вручную:</p>
+                    <input type="text" class="form-input" data-share-input value="${window.UI.escapeHtml(link)}" readonly>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-primary" data-share-close>Готово</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.classList.add('active');
+
+        const input = modal.querySelector('[data-share-input]');
+        input.focus();
+        input.select();
+
+        modal.querySelectorAll('[data-share-close]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                modal.remove();
+            });
+        });
+
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.remove();
+        });
     }
 
     function openOrderEditor(orderId) {
@@ -1039,6 +1087,14 @@
                 window.location.href = '/clients/?open_client=' + encodeURIComponent(this.dataset.clientId);
             });
         });
+
+        dashboardList.querySelectorAll('[data-order-share]').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                copyOrderLink(parseInt(this.dataset.orderShare, 10));
+            });
+        });
     }
 
     function renderOrderRow(order, extra) {
@@ -1104,6 +1160,12 @@
                     <span class="order-row__cell order-row__cost">${costCell}</span>
                     <span class="order-row__manager-cell">${managerHtml}</span>
                     ${checklistLabel ? `<span class="order-row__checklist" title="Чек-лист">${checklistLabel}</span>` : ''}
+                    <button type="button" class="order-row__share" data-order-share="${order.id}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         `;
@@ -1201,6 +1263,12 @@
                                     <div class="calendar-event__client">${escapeHtml(e.client || '—')}</div>
                                     ${servicesLabel ? `<div class="calendar-event__service">${escapeHtml(servicesLabel)}</div>` : ''}
                                     ${costHtml}
+                                    <button type="button" class="calendar-event__share" data-order-share="${e.id}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                        </svg>
+                                    </button>
                                 </div>
                             `;
                         }).join('') +
@@ -1233,6 +1301,16 @@
 
                 if (id) handleOrderOpen(id);
             });
+
+            const shareBtn = ev.querySelector('[data-order-share]');
+
+            if (shareBtn) {
+                shareBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    copyOrderLink(parseInt(this.dataset.orderShare, 10));
+                });
+            }
 
             ev.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
@@ -1317,12 +1395,31 @@
         return myOrdersOnlyToggle.checked;
     }
 
-    function loadOrders() {
-        let url = '/orders/list/?status=all';
-
+    function ordersUrl() {
         if (isOnlyMyOrders()) {
-            url = '/schedule/my-orders/';
+            return '/schedule/my-orders/';
         }
+
+        return '/orders/list/?status=all';
+    }
+
+    function fetchOrdersForLink(callback) {
+        fetch('/orders/list/?status=all', { cache: 'no-store' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.error && data.orders) {
+                    currentOrders = data.orders;
+                    statusColors = data.colors || {};
+                }
+            })
+            .catch(function() {})
+            .finally(function() {
+                if (typeof callback === 'function') callback();
+            });
+    }
+
+    function loadOrders() {
+        const url = ordersUrl();
 
         fetch(url, { cache: 'no-store' })
             .then(r => r.json())
@@ -1355,11 +1452,7 @@
             if (openModal) return;
         }
 
-        let url = '/orders/list/?status=all';
-
-        if (isOnlyMyOrders()) {
-            url = '/schedule/my-orders/';
-        }
+        const url = ordersUrl();
 
         fetch(url, { cache: 'no-store' })
             .then(r => r.json())
@@ -1822,28 +1915,14 @@
     const startParams = new URLSearchParams(window.location.search);
     const openingOrderId = parseInt(startParams.get('open_order') || startParams.get('order'), 10);
 
-    if (!isNaN(openingOrderId)) {
-        window.history.replaceState({}, '', window.location.pathname);
-
-        if (startParams.get('order')) {
-            setTimeout(function() {
-                openOrderByLink(openingOrderId, 20);
-            }, 0);
-        } else {
-            let attempts = 20;
-
-            const openWhenReady = function() {
-                if (openOrderEditor(openingOrderId) || attempts <= 0) return;
-
-                attempts -= 1;
-                setTimeout(openWhenReady, 150);
-            };
-
-            openWhenReady();
-        }
-    }
-
     applyInitialView();
     loadOrders();
     startAutoRefresh();
+
+    if (!isNaN(openingOrderId)) {
+        window.history.replaceState({}, '', window.location.pathname);
+
+        openOrderByLink(openingOrderId, 10);
+        return;
+    }
 })();

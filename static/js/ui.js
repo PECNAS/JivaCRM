@@ -221,18 +221,17 @@
     };
 
     const PHONE_MASK = '+7 (###) ###-##-##';
-    const PHONE_EMPTY = '+7 (';
 
     function subscriberDigits(value) {
         const text = String(value || '').trim();
         let digits = text.replace(/\D/g, '');
 
-        const hasPrefix = text.startsWith('+7') || text.startsWith('7') || text.startsWith('8');
+        if (!digits) {
+            return '';
+        }
 
-        if (hasPrefix && digits.length > 0) {
-            digits = digits.slice(1);
-        } else if (digits.length === 11) {
-            digits = digits.slice(1);
+        if (digits.length > 10) {
+            digits = digits.slice(-10);
         }
 
         return digits.slice(0, 10);
@@ -264,22 +263,13 @@
         return result;
     }
 
-    function caretForDigits(count) {
-        const total = Math.max(0, Math.min(count, 10));
-
-        if (total === 0) {
-            return PHONE_EMPTY.length;
-        }
-
-        return formatPhone('7' + '9'.repeat(total)).length;
-    }
-
     function setPhoneValue(input, value) {
         if (!input) return;
 
         const digits = subscriberDigits(value);
 
         input.dataset.phoneDigits = digits;
+        input.dataset.phoneRaw = digits;
         input.value = digits ? formatPhone(digits) : '';
     }
 
@@ -290,176 +280,54 @@
 
         input.dataset.phoneMask = '1';
         input.setAttribute('type', 'tel');
-        input.setAttribute('inputmode', 'numeric');
+        input.setAttribute('inputmode', 'tel');
         input.setAttribute('autocomplete', 'tel');
-        input.setAttribute('maxlength', '18');
+        input.setAttribute('maxlength', '30');
 
-        function caretPosition(digitsBefore) {
-            const total = Math.max(0, Math.min(digitsBefore, 10));
-
-            if (total === 0) {
-                return PHONE_EMPTY.length;
-            }
-
-            return formatPhone('7' + '9'.repeat(total)).length;
+        function commit(digits) {
+            input.dataset.phoneDigits = digits;
+            input.dataset.phoneRaw = digits;
         }
-
-        function applyDigits(digits, digitsBefore) {
-            const limited = digits.slice(0, 10);
-
-            input.dataset.phoneDigits = limited;
-            input.value = limited ? formatPhone(limited) : '';
-
-            if (!limited) {
-                return;
-            }
-
-            const position = caretPosition(Math.min(digitsBefore, limited.length));
-
-            try {
-                input.setSelectionRange(position, position);
-            } catch (error) {}
-        }
-
-        input.addEventListener('keydown', function(e) {
-            if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-            if (e.key === 'Backspace') {
-                const caretStart = input.selectionStart || 0;
-                const caretEnd = input.selectionEnd || 0;
-
-                if (caretStart !== caretEnd) {
-                    return;
-                }
-
-                const value = input.value;
-                const charBefore = value.slice(0, caretStart).slice(-1);
-
-                if (!charBefore) {
-                    return;
-                }
-
-                if (/\d/.test(charBefore)) {
-                    const digits = subscriberDigits(value.slice(0, caretStart));
-                    const rest = subscriberDigits(value.slice(caretStart));
-                    const next = (digits.slice(0, -1) + rest).slice(0, 10);
-
-                    if (!next) {
-                        e.preventDefault();
-                        input.value = '';
-                        input.dataset.phoneDigits = '';
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                        return;
-                    }
-
-                    e.preventDefault();
-                    applyDigits(next, digits.length - 1);
-                    return;
-                }
-
-                e.preventDefault();
-
-                const digits = subscriberDigits(value);
-                const digitsBefore = subscriberDigits(value.slice(0, caretStart)).length;
-                const next = digits.slice(0, Math.max(digitsBefore - 1, 0)) + digits.slice(digitsBefore);
-
-                applyDigits(next, Math.max(digitsBefore - 1, 0));
-                return;
-            }
-
-            if (e.key === 'Delete') {
-                const caretStart = input.selectionStart || 0;
-                const caretEnd = input.selectionEnd || 0;
-
-                if (caretStart !== caretEnd) {
-                    return;
-                }
-
-                const value = input.value;
-                const charAfter = value.slice(caretStart).slice(0, 1);
-
-                if (!charAfter) {
-                    return;
-                }
-
-                e.preventDefault();
-
-                const digits = subscriberDigits(value);
-                const digitsBefore = subscriberDigits(value.slice(0, caretStart)).length;
-                const next = digits.slice(0, digitsBefore) + digits.slice(digitsBefore + 1);
-
-                applyDigits(next, digitsBefore);
-                return;
-            }
-
-            const allowed = [
-                'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight',
-                'ArrowUp', 'ArrowDown', 'Home', 'End',
-            ];
-
-            if (allowed.indexOf(e.key) >= 0) return;
-
-            if (!/^\d$/.test(e.key)) {
-                e.preventDefault();
-            }
-        });
 
         input.addEventListener('input', function() {
-            const caret = input.selectionStart || 0;
-            const digitsBefore = subscriberDigits(input.value.slice(0, caret)).length;
-            const digits = subscriberDigits(input.value);
-
-            input.dataset.phoneDigits = digits;
-            input.value = digits ? formatPhone(digits) : '';
-
-            if (!input.value) {
-                return;
-            }
-
-            const position = caretPosition(Math.min(digitsBefore, digits.length));
-
-            try {
-                input.setSelectionRange(position, position);
-            } catch (error) {}
+            commit(input.value.replace(/\D/g, ''));
         });
 
-        input.addEventListener('paste', function(e) {
-            const clipboard = e.clipboardData || window.clipboardData;
-
-            if (!clipboard) return;
-
-            const text = clipboard.getData('text');
-
-            if (!text) return;
-
-            e.preventDefault();
-
-            const digits = subscriberDigits(text);
-
-            applyDigits(digits, digits.length);
+        input.addEventListener('paste', function() {
+            setTimeout(function() {
+                commit(input.value.replace(/\D/g, ''));
+            }, 0);
         });
 
-        input.addEventListener('focus', function() {
-            if (!input.value) {
-                input.value = PHONE_EMPTY;
-
-                try {
-                    input.setSelectionRange(PHONE_EMPTY.length, PHONE_EMPTY.length);
-                } catch (error) {}
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                input.blur();
             }
         });
 
         input.addEventListener('blur', function() {
             const digits = subscriberDigits(input.value);
 
-            input.dataset.phoneDigits = digits;
+            commit(digits);
             input.value = digits ? formatPhone(digits) : '';
+        });
+
+        input.addEventListener('focus', function() {
+            if (!input.value) return;
+
+            if (input.dataset.phoneDigits) {
+                input.value = String(input.dataset.phoneDigits).replace(/\D/g, '');
+
+                try {
+                    input.setSelectionRange(input.value.length, input.value.length);
+                } catch (error) {}
+            }
         });
 
         if (input.value) {
             const digits = subscriberDigits(input.value);
 
-            input.dataset.phoneDigits = digits;
+            commit(digits);
             input.value = digits ? formatPhone(digits) : '';
         }
     }

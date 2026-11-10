@@ -13,9 +13,15 @@ from ..models import (
     Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City,
     CityGroup, CalendarColor, PriceRisePeriod, OrderExpense,
     OrderPayment, ChecklistTemplate, ChecklistItem, OrderFeedback, OrderShowTemplate,
-    ROLE_LABELS, ROLE_CHOICES, ARTIST_ROLES,
+    ROLE_LABELS, ROLE_CHOICES, ARTIST_ROLES, ROLE_TECHNICIAN, ROLE_CHOREOGRAPHER, ROLE_PRODUCTION,
 )
 from .helpers import format_date_short, format_money, parse_money, role_label
+
+ORDER_VIEWER_ROLES = [*ARTIST_ROLES, ROLE_TECHNICIAN, ROLE_CHOREOGRAPHER, ROLE_PRODUCTION]
+
+
+def can_view_orders(employee):
+    return employee.can_manage_orders() or employee.primary_role() in ORDER_VIEWER_ROLES
 from .money_service import sync_order_balance, refresh_employee_accrual
 from .checklist_service import attach_for_order, attach_template, serialize_checklist
 
@@ -288,7 +294,7 @@ class OrdersView(View):
             return redirect("login")
         try:
             employee = request.user.employee_profile
-            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer', 'technician', 'choreographer', 'production']:
+            if not can_view_orders(employee):
                 messages.error(request, 'У вас недостаточно прав для просмотра заказов')
                 return redirect('index')
         except:
@@ -429,7 +435,7 @@ class OrderDetailView(View):
             return JsonResponse({'error': 'Не авторизован'}, status=401)
         try:
             employee = request.user.employee_profile
-            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer', 'technician', 'choreographer', 'production']:
+            if not can_view_orders(employee):
                 return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
@@ -935,7 +941,7 @@ class OrderExpenseView(View):
         except Employee.DoesNotExist:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
-        if not employee.can_manage_orders() and employee.role not in ['technician', 'artist', 'choreographer', 'production']:
+        if not can_view_orders(employee):
             return JsonResponse({'error': 'Недостаточно прав'}, status=403)
 
         order = Order.objects.filter(id=order_id).first()
@@ -1029,7 +1035,7 @@ class OrderListView(View):
             return JsonResponse({'error': 'Не авторизован'}, status=401)
         try:
             employee = request.user.employee_profile
-            if not employee.can_manage_orders() and employee.role not in ['artist', 'trainer', 'technician', 'choreographer', 'production']:
+            if not can_view_orders(employee):
                 return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)

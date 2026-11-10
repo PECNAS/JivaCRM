@@ -647,6 +647,8 @@
     function openCopyModal() {
         if (!currentOrderId || !copyOrderModal) return;
 
+        copyOrderModal.classList.add('modal-overlay--stacked');
+        copyOrderModal.style.zIndex = '2600';
         copyOrderModal.classList.add('active');
         copyOrderDate.value = '';
         copyOrderKeepDate.checked = false;
@@ -672,7 +674,11 @@
     }
 
     function closeCopyModal() {
-        if (copyOrderModal) copyOrderModal.classList.remove('active');
+        if (copyOrderModal) {
+            copyOrderModal.classList.remove('active');
+            copyOrderModal.classList.remove('modal-overlay--stacked');
+            copyOrderModal.style.zIndex = '';
+        }
     }
 
     if (copyOrderBtn) {

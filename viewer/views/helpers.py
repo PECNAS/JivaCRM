@@ -196,8 +196,8 @@ def employee_payload(employee, include_role=True, include_nickname=True):
         data['nickname'] = employee.nickname or ''
 
     if include_role:
-        data['role'] = employee.role
-        data['role_label'] = role_label(employee.role)
+        data['role'] = employee.primary_role()
+        data['role_label'] = role_label(employee.primary_role())
         data['roles'] = [
             {'id': item.id, 'name': item.name, 'code': item.code or ''}
             for item in employee.roles.all()

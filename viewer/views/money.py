@@ -50,8 +50,8 @@ def serialize_employee_options():
         data.append({
             'id': employee.id,
             'name': employee.display_name,
-            'role': employee.role,
-            'role_display': role_label(employee.role),
+            'role': employee.primary_role(),
+            'role_display': role_label(employee.primary_role()),
             'is_active': employee.is_active,
         })
 
@@ -165,7 +165,7 @@ def serialize_order_row(order):
         employees.append({
             'employee_id': item.employee_id,
             'employee_name': item.employee.display_name,
-            'role_display': role_label(item.employee.role),
+            'role_display': role_label(item.employee.primary_role()),
             'payment': float(item.payment),
             'is_overridden': item.is_overridden,
         })
@@ -382,7 +382,7 @@ def build_summary(start, end):
         rows[employee.id] = {
             'employee_id': employee.id,
             'employee_name': employee.display_name,
-            'role_display': role_label(employee.role),
+            'role_display': role_label(employee.primary_role()),
             'is_active': employee.is_active,
             'salary': 0.0,
             'hours': 0.0,
@@ -487,7 +487,7 @@ def build_payroll(start, end):
         rows[employee.id] = {
             'employee_id': employee.id,
             'employee_name': employee.display_name,
-            'role_display': role_label(employee.role),
+            'role_display': role_label(employee.primary_role()),
             'cells': {key: 0.0 for key in PAYROLL_COLUMNS},
             'accrued': 0.0,
             'paid': 0.0,
@@ -654,7 +654,7 @@ class MoneyEmployeeDetailView(View):
             'employee': {
                 'id': target.id,
                 'name': target.display_name,
-                'role_display': role_label(target.role),
+                'role_display': role_label(target.primary_role()),
             },
             'range_label': f'{start.strftime("%d.%m.%Y")} — {end.strftime("%d.%m.%Y")}',
             'accrued': float(accrued),

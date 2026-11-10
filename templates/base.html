@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     {% block css %}{% endblock %}
 </head>
-<body data-role="{{ user.employee_profile.role|default:'' }}" data-can-manage-orders="{{ user.employee_profile.can_manage_orders|yesno:'1,0' }}" data-can-edit-checklists="{{ user.employee_profile.can_edit_checklists|yesno:'1,0' }}" data-can-manage-feedback="{{ user.employee_profile.can_manage_feedback|yesno:'1,0' }}">
+<body data-role="{{ user.employee_profile.primary_role|default:'' }}" data-can-manage-orders="{{ user.employee_profile.can_manage_orders|yesno:'1,0' }}" data-can-edit-checklists="{{ user.employee_profile.can_edit_checklists|yesno:'1,0' }}" data-can-manage-feedback="{{ user.employee_profile.can_manage_feedback|yesno:'1,0' }}">
     <header class="navbar">
         <div class="container navbar__container">
             <a href="{% url 'schedule' %}" class="navbar__brand">

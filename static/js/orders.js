@@ -986,40 +986,6 @@
         agencyGroup.style.display = typeField.value === 'agency' ? 'block' : 'none';
     }
 
-    function newClientPhoneMask(input) {
-        let digits = input.value.replace(/\D/g, '');
-
-        if (digits.length > 0 && digits[0] !== '7' && digits[0] !== '8') {
-            digits = '7' + digits;
-        }
-
-        if (digits.length > 0 && digits[0] === '8') {
-            digits = '7' + digits.slice(1);
-        }
-
-        let formatted = '';
-
-        if (digits.length > 0) {
-            formatted = '+7';
-            const remaining = digits.slice(1);
-
-            if (remaining.length > 0) {
-                formatted += ' (' + remaining.slice(0, 3);
-                if (remaining.length > 3) {
-                    formatted += ') ' + remaining.slice(3, 6);
-                    if (remaining.length > 6) {
-                        formatted += '-' + remaining.slice(6, 8);
-                        if (remaining.length > 8) {
-                            formatted += '-' + remaining.slice(8, 10);
-                        }
-                    }
-                }
-            }
-        }
-
-        input.value = formatted;
-    }
-
     const newClientTypeField = document.getElementById('newClientType');
     const newClientPhoneField = document.getElementById('newClientPhone');
 
@@ -1593,13 +1559,9 @@
     }
 
     if (newClientPhoneField) {
-        newClientPhoneField.addEventListener('input', function() { newClientPhoneMask(this); });
-        newClientPhoneField.addEventListener('focus', function() {
-            if (this.value === '') this.value = '+7';
-        });
-        newClientPhoneField.addEventListener('blur', function() {
-            if (this.value === '+7') this.value = '';
-        });
+        if (window.UI && window.UI.attachPhoneMask) {
+            window.UI.attachPhoneMask(newClientPhoneField);
+        }
     }
 
     function closeCreateClientModal() {

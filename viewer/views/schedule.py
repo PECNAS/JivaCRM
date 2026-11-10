@@ -123,7 +123,7 @@ class ScheduleView(View):
         except:
             return redirect('logout')
 
-        is_artist_or_tech = employee.role in ARTIST_ROLES or employee.role == ROLE_TECHNICIAN
+        is_artist_or_tech = employee.primary_role() in ARTIST_ROLES or employee.primary_role() == ROLE_TECHNICIAN
 
         context = {
             'employee': employee,

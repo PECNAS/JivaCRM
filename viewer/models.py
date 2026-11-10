@@ -39,6 +39,17 @@ NON_ARTIST_ROLES = [
 ]
 CHECKLIST_EDITOR_ROLES = NON_ARTIST_ROLES
 
+ROLE_PRIORITY = [
+    ROLE_BOSS,
+    ROLE_SENIOR_ADMIN,
+    ROLE_MANAGER,
+    ROLE_PRODUCTION,
+    ROLE_SALES_MANAGER,
+    ROLE_CHOREOGRAPHER,
+    ROLE_TECHNICIAN,
+    ROLE_ARTIST,
+]
+
 
 def normalize_text(value):
     return ' '.join((value or '').lower().replace('ё', 'е').split())
@@ -373,69 +384,84 @@ class Employee(models.Model):
 
         return codes
 
+    def primary_role(self):
+        codes = [code for code in self.role_codes() if code]
+
+        for role in ROLE_PRIORITY:
+            if role in codes:
+                return role
+
+        for role_obj in self.roles.all():
+            code = (role_obj.code or '').strip()
+            if code:
+                return code
+
+        return self.role or ''
+
     def has_role(self, *codes):
         available = self.role_codes()
         return any(code in available for code in codes)
 
     def is_artist(self):
-        return self.role in ARTIST_ROLES
+        return self.primary_role() in ARTIST_ROLES
 
     def is_top(self):
-        return self.role in TOP_ROLES
+        return self.primary_role() in TOP_ROLES
 
     def can_see_rates(self):
-        return self.role in TOP_ROLES
+        return self.primary_role() in TOP_ROLES
 
     def can_see_costs(self):
-        return self.role not in ARTIST_ROLES and self.role != ROLE_TECHNICIAN
+        role = self.primary_role()
+        return role not in ARTIST_ROLES and role != ROLE_TECHNICIAN
 
     def can_manage_roles(self):
-        return self.role in TOP_ROLES
+        return self.primary_role() in TOP_ROLES
 
     def can_edit_checklists(self):
         return True
 
     def can_build_checklists(self):
-        return self.role in CHECKLIST_EDITOR_ROLES
+        return self.primary_role() in CHECKLIST_EDITOR_ROLES
 
     def can_manage_employees(self):
-        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
 
     def can_manage_clients(self):
-        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_SALES_MANAGER]
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_SALES_MANAGER]
 
     def can_manage_orders(self):
-        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_SALES_MANAGER, ROLE_PRODUCTION]
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_SALES_MANAGER, ROLE_PRODUCTION]
 
     def can_view_schedule(self):
-        return self.role in [
+        return self.primary_role() in [
             ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_SALES_MANAGER, ROLE_PRODUCTION,
             ROLE_CHOREOGRAPHER, ROLE_TECHNICIAN, ROLE_ARTIST,
         ]
 
     def can_create_trainings(self):
-        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_CHOREOGRAPHER]
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_CHOREOGRAPHER]
 
     def can_manage_services(self):
-        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_PRODUCTION]
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_PRODUCTION]
 
     def can_manage_cities(self):
-        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
 
     def can_manage_calendar_colors(self):
-        return self.role in TOP_ROLES
+        return self.primary_role() in TOP_ROLES
 
     def can_manage_money(self):
-        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
 
     def can_view_reports(self):
-        return self.role in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
 
     def can_send_feedback(self):
         return True
 
     def can_manage_feedback(self):
-        return self.role in [
+        return self.primary_role() in [
             ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER, ROLE_PRODUCTION,
             ROLE_CHOREOGRAPHER, ROLE_SALES_MANAGER,
         ]
