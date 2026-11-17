@@ -14,9 +14,11 @@ from .orders import (
     OrderPaymentView, OrderChecklistView, OrderFeedbackView, OrderFeedbackStatusView,
     FeedbackListView, ChecklistTemplateListView, CityCreateForOrderView,
     ServicePriceForOrderView, ServicesFlatListView, ServiceEmployeesForOrderView,
-    CityListView, PricePeriodView, CityGroupsView, OrderExpenseView,
+    CityListView, PricePeriodView, CityGroupsView, OrderExpenseView, NarrowChatListView,
 )
-from .schedule import ScheduleView, MyOrdersListView
+from .schedule import (
+    ScheduleView, MyOrdersListView, CalendarEventListView, CalendarEventDetailView,
+)
 from .checklists import (
     ChecklistsPageView, ChecklistTemplateCreateView, ChecklistTemplateDetailView, ChecklistItemView,
     ChecklistSectionView, ChecklistItemsOrderView,

@@ -9,45 +9,51 @@
 {% endblock %}
 
 {% block content %}
-<section class="money-header">
-    <div class="money-header__top">
+<div class="money-layout">
+    <aside class="money-sidebar js-sidebar">
         <h1 class="money-title">Деньги</h1>
-    </div>
 
-    <div class="money-filters">
-        <div class="money-period">
-            <span class="money-period__label">Период</span>
-            <input type="date" class="form-input money-period__input" id="moneyDateFrom">
-            <span class="money-period__sep">—</span>
-            <input type="date" class="form-input money-period__input" id="moneyDateTo">
-            <button class="money-period__step" type="button" id="moneyPrevMonthBtn" aria-label="Предыдущий месяц">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"/>
-                </svg>
-            </button>
-            <button class="money-period__step" type="button" id="moneyNextMonthBtn" aria-label="Следующий месяц">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"/>
-                </svg>
-            </button>
-            <button class="money-period__today" type="button" id="moneyCurrentMonthBtn">Текущий месяц</button>
+        <div class="money-tabs" role="tablist">
+            <button class="money-tab active" type="button" data-tab="accruals" role="tab">Начисления</button>
+            <button class="money-tab" type="button" data-tab="payouts" role="tab">К выплате</button>
+            <button class="money-tab" type="button" data-tab="summary" role="tab">Сводка</button>
+            <button class="money-tab" type="button" data-tab="history" role="tab">История</button>
+            <button class="money-tab" type="button" data-tab="expenses" role="tab">Расходы</button>
         </div>
 
-        <input type="text" class="form-input money-search" id="moneySearchInput" placeholder="Поиск сотрудника, заказа или услуги">
-    </div>
+        <div class="money-filters">
+            <input type="text" class="form-input money-search" id="moneySearchInput" placeholder="Поиск сотрудника, заказа или услуги">
 
-    <div class="money-tabs" role="tablist">
-        <button class="money-tab active" type="button" data-tab="accruals" role="tab">Начисления</button>
-        <button class="money-tab" type="button" data-tab="payouts" role="tab">К выплате</button>
-        <button class="money-tab" type="button" data-tab="summary" role="tab">Сводка</button>
-        <button class="money-tab" type="button" data-tab="history" role="tab">История</button>
-        <button class="money-tab" type="button" data-tab="expenses" role="tab">Расходы</button>
-    </div>
+            <div class="money-period">
+                <span class="money-period__label">Период</span>
+                <label class="money-period__row">
+                    <span class="money-period__caption">От</span>
+                    <input type="date" class="form-input money-period__input" id="moneyDateFrom">
+                </label>
+                <label class="money-period__row">
+                    <span class="money-period__caption">До</span>
+                    <input type="date" class="form-input money-period__input" id="moneyDateTo">
+                </label>
+                <div class="money-period__actions">
+                    <button class="money-period__step" type="button" id="moneyPrevMonthBtn" aria-label="Предыдущий месяц">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                    </button>
+                    <button class="money-period__step" type="button" id="moneyNextMonthBtn" aria-label="Следующий месяц">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
+                    <button class="money-period__today" type="button" id="moneyCurrentMonthBtn">Текущий месяц</button>
+                </div>
+            </div>
+        </div>
 
-    <div class="money-stats" id="moneyStats"></div>
-</section>
+        <div class="money-stats" id="moneyStats"></div>
+    </aside>
 
-<section class="money-content">
+    <section class="money-content">
     <div class="money-panel active" id="moneyPanelAccruals">
         <div class="money-panel__head">
             <h2 class="money-panel__title">Заказы и выплаты</h2>
@@ -147,7 +153,8 @@
             <div class="money-loading">Загрузка...</div>
         </div>
     </div>
-</section>
+    </section>
+</div>
 
 <div class="modal-overlay" id="moneyAccrualModal">
     <div class="modal modal--money">

@@ -9,23 +9,13 @@
 <link rel="stylesheet" href="{% static 'css/orders.css' %}">
 <link rel="stylesheet" href="{% static 'css/orders-editor.css' %}">
 <link rel="stylesheet" href="{% static 'css/schedule.css' %}">
+<link rel="stylesheet" href="{% static 'css/create-order.css' %}">
 {% endblock %}
 
 {% block content %}
-<section class="dashboard-header">
-    <!-- <h1 class="dashboard-title">Добро пожаловать, <span class="accent-text">{{ employee.full_name }}</span></h1> -->
-    <p class="dashboard-subtitle">
-        {% if is_artist_or_tech %}
-            Ваши ближайшие мероприятия и участие в проектах
-        {% else %}
-            Расписание мероприятий и активных заказов
-        {% endif %}
-    </p>
-</section>
-
-<section class="dashboard-toolbar">
-    <div class="toolbar-left">
-        <div class="view-switch">
+<div class="schedule-layout">
+    <aside class="schedule-sidebar js-sidebar">
+        <div class="view-switch view-switch--vertical">
             <button class="view-switch__btn active" data-view="calendar">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -48,17 +38,8 @@
             </button>
         </div>
 
-        {% if is_artist_or_tech %}
-        <label class="my-orders-toggle">
-            <input type="checkbox" id="myOrdersOnly" checked>
-            <span>Только мои мероприятия</span>
-        </label>
-        {% endif %}
-    </div>
-
-    <div class="toolbar-right">
         {% if employee.can_manage_orders %}
-        <button class="btn btn-primary btn-sm" id="addOrderBtn" type="button">
+        <button class="btn btn-primary btn-sm schedule-sidebar__add" id="addOrderBtn" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="16"/>
@@ -67,81 +48,82 @@
             Создать заказ
         </button>
         {% endif %}
-    </div>
-</section>
 
-<section class="dashboard-filters-row">
-    <div class="dashboard-filters dashboard-filters--list" id="dashboardFilters">
-        <div class="dashboard-search">
-            <input type="text" id="dashboardSearch" class="dashboard-search__input" placeholder="Поиск по названию или клиенту">
-            <svg class="dashboard-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-        </div>
-        <div class="dashboard-search dashboard-client-search">
-            <input type="text" id="dashboardClientFilter" class="dashboard-search__input" placeholder="Фильтр по заказчику" autocomplete="off">
-            <button type="button" class="dashboard-search__clear" id="dashboardClientClear" title="Сбросить заказчика" aria-label="Сбросить заказчика" style="display:none;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-            <div class="client-combobox__dropdown dashboard-client-dropdown" id="dashboardClientDropdown"></div>
-        </div>
-        <select id="dashboardSort" class="dashboard-select">
-            <option value="date_desc">Самые новые</option>
-            <option value="date_asc">Самые старые</option>
-        </select>
-        <select id="dashboardStatus" class="dashboard-select">
-            <option value="all">Все статусы</option>
-            <option value="request">Запрос</option>
-            <option value="confirmed">Подтверждено</option>
-            <option value="completed">Выполнено</option>
-        </select>
-        <label class="my-orders-toggle">
-            <input type="checkbox" id="pastCompletedToggle">
-            <span>Выполненные ранее</span>
+        {% if is_artist_or_tech %}
+        <label class="my-orders-toggle schedule-sidebar__toggle">
+            <input type="checkbox" id="myOrdersOnly" checked>
+            <span>Только мои мероприятия</span>
         </label>
-    </div>
-    <div class="dashboard-filters dashboard-filters--calendar" id="dashboardCalendarFilters">
-        <select id="calendarStatus" class="dashboard-select">
-            <option value="all">Все статусы</option>
-            <option value="request">Запрос</option>
-            <option value="confirmed">Подтверждено</option>
-            <option value="completed">Выполнено</option>
-        </select>
-        <select id="calendarFilled" class="dashboard-select">
-            <option value="all">Все заказы</option>
-            <option value="full">Заполнены полностью</option>
-            <option value="partial">Не заполнены до конца</option>
-        </select>
-    </div>
-</section>
+        {% endif %}
 
-<section class="dashboard-body">
-    <div class="dashboard-list" id="dashboardList" style="display:none;">
-        <div class="dashboard-empty">Загрузка...</div>
-    </div>
-
-    <div class="dashboard-calendar" id="dashboardCalendar">
-        <div class="dashboard-calendar__header">
-            <button class="dashboard-calendar__nav" id="calendarPrev">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 18 9 12 15 6"/>
+        <div class="dashboard-filters dashboard-filters--list" id="dashboardFilters">
+            <div class="dashboard-search">
+                <input type="text" id="dashboardSearch" class="dashboard-search__input" placeholder="Поиск по названию или клиенту">
+                <svg class="dashboard-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
-            </button>
-            <h3 class="dashboard-calendar__title" id="calendarTitle">Месяц</h3>
-            <button class="dashboard-calendar__nav" id="calendarNext">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 18 15 12 9 6"/>
-                </svg>
-            </button>
+            </div>
+            <div class="dashboard-search dashboard-client-search">
+                <input type="text" id="dashboardClientFilter" class="dashboard-search__input" placeholder="Фильтр по заказчику" autocomplete="off">
+                <button type="button" class="dashboard-search__clear" id="dashboardClientClear" title="Сбросить заказчика" aria-label="Сбросить заказчика" style="display:none;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+                <div class="client-combobox__dropdown dashboard-client-dropdown" id="dashboardClientDropdown"></div>
+            </div>
+            <select id="dashboardSort" class="dashboard-select" style="display:none;">
+                <option value="date_asc" selected>По дате</option>
+                <option value="date_desc">Самые новые</option>
+            </select>
+            <select id="dashboardStatus" class="dashboard-select">
+                <option value="all">Все статусы</option>
+                <option value="request">Запрос</option>
+                <option value="confirmed">Подтверждено</option>
+                <option value="completed">Выполнено</option>
+            </select>
+            <label class="my-orders-toggle">
+                <input type="checkbox" id="pastCompletedToggle">
+                <span>Выполненные ранее</span>
+            </label>
         </div>
-        <div class="calendar-notice" id="calendarNotice"></div>
-        <div class="dashboard-calendar__grid" id="calendarGrid"></div>
-    </div>
-</section>
+
+        <div class="dashboard-filters dashboard-filters--calendar" id="dashboardCalendarFilters">
+            <select id="calendarStatus" class="dashboard-select">
+                <option value="all">Все статусы</option>
+                <option value="request">Запрос</option>
+                <option value="confirmed">Подтверждено</option>
+                <option value="completed">Выполнено</option>
+            </select>
+        </div>
+    </aside>
+
+    <section class="schedule-main">
+        <div class="dashboard-list" id="dashboardList" style="display:none;">
+            <div class="dashboard-empty">Загрузка...</div>
+        </div>
+
+        <div class="dashboard-calendar" id="dashboardCalendar">
+            <div class="dashboard-calendar__header">
+                <button class="dashboard-calendar__nav" id="calendarPrev" type="button" aria-label="Предыдущий месяц">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </button>
+                <h3 class="dashboard-calendar__title" id="calendarTitle">Месяц</h3>
+                <button class="dashboard-calendar__nav" id="calendarNext" type="button" aria-label="Следующий месяц">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="calendar-notice" id="calendarNotice"></div>
+            <div class="dashboard-calendar__grid" id="calendarGrid"></div>
+        </div>
+    </section>
+</div>
 
 <div class="context-menu" id="scheduleContextMenu" style="display:none;">
     {% if user.employee_profile.can_manage_orders %}
@@ -184,6 +166,45 @@
         Создать событие
     </div>
     {% endif %}
+</div>
+
+<div class="modal-overlay" id="calendarEventModal">
+    <div class="modal modal--calendar-event">
+        <div class="modal__header">
+            <h2 class="modal__title" id="calendarEventTitle">Событие</h2>
+            <button class="modal__close" type="button" id="calendarEventCloseBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <div class="form-group">
+                <label class="form-label" for="calendarEventName">Название *</label>
+                <input type="text" class="form-input" id="calendarEventName" placeholder="Например, показ коллекции">
+            </div>
+            <div class="form-grid form-grid--2">
+                <div class="form-group">
+                    <label class="form-label" for="calendarEventDate">Дата *</label>
+                    <input type="date" class="form-input" id="calendarEventDate">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="calendarEventTime">Время</label>
+                    <input type="text" class="form-input" id="calendarEventTime" placeholder="19:00">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="calendarEventDescription">Описание</label>
+                <textarea class="form-input" id="calendarEventDescription" rows="4" placeholder="Описание события"></textarea>
+            </div>
+            <div class="form-error" id="calendarEventError" style="display:none;"></div>
+        </div>
+        <div class="modal__footer">
+            <button type="button" class="btn btn-danger" id="calendarEventDeleteBtn" style="display:none;">Удалить</button>
+            <button type="button" class="btn btn-primary" id="calendarEventSaveBtn">Сохранить</button>
+        </div>
+    </div>
 </div>
 
 <div class="modal-overlay" id="availabilityModal">
@@ -238,35 +259,27 @@
 </div>
 
 <div class="modal-overlay" id="eventModal">
-    <div class="modal modal--event">
-        <div class="modal__header">
-            <h2 class="modal__title" id="eventModalTitle">Мероприятие</h2>
-            <button class="modal__close" id="eventModalCloseBtn" type="button">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal__body" id="eventModalBody"></div>
-        <div class="modal__footer">
-            <button class="btn btn-outline" id="eventModalDismissBtn" type="button">Закрыть</button>
-            <button class="btn btn-outline" id="eventModalCopyLinkBtn" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                </svg>
-                Скопировать ссылку
-            </button>
-            <button class="btn btn-outline" id="eventModalChecklistBtn" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="9 11 12 14 22 4"/>
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
-                Чек-лист
-            </button>
-            <button class="btn btn-primary" id="eventModalDetailsBtn" type="button">Подробнее</button>
-        </div>
+    <div class="modal modal--event-card">
+        <section class="cof-preview">
+            <div class="cof-head">
+                <div class="cof-head__title" id="eventModalTitle">Мероприятие</div>
+                <button type="button" class="cof-head__x" id="eventModalCloseBtn" title="Закрыть" aria-label="Закрыть">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="cof-preview__body" id="eventModalPreviewBody"></div>
+            <div class="event-modal__footer">
+                <div class="event-modal__actions">
+                    <button class="btn btn-danger" id="eventModalDeleteBtn" type="button" style="display:none;">Удалить</button>
+                    <button class="btn btn-outline" id="eventModalCopyLinkBtn" type="button">Скопировать ссылку</button>
+                    <button class="btn btn-outline" id="eventModalChecklistBtn" type="button">Чек-лист</button>
+                    <button class="btn btn-primary" id="eventModalDetailsBtn" type="button">Подробнее</button>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -295,65 +308,218 @@
 
 <div class="modal-overlay" id="createOrderModal">
     <div class="modal modal--create-order">
-        <div class="modal__header">
-            <h2 class="modal__title">Создание заказа</h2>
-            <button class="modal__close" id="createModalCloseBtn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal__body">
-            <form id="createOrderForm" class="create-order-form">
-                <div class="form-group">
-                    <label class="form-label" for="createOrderName">Название заказа *</label>
-                    <div class="single-city-picker" id="createOrderNamePicker">
-                        <input type="text" class="form-input" id="createOrderName" placeholder="Начните вводить название" autocomplete="off" required>
-                        <div class="single-city-picker__dropdown" id="createOrderNameDropdown"></div>
+        <form id="createOrderForm" class="cof" autocomplete="off">
+            <div class="cof__body">
+                <section class="cof-write">
+                    <div class="cof-write__scroll">
+                        <div class="cof-card">
+                            <div class="cof-card__title" id="createOrderName" contenteditable="true" data-ph="Название заказа"></div>
+                            <div class="single-city-picker cof-card__namehide" id="createOrderNamePicker" style="display:none;">
+                                <div class="single-city-picker__dropdown" id="createOrderNameDropdown"></div>
+                            </div>
+
+                            <div class="cof-clips">
+                                <div class="single-city-picker cof-clip__picker" id="createOrderCityPicker">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    <input type="text" class="cof-clip__input" id="createOrderCityInput" placeholder="Город" autocomplete="off">
+                                    <input type="hidden" id="createOrderCityId" value="">
+                                    <input type="hidden" id="createOrderCityName" value="">
+                                    <div class="single-city-picker__dropdown" id="createOrderCityDropdown"></div>
+                                </div>
+                                <span class="cof-clip">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    <input type="date" class="cof-clip__input cof-clip__input--date" id="createOrderDate">
+                                </span>
+                                <div class="cof-status" id="createOrderStatusSwitch">
+                                    <button type="button" class="cof-status__btn is-on" data-status="request">Запрос</button>
+                                    <button type="button" class="cof-status__btn" data-status="confirmed">Подтверждённый</button>
+                                    <button type="button" class="cof-status__btn" data-status="completed">Выполненный</button>
+                                </div>
+                            </div>
+
+                            <div class="cof-rows">
+                                <div class="cof-row cof-row--service cof-row--gap">
+                                    <span class="cof-row__k">Шоу</span>
+                                    <span class="cof-row__v">
+                                        <div class="cof-repeat" id="createOrderShows"></div>
+                                        <button type="button" class="cof-add-btn" id="createOrderAddShow">+ Шоу</button>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row">
+                                    <span class="cof-row__k">Время</span>
+                                    <span class="cof-row__v">
+                                        <textarea class="cof-field cof-field--area" id="createOrderStartTime" rows="1" placeholder="Комментарий ко времени"></textarea>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row">
+                                    <span class="cof-row__k">Адрес</span>
+                                    <span class="cof-row__v">
+                                        <input type="text" class="cof-field" id="createOrderAddress" placeholder="Адрес площадки">
+                                    </span>
+                                </div>
+
+                                <div class="cof-row">
+                                    <span class="cof-row__k">Клиент</span>
+                                    <span class="cof-row__v">
+                                        <div class="client-combobox cof-client">
+                                            <input type="text" class="cof-field" id="createOrderClientSearch" placeholder="ФИО, телефон или агентство" autocomplete="off">
+                                            <div class="client-combobox__dropdown"></div>
+                                            <select class="cof-hidden" id="createOrderClient" style="display:none;"></select>
+                                        </div>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Контакты</span>
+                                    <span class="cof-row__v">
+                                        <div class="cof-repeat" id="createOrderContacts"></div>
+                                        <button type="button" class="cof-add-btn" id="createOrderAddContact">+ Контакт</button>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Узкий чат</span>
+                                    <span class="cof-row__v">
+                                        <div class="cof-checks cof-checks--chats" id="createOrderChatChecks">
+                                            <label class="cof-check" data-label="УЗ-1"><input type="checkbox" value="УЗ-1" data-chat-check> УЗ-1</label>
+                                            <label class="cof-check" data-label="УЗ-2"><input type="checkbox" value="УЗ-2" data-chat-check> УЗ-2</label>
+                                            <label class="cof-check" data-label="УЗ-3"><input type="checkbox" value="УЗ-3" data-chat-check> УЗ-3</label>
+                                            <label class="cof-check" data-label="УЗ-4"><input type="checkbox" value="УЗ-4" data-chat-check> УЗ-4</label>
+                                            <label class="cof-check" data-label="УЗ-5"><input type="checkbox" value="УЗ-5" data-chat-check> УЗ-5</label>
+                                            <label class="cof-check" data-label="УЗ-6"><input type="checkbox" value="УЗ-6" data-chat-check> УЗ-6</label>
+                                        </div>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Чек</span>
+                                    <span class="cof-row__v">
+                                        <input type="text" class="cof-field" id="createOrderSetupTime" placeholder="Время чека, например 18:00">
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Гримёрка, еда</span>
+                                    <span class="cof-row__v">
+                                        <textarea class="cof-field cof-field--area cof-field--long" id="createOrderDressingRoom" rows="1" placeholder="Гримерка, питание"></textarea>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Техничка</span>
+                                    <span class="cof-row__v">
+                                        <div class="cof-checks">
+                                            <label class="cof-check" data-label="УФ"><input type="checkbox" id="createOrderTechLamps"> УФ</label>
+                                            <label class="cof-check" data-label="Лазер"><input type="checkbox" id="createOrderTechLaser"> Лазер</label>
+                                            <label class="cof-check" data-label="Хейзер"><input type="checkbox" id="createOrderTechHazer"> Хейзер</label>
+                                            <label class="cof-check" data-label="Сетка"><input type="checkbox" id="createOrderTechGrid"> Сетка</label>
+                                            <label class="cof-check" data-label="Проекция"><input type="checkbox" id="createOrderTechProjection"> Проекция</label>
+                                        </div>
+                                        <textarea class="cof-field cof-field--area" id="createOrderTechComment" rows="1" placeholder="Дополнительные требования"></textarea>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Важность</span>
+                                    <span class="cof-row__v">
+                                        <input type="text" class="cof-field" id="createOrderImportance" placeholder="Например, высокий приоритет">
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Про событие</span>
+                                    <span class="cof-row__v">
+                                        <textarea class="cof-field cof-field--area cof-field--long" id="createOrderEventComment" rows="1" placeholder="Концепция мероприятия, задача"></textarea>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Про площадку</span>
+                                    <span class="cof-row__v">
+                                        <textarea class="cof-field cof-field--area cof-field--long" id="createOrderVenueComment" rows="1" placeholder="Особенности площадки"></textarea>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Не забыть</span>
+                                    <span class="cof-row__v">
+                                        <textarea class="cof-field cof-field--area cof-field--long" id="createOrderDonotforget" rows="1" placeholder="Что нельзя забыть"></textarea>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row cof-row--gap">
+                                    <span class="cof-row__k">Адаптация</span>
+                                    <span class="cof-row__v">
+                                        <textarea class="cof-field cof-field--area cof-field--long" id="createOrderAdaptation" rows="1" placeholder="Адаптация костюмов, гримов, шоу"></textarea>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row">
+                                    <span class="cof-row__k">Комментарий</span>
+                                    <span class="cof-row__v">
+                                        <textarea class="cof-field cof-field--area" id="createOrderConcept" rows="1" placeholder="Детали мероприятия"></textarea>
+                                    </span>
+                                </div>
+
+                                <div class="cof-row">
+                                    <span class="cof-row__k">Оплата</span>
+                                    <span class="cof-row__v">
+                                        <div class="cof-pay-row">
+                                            <input type="text" class="cof-field cof-field--cost" id="createOrderCost" placeholder="Сумма" inputmode="decimal">
+                                            <div class="cof-checks cof-checks--payment">
+                                                <label class="cof-check" data-label="Нал"><input type="checkbox" id="createOrderPayCash"> Нал</label>
+                                                <label class="cof-check" data-label="ИП"><input type="checkbox" id="createOrderPayIp"> ИП</label>
+                                                <label class="cof-check" data-label="СЗ"><input type="checkbox" id="createOrderPaySelf"> СЗ</label>
+                                            </div>
+                                            <input type="date" class="cof-field" id="createOrderPaymentDue" title="Срок оплаты">
+                                        </div>
+                                        <input type="text" class="cof-field" id="createOrderPaymentComment" placeholder="ПО, комментарий">
+                                    </span>
+                                </div>
+
+                                <div class="cof-row">
+                                    <span class="cof-row__k">Менеджер</span>
+                                    <span class="cof-row__v">
+                                        <div class="cof-picker" id="createOrderManagerPicker">
+                                            <div class="cof-chips" id="createOrderManagerChips"></div>
+                                            <input type="text" class="cof-field cof-picker__input" id="createOrderManagerInput" placeholder="Найти сотрудника" autocomplete="off">
+                                            <div class="single-city-picker__dropdown" id="createOrderManagerDropdown"></div>
+                                        </div>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <span class="form-hint">Название услуги и количество артистов через пробел — услуга добавится в заказ</span>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="createOrderClientSearch">Заказчик *</label>
-                    <div class="client-combobox">
-                        <input type="text" class="form-input" id="createOrderClientSearch" placeholder="Начните вводить ФИО, телефон или агентство" autocomplete="off">
-                        <div class="client-combobox__dropdown"></div>
-                        <select class="form-select" id="createOrderClient" style="display:none;"></select>
+                </section>
+
+                <section class="cof-preview">
+                    <div class="cof-head">
+                        <div class="cof-head__title" id="createOrderPreviewTitle">Новый заказ</div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="createOrderCityInput">Город</label>
-                    <div class="single-city-picker" id="createOrderCityPicker">
-                        <input type="text" class="form-input" id="createOrderCityInput" placeholder="Начните вводить название города" autocomplete="off">
-                        <input type="hidden" id="createOrderCityId" value="">
-                        <input type="hidden" id="createOrderCityName" value="">
-                        <div class="single-city-picker__dropdown" id="createOrderCityDropdown"></div>
+
+                    <div class="cof-preview__body" id="createOrderPreview">
+                        <div class="cof-ev-head">
+                            <div class="cof-ev-head__date">Дата не указана</div>
+                            <span class="cof-ev-status">Запрос</span>
+                        </div>
+                        <div class="cof-ev-client">Клиент не выбран</div>
                     </div>
-                    <span class="form-hint">Если города нет в списке, его можно создать</span>
+                </section>
+            </div>
+
+            <footer class="cof__foot">
+                <div class="cof-foot__left">
+                    <span class="cof-foot__count" id="createOrderFieldCount">Заполнено 0 из 5</span>
+                    <button type="button" class="btn btn-outline btn-sm" id="createModalCopyLinkBtn">Скопировать ссылку</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label" for="createOrderDate">Дата заказа</label>
-                    <input type="date" class="form-input" id="createOrderDate">
-                    <span class="form-hint">Можно оставить пустым — заказ попадёт в начало списка</span>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="createOrderConcept">Комментарий</label>
-                    <textarea class="form-textarea" id="createOrderConcept" rows="2" placeholder="Детали мероприятия"></textarea>
-                </div>
-                <div class="form-actions">
+                <div class="cof-foot__right">
                     <button type="button" class="btn btn-outline" id="createModalCancelBtn">Отмена</button>
-                    <button type="submit" class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="16"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                        </svg>
-                        Создать
-                    </button>
+                    <button type="submit" class="btn btn-primary" id="createOrderSubmitBtn">Создать</button>
                 </div>
-            </form>
-        </div>
+            </footer>
+        </form>
     </div>
 </div>
 
@@ -439,8 +605,8 @@
 </div>
 
 <div class="modal-overlay" id="orderEditorModal">
-    <div class="modal modal--editor">
-        <div class="modal__header">
+    <div class="modal modal--editor modal--create-order js-editor-modal">
+        <div class="modal__header js-editor-header">
             <div class="modal__heading">
                 <h2 class="modal__title" id="editorOrderTitle">Заказ</h2>
                 <span class="modal__subtitle" id="editorOrderSubtitle" style="display:none;"></span>
@@ -454,7 +620,7 @@
                 </button>
             </div>
         </div>
-        <div class="modal__tabs" id="orderEditorTabs">
+        <div class="modal__tabs js-editor-tabs" id="orderEditorTabs">
             <div class="modal__tabs-group">
                 <button class="tab-btn active" data-tab="info">Информация</button>
                 <div class="tab-btn-wrap" id="orderShowsTabWrap">
@@ -469,7 +635,7 @@
                 <button class="tab-btn" data-tab="expenses">Расходы<span class="tab-badge" id="orderExpensesBadge" style="display:none;"></span></button>
             </div>
         </div>
-        <div class="modal__body">
+        <div class="modal__body js-editor-body">
             <div class="tab-content active" id="tab-info">
                 <form id="orderInfoForm" class="order-info-form">
                     <input type="hidden" id="editOrderId">
@@ -496,10 +662,6 @@
                                     <option value="confirmed">Подтвержденный</option>
                                     <option value="completed">Выполненный</option>
                                 </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="editOrderChat">Номер узкого чата</label>
-                                <input type="text" class="form-input" id="editOrderChat" placeholder="Номер Чата">
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="editOrderCityInput">Город</label>
@@ -536,18 +698,11 @@
                             <span class="form-hint" id="cityGroupHint"></span>
                         </div>
                         <div class="services-editor-container services-editor-container--inline">
-                            <div class="services-catalog-panel">
-                                <div class="panel-header">
-                                    <h3>Каталог услуг</h3>
-                                    <input type="text" class="search-input-sm" id="serviceSearchInput" placeholder="Поиск...">
-                                </div>
-                                <div class="services-catalog-list" id="servicesCatalogList"></div>
-                            </div>
-                            <div class="services-table-wrapper">
+                            <div class="services-table-wrapper services-table-wrapper--first">
                                 <div class="panel-header">
                                     <h3>Выбранные услуги</h3>
                                     <div class="services-total">
-                                        Итого: <span id="servicesTotal" class="services-total__value" title="Двойной клик для изменения">0.00₽</span>
+                                        Итого: <span id="servicesTotal" class="services-total__value" title="Двойной клик для изменения">0₽</span>
                                     </div>
                                 </div>
                                 <div class="services-table-container">
@@ -555,8 +710,8 @@
                                         <thead>
                                             <tr>
                                                 <th>Услуга</th>
-                                                <th style="width:80px;">Чел.</th>
-                                                <th style="width:120px;">Стоимость</th>
+                                                <th style="width:60px;">Чел.</th>
+                                                <th style="width:110px;">Стоимость</th>
                                                 <th>Комментарий</th>
                                                 <th style="width:40px;"></th>
                                             </tr>
@@ -569,6 +724,13 @@
                                     </table>
                                 </div>
                             </div>
+                            <div class="services-catalog-panel">
+                                <div class="panel-header">
+                                    <h3>Каталог услуг</h3>
+                                    <input type="text" class="search-input-sm" id="serviceSearchInput" placeholder="Поиск...">
+                                </div>
+                                <div class="services-catalog-list" id="servicesCatalogList"></div>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -576,17 +738,6 @@
 
             <div class="tab-content" id="tab-show">
                 <div class="order-show-tab">
-                    <div class="order-show-head">
-                        <div class="order-show-selector" id="orderShowSelector">
-                            <button type="button" class="order-show-selector__btn" id="orderShowSelectorBtn">
-                                <span id="orderShowSelectorLabel">Выберите услугу</span>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="6 9 12 15 18 9"/>
-                                </svg>
-                            </button>
-                            <div class="order-show-selector__list" id="orderShowSelectorList"></div>
-                        </div>
-                    </div>
                     <div class="order-show-panel" id="orderShowPanel"></div>
                 </div>
             </div>
@@ -613,14 +764,18 @@
 
                     <div class="info-section">
                         <h3 class="info-section__title">Детали мероприятия</h3>
-                        <div class="form-grid form-grid--2">
+                        <div class="form-grid form-grid--3">
                             <div class="form-group">
                                 <label class="form-label" for="editOrderStart">Начало мероприятия</label>
-                                <input type="datetime-local" class="form-input" id="editOrderStart">
+                                <input type="date" class="form-input" id="editOrderStart">
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="editOrderEnd">Окончание мероприятия</label>
-                                <input type="datetime-local" class="form-input" id="editOrderEnd">
+                                <input type="date" class="form-input" id="editOrderEnd">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderChat">Номер узкого чата</label>
+                                <input type="text" class="form-input" id="editOrderChat" placeholder="Номер Чата">
                             </div>
                         </div>
                         <div class="form-grid form-grid--2" style="margin-top:1rem;">
@@ -631,12 +786,8 @@
                         </div>
                         <div class="form-grid" style="margin-top:1rem;">
                             <div class="form-group">
-                                <label class="form-label" for="editOrderDressingRoom">Комментарий к гримерке</label>
-                                <textarea class="form-textarea" id="editOrderDressingRoom" rows="2" placeholder="Гримерка, удобства"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="editOrderMeal">Комментарий к еде</label>
-                                <textarea class="form-textarea" id="editOrderMeal" rows="2" placeholder="Питание, предпочтения"></textarea>
+                                <label class="form-label" for="editOrderDressingRoom">Комментарий к гримерке и еде</label>
+                                <textarea class="form-textarea form-textarea--compact" id="editOrderDressingRoom" rows="1" placeholder="Гримерка, питание, предпочтения"></textarea>
                             </div>
                         </div>
                     </div>
@@ -647,7 +798,7 @@
                             <div class="form-group detail-item--full">
                                 <label class="form-label">Оборудование</label>
                                 <div class="checkbox-group">
-                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechLamps"> Лампы</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechLamps"> УФ</label>
                                     <label class="checkbox-label"><input type="checkbox" id="editOrderTechLaser"> Лазер</label>
                                     <label class="checkbox-label"><input type="checkbox" id="editOrderTechHazer"> Хейзер</label>
                                     <label class="checkbox-label"><input type="checkbox" id="editOrderTechGrid"> Сетка</label>
@@ -708,7 +859,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="editOrderPaymentComment">Заметка к оплате</label>
+                                <label class="form-label" for="editOrderPaymentComment">ПО, комментарий</label>
                                 <input type="text" class="form-input" id="editOrderPaymentComment" placeholder="Например, предоплата 50%">
                             </div>
                         </div>
@@ -725,7 +876,7 @@
                         <div class="order-payments" id="orderPaymentsBlock">
                             <div class="order-payments__head">
                                 <span class="order-payments__title">Фиксация оплат</span>
-                                <span class="order-payments__total" id="orderPaymentsTotal">0.00₽</span>
+                                <span class="order-payments__total" id="orderPaymentsTotal">0₽</span>
                             </div>
                             <div class="order-payments__list" id="orderPaymentsList"></div>
                             <div class="order-payments__form">
@@ -772,7 +923,7 @@
                 </div>
             </div>
         </div>
-        <div class="editor-footer editor-footer--global">
+        <div class="editor-footer editor-footer--global js-editor-footer">
             <div class="modal-footer-actions">
                 <div class="modal-footer-actions__left">
                     <button type="button" class="btn btn-danger btn-sm" id="deleteOrderBtn">

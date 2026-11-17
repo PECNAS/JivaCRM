@@ -106,6 +106,62 @@ html {
   overflow-x: hidden;
 }
 
+:root {
+  --navbar-height: 64px;
+  --scrollbar-size: 10px;
+  --scrollbar-track: #13110e;
+  --scrollbar-thumb: #3b342c;
+  --scrollbar-thumb-hover: #f0a868;
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--scrollbar-track);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: #4a4238;
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #0b0b0b;
@@ -137,6 +193,8 @@ table {
   top: 0;
   z-index: 100;
   backdrop-filter: blur(4px);
+  min-height: var(--navbar-height, 64px);
+  box-sizing: border-box;
 }
 
 .navbar__container {

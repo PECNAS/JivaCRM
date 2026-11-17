@@ -13,6 +13,7 @@ from ..models import (
     Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City,
     CityGroup, CalendarColor, PriceRisePeriod, OrderExpense,
     OrderPayment, ChecklistTemplate, ChecklistItem, OrderFeedback, OrderShowTemplate,
+    OrderReadMark, NarrowChat, OrderContact, OrderChangeLog,
     ROLE_LABELS, ROLE_CHOICES, ARTIST_ROLES, ROLE_TECHNICIAN, ROLE_CHOREOGRAPHER, ROLE_PRODUCTION,
 )
 from .helpers import format_date_short, format_money, parse_money, role_label
@@ -24,6 +25,16 @@ def can_view_orders(employee):
     return employee.can_manage_orders() or employee.primary_role() in ORDER_VIEWER_ROLES
 from .money_service import sync_order_balance, refresh_employee_accrual
 from .checklist_service import attach_for_order, attach_template, serialize_checklist
+
+
+def parse_request_date(value):
+    if not value:
+        return None
+
+    try:
+        return datetime.strptime(str(value).strip(), '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
 
 
 def format_date(date_value):
@@ -41,7 +52,7 @@ def format_datetime(date_value):
     if timezone.is_aware(date_value):
         date_value = timezone.localtime(date_value)
 
-    return date_value.strftime('%Y-%m-%dT%H:%M')
+    return date_value.strftime('%Y-%m-%d')
 
 
 def parse_datetime(value):
@@ -49,6 +60,17 @@ def parse_datetime(value):
 
     if not text:
         return None
+
+    if len(text) == 10:
+        try:
+            parsed = datetime.strptime(text, '%Y-%m-%d')
+
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed)
+
+            return parsed
+        except ValueError:
+            return None
 
     for template in ('%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M', '%Y-%m-%dT%H:%M:%S'):
         try:
@@ -62,6 +84,43 @@ def parse_datetime(value):
             continue
 
     return None
+
+
+def parse_start_time(value, date_obj):
+    text = (value or '').strip()
+
+    if not text or date_obj is None:
+        return None
+
+    for template in ('%H:%M', '%H:%M:%S'):
+        try:
+            parsed = datetime.strptime(text, template).time()
+        except ValueError:
+            continue
+
+        return timezone.make_aware(datetime.combine(date_obj, parsed))
+
+    first_line = text.splitlines()[0].strip()
+
+    for template in ('%H:%M', '%H:%M:%S'):
+        try:
+            parsed = datetime.strptime(first_line, template).time()
+        except ValueError:
+            continue
+
+        return timezone.make_aware(datetime.combine(date_obj, parsed))
+
+    return parse_datetime(text)
+
+
+def format_time_value(date_value):
+    if date_value is None:
+        return ''
+
+    if timezone.is_aware(date_value):
+        date_value = timezone.localtime(date_value)
+
+    return date_value.strftime('%H:%M')
 
 
 def serialize_payment(payment):
@@ -109,7 +168,187 @@ def serialize_calendar_colors():
     return colors
 
 
-def order_common_fields(order):
+def save_order_contacts(order, raw):
+    text_value = (raw or '').strip()
+
+    if not text_value:
+        return
+
+    try:
+        items = json.loads(text_value)
+    except (json.JSONDecodeError, TypeError):
+        return
+
+    if not isinstance(items, list):
+        return
+
+    order.contact_items.all().delete()
+    saved = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        contact = OrderContact.objects.create(
+            order=order,
+            name=(item.get('name') or '').strip()[:200],
+            phone=(item.get('phone') or '').strip()[:30],
+            telegram=(item.get('telegram') or '').strip()[:100],
+            is_primary=bool(item.get('main')),
+        )
+
+        saved.append(contact)
+
+    if saved and not any(contact.is_primary for contact in saved):
+        saved[0].is_primary = True
+        saved[0].save(update_fields=['is_primary', 'updated_at'])
+
+    primary = next((contact for contact in saved if contact.is_primary), None)
+
+    if primary is not None:
+        order.contact_name = primary.name
+        order.contact_phone = primary.phone
+        order.contact_telegram = primary.telegram
+
+
+def save_order_shows(order, raw):
+    text_value = (raw or '').strip()
+
+    if not text_value:
+        return
+
+    try:
+        items = json.loads(text_value)
+    except (json.JSONDecodeError, TypeError):
+        return
+
+    if not isinstance(items, list):
+        return
+
+    order.estimate_items.all().delete()
+    created = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        name = (item.get('name') or '').strip()
+
+        if not name:
+            continue
+
+        service = None
+        service_id = item.get('id')
+
+        if service_id and str(service_id).isdigit():
+            service = Service.objects.filter(id=int(service_id), type='service').first()
+
+        count_raw = item.get('count')
+        count = int(count_raw) if isinstance(count_raw, (int, float)) and count_raw > 0 else 0
+
+        price = 0
+        rows = sorted(service.staff_rows.all(), key=lambda row: row.artist_count) if service else []
+
+        if rows:
+            matched = rows[0]
+
+            if count > 0:
+                matched = rows[-1]
+
+                for row in rows:
+                    if row.artist_count >= count:
+                        matched = row
+                        break
+            else:
+                count = matched.artist_count
+
+            price = float(matched.cost)
+
+        start_time_value = (item.get('time') or '').strip()[:100]
+
+        estimate = OrderEstimate.objects.create(
+            order=order,
+            service=service,
+            service_name=name,
+            people_count=count,
+            coefficient=1,
+            price=price,
+            is_main=bool(item.get('main')),
+            start_time=start_time_value,
+        )
+
+        created.append(estimate)
+
+        employees = item.get('employees') or []
+
+        for staff in employees:
+            if not isinstance(staff, dict):
+                continue
+
+            employee_id = staff.get('employee_id')
+
+            if not employee_id or not str(employee_id).isdigit():
+                continue
+
+            employee = Employee.objects.filter(id=int(employee_id)).first()
+
+            if employee is None:
+                continue
+
+            OrderEmployee.objects.create(
+                order=order,
+                employee=employee,
+                employee_name=staff.get('name') or employee.display_name,
+                employee_role=role_label(employee.primary_role()) or '',
+                role_code=employee.primary_role() or '',
+                show=estimate,
+                payment=0,
+                comment=(staff.get('comment') or '').strip(),
+                is_story=bool(staff.get('is_story', False)),
+                is_responsible=bool(staff.get('is_responsible', False)),
+            )
+
+    if created and not any(estimate.is_main for estimate in created):
+        created[0].is_main = True
+        created[0].save(update_fields=['is_main', 'updated_at'])
+
+    main = next((estimate for estimate in created if estimate.is_main), None)
+
+    if main is not None and main.price:
+        order.cost = f'{float(main.price):.2f}'
+
+
+def chat_links_map():
+    return {chat.name: chat.link for chat in NarrowChat.objects.filter(is_active=True) if chat.link}
+
+
+def order_content_changed(order, employee=None):
+    if order.status != 'confirmed':
+        return False
+
+    if not order.content_changed_at:
+        return False
+
+    if employee is None:
+        return True
+
+    mark = get_seen_marks(employee).get(order.id)
+
+    if mark is None:
+        return True
+
+    return order.content_changed_at > mark
+
+
+def get_seen_marks(employee):
+    return dict(
+        OrderReadMark.objects.filter(employee=employee)
+        .exclude(seen_changed_at=None)
+        .values_list('order_id', 'seen_changed_at')
+    )
+
+
+def order_common_fields(order, employee=None):
     managers = [order.manager] if order.manager else []
     managers.extend(list(order.managers.all()))
 
@@ -118,18 +357,20 @@ def order_common_fields(order):
         'name': order.name or '—',
         'auto_name': order.auto_name or '',
         'name_is_manual': order.name_is_manual,
-        'name_display': (order.name or '—').upper() if order.status == 'confirmed' else (order.name or '—'),
+        'name_display': order.name or '—',
         'address': order.address or '',
         'date': format_date(order.date),
         'date_display': format_date_short(order.date),
         'has_date': bool(order.date),
         'start_datetime': format_datetime(order.start_datetime),
+        'start_time': order.start_time_text or format_time_value(order.start_datetime),
         'end_datetime': format_datetime(order.end_datetime),
         'client': order.client.full_name,
         'client_id': order.client.id,
         'city_id': order.city.id if order.city else None,
         'city_name': order.city.name if order.city else '',
         'chat_number': order.chat_number or '',
+        'chat_links': chat_links_map(),
         'cost': order.cost or '—',
         'status': order.status,
         'status_display': order.get_status_display(),
@@ -144,10 +385,52 @@ def order_common_fields(order):
         'total_paid': float(order.total_paid()),
         'is_paid': order.is_paid(),
         'updated_at': order.updated_at.isoformat() if order.updated_at else None,
-        'content_changed': bool(order.content_changed_at),
+        'content_changed': order_content_changed(order, employee),
         'content_changed_at': order.content_changed_at.isoformat() if order.content_changed_at else None,
         'is_incomplete': order.is_incomplete(),
         'missing_fields': order.get_missing_fields(),
+    }
+
+
+def build_service_estimate_item(request):
+    service_id = (request.POST.get('service_id') or '').strip()
+
+    if not service_id.isdigit():
+        return None
+
+    service = Service.objects.filter(id=int(service_id), type='service').first()
+
+    if service is None:
+        return None
+
+    people_raw = (request.POST.get('people_count') or '').strip()
+    people_count = int(people_raw) if people_raw.isdigit() else 0
+
+    rows = sorted(service.staff_rows.all(), key=lambda row: row.artist_count)
+    price = 0
+
+    if rows and people_count > 0:
+        matched = rows[-1]
+
+        for row in rows:
+            if row.artist_count >= people_count:
+                matched = row
+                break
+
+        price = float(matched.cost)
+    elif rows:
+        matched = rows[0]
+        price = float(matched.cost)
+        people_count = matched.artist_count
+
+    return {
+        'service_id': service.id,
+        'name': service.name,
+        'people_count': people_count,
+        'coefficient': 1,
+        'price': price,
+        'comment': '',
+        'is_main': True,
     }
 
 
@@ -160,23 +443,89 @@ def rates_allowed(request):
     return employee.can_see_rates()
 
 
-def serialize_order_line(order):
-    data = order_common_fields(order)
-    data['services'] = [
-        {
+def staff_unassigned_to_show(staff_items, shows):
+    """Сотрудники, не привязанные ни к одному из шоу заказа."""
+    show_ids = {item.id for item in shows}
+
+    return [staff for staff in staff_items if staff.show_id not in show_ids and staff.employee_name]
+
+
+def _show_people_digits(name):
+    import re
+
+    match = re.search(r'(\d+)\s*$', name or '')
+
+    return match.group(1) if match else ''
+
+
+def serialize_order_line(order, employee=None):
+    data = order_common_fields(order, employee)
+    shows = [item for item in order.estimate_items.all() if item.service_name]
+    staff_items = list(order.employee_items.all())
+    used_show_ids = {item.id for item in shows}
+
+    def staff_rows(show=None):
+        if show is not None:
+            source = [staff for staff in staff_items if staff.show_id == show.id and staff.employee_name]
+        else:
+            source = [staff for staff in staff_items if staff.show_id not in used_show_ids and staff.employee_name]
+
+        return [
+            {
+                'employee_id': staff.employee.id if staff.employee else None,
+                'name': staff.employee_name,
+                'role': staff.employee_role,
+                'comment': str(staff.comment or ''),
+            }
+            for staff in source
+        ]
+    data['services'] = []
+    for item in shows:
+        rows = [staff for staff in staff_items if staff.show_id == item.id and staff.employee_name]
+
+        if not rows:
+            rows = [staff for staff in staff_items if staff.show_id not in used_show_ids and staff.employee_name]
+
+        data['services'].append({
             'name': item.service_name,
-            'people_count': item.people_count,
+            'people_count': item.people_count or int(_show_people_digits(item.service_name) or 0) or len(rows),
             'people_count_unknown': item.people_count_unknown,
             'is_main': item.is_main,
-        }
-        for item in order.estimate_items.all()
-        if item.service_name
-    ]
+            'start_time': item.start_time or '',
+            'employees': [
+                {
+                    'employee_id': staff.employee.id if staff.employee else None,
+                    'name': staff.employee_name,
+                    'role': staff.employee_role,
+                    'comment': staff.comment or '',
+                    'is_story': staff.is_story,
+                    'is_responsible': staff.is_responsible,
+                }
+                for staff in rows
+            ],
+        })
+
+    unique_staff = []
+    seen_staff = set()
+
+    for staff in staff_items:
+        if not staff.employee_name or staff.employee_name in seen_staff:
+            continue
+
+        seen_staff.add(staff.employee_name)
+        unique_staff.append({'name': staff.employee_name, 'role': staff.employee_role})
+
+    data['staff'] = unique_staff
     data['services_text'] = ', '.join(
         f'{item.service_name} {item.people_count}' if item.people_count and not item.people_count_unknown else item.service_name
         for item in order.estimate_items.all()
         if item.service_name
     )
+    data['contact_items'] = [
+        {'name': item.name, 'phone': item.phone, 'telegram': item.telegram, 'is_primary': item.is_primary}
+        for item in order.contact_items.all()
+    ]
+    data['change_logs'] = serialize_change_logs(order) if order_content_changed(order, employee) else []
     data['comment'] = order.concept or order.venue_comment or ''
     data['contact_name'] = order.contact_name or ''
     data['contact_phone'] = order.contact_phone or ''
@@ -186,6 +535,18 @@ def serialize_order_line(order):
     data['meal_comment'] = order.meal_comment or ''
     data['tech_comment'] = order.tech_comment or ''
     data['venue_comment'] = order.venue_comment or ''
+    data['importance'] = order.importance or ''
+    data['event_comment'] = order.event_comment or ''
+    data['donotforget_comment'] = order.donotforget_comment or ''
+    data['adaptation_comment'] = order.adaptation_comment or ''
+    data['props_comment'] = order.props_comment or ''
+    data['tech_lamps'] = order.tech_lamps
+    data['tech_laser'] = order.tech_laser
+    data['tech_hazer'] = order.tech_hazer
+    data['tech_grid'] = order.tech_grid
+    data['tech_projection'] = order.tech_projection
+    data['payment_method'] = order.payment_method or ''
+    data['payment_due_comment'] = order.payment_due_comment or ''
     return data
 
 
@@ -196,7 +557,14 @@ def get_city_salary_bonus(city):
 
 
 def order_queryset():
-    return Order.objects.prefetch_related('estimate_items').select_related('client', 'city', 'manager__user')
+    return (
+        Order.objects
+        .prefetch_related('estimate_items', 'payments', 'managers', 'employee_items')
+        .select_related(
+            'client', 'city', 'manager', 'manager__user',
+            'story_manager', 'story_manager__user',
+        )
+    )
 
 
 def parse_order_filters(request):
@@ -249,7 +617,9 @@ def apply_order_filters(orders, search, status, date_from=None, date_to=None):
     return orders
 
 
-def order_list_response(orders, extra_keys=None, limit=None, can_see_cost=True, can_see_rates=True):
+def order_list_response(
+    orders, extra_keys=None, limit=None, offset=0, can_see_cost=True, can_see_rates=True, employee=None,
+):
     def sort_key(order):
         if order.date:
             return (1, order.date.toordinal(), order.created_at.timestamp())
@@ -259,11 +629,13 @@ def order_list_response(orders, extra_keys=None, limit=None, can_see_cost=True, 
     total = len(ordered)
 
     if limit:
-        ordered = ordered[:limit]
+        ordered = ordered[offset:offset + limit]
+    elif offset:
+        ordered = ordered[offset:]
 
     result = []
     for order in ordered:
-        item = serialize_order_line(order)
+        item = serialize_order_line(order, employee)
         if extra_keys:
             item.update(extra_keys(order))
         if not can_see_rates:
@@ -283,7 +655,7 @@ def order_list_response(orders, extra_keys=None, limit=None, can_see_cost=True, 
     return JsonResponse({
         'orders': undated + dated,
         'total': total,
-        'has_more': total > len(result),
+        'has_more': total > offset + len(result),
         'colors': serialize_calendar_colors(),
     })
 
@@ -345,8 +717,18 @@ class OrdersView(View):
                 if city_obj is None:
                     city_obj = City.objects.create(name=city_name_raw)
 
-            if city_obj is None:
-                city_obj = City.objects.filter(name__iexact='Казань').first()
+            status_raw = request.POST.get('status', '').strip()
+            status_value = status_raw if status_raw in dict(Order.STATUS_CHOICES) else 'request'
+
+            contact_name = request.POST.get('contact_name', '').strip() or (client.full_name or '')
+            contact_phone = request.POST.get('contact_phone', '').strip() or (client.phone or '')
+            contact_telegram = request.POST.get('contact_telegram', '').strip() or (client.telegram_username or '')
+
+            duration_raw = request.POST.get('duration', '').strip()
+            duration_value = int(duration_raw) if duration_raw.isdigit() and int(duration_raw) > 0 else 1
+
+            payment_method_raw = request.POST.get('payment_method', '').strip()
+            payment_method_value = payment_method_raw if payment_method_raw in dict(Order.PAYMENT_CHOICES) else ''
 
             order = Order.objects.create(
                 name=name,
@@ -354,11 +736,66 @@ class OrdersView(View):
                 city=city_obj,
                 date=date_obj,
                 manager=employee,
-                status='request',
-                contact_name=client.full_name or '',
-                contact_phone=client.phone or '',
-                contact_telegram=client.telegram_username or '',
+                status=status_value,
+                contact_name=contact_name,
+                contact_phone=contact_phone,
+                contact_telegram=contact_telegram,
+                address=request.POST.get('address', '').strip(),
+                setup_time=request.POST.get('setup_time', '').strip(),
+                start_datetime=parse_start_time(request.POST.get('start_time'), date_obj),
+                start_time_text=(request.POST.get('start_time', '') or '').strip()[:100],
+                chat_number=request.POST.get('chat_number', '').strip(),
+                duration=duration_value,
+                dressing_room_comment=request.POST.get('dressing_room_comment', '').strip(),
+                tech_comment=request.POST.get('tech_comment', '').strip(),
+                venue_comment=request.POST.get('venue_comment', '').strip(),
+                props_comment=request.POST.get('props_comment', '').strip(),
+                importance=request.POST.get('importance', '').strip(),
+                event_comment=request.POST.get('event_comment', '').strip(),
+                donotforget_comment=request.POST.get('donotforget_comment', '').strip(),
+                adaptation_comment=request.POST.get('adaptation_comment', '').strip(),
+                tech_lamps=request.POST.get('tech_lamps') == 'on',
+                tech_laser=request.POST.get('tech_laser') == 'on',
+                tech_hazer=request.POST.get('tech_hazer') == 'on',
+                tech_grid=request.POST.get('tech_grid') == 'on',
+                tech_projection=request.POST.get('tech_projection') == 'on',
+                payment_method=payment_method_value,
+                payment_due_date=parse_request_date(request.POST.get('payment_due_date')),
+                payment_due_comment=request.POST.get('payment_due_comment', '').strip(),
             )
+
+            manager_id_raw = request.POST.get('manager_id', '').strip()
+
+            if manager_id_raw.isdigit():
+                manager_obj = Employee.objects.filter(id=int(manager_id_raw), is_active=True).first()
+
+                if manager_obj is not None:
+                    order.manager = manager_obj
+
+            extra_manager_ids = request.POST.get('manager_ids', '').strip()
+
+            if extra_manager_ids:
+                ids = [int(part) for part in extra_manager_ids.split(',') if part.strip().isdigit()]
+                extra_employees = Employee.objects.filter(id__in=ids, is_active=True)
+
+                existing_ids = set()
+
+                for extra in extra_employees:
+                    if order.manager_id and extra.id == order.manager_id:
+                        continue
+                    if extra.id in existing_ids:
+                        continue
+
+                    order.managers.add(extra)
+                    existing_ids.add(extra.id)
+
+            cost_raw = request.POST.get('cost', '').strip().replace(',', '.')
+
+            if cost_raw:
+                try:
+                    order.cost = f'{float(cost_raw):.2f}'
+                except ValueError:
+                    pass
 
             service_id = request.POST.get('service_id', '').strip()
             people_count_raw = request.POST.get('people_count', '').strip()
@@ -408,9 +845,15 @@ class OrdersView(View):
                 order.concept = concept
                 order.save(update_fields=['concept'])
 
+            if request.POST.get('shows_json'):
+                save_order_shows(order, request.POST.get('shows_json'))
+
+            if request.POST.get('contacts_json'):
+                save_order_contacts(order, request.POST.get('contacts_json'))
+                order.save(update_fields=['contact_name', 'contact_phone', 'contact_telegram'])
+
             order.content_hash = order.compute_content_hash()
             order.save(update_fields=['content_hash'])
-
             attach_for_order(order, employee)
 
             return JsonResponse({
@@ -442,12 +885,42 @@ class OrderDetailView(View):
 
         try:
             order = Order.objects.select_related(
-                'client', 'city', 'manager__user', 'story_manager__user',
-            ).prefetch_related('managers', 'estimate_items', 'estimate_items__staff').get(id=order_id)
+                'client', 'city', 'manager', 'manager__user', 'story_manager', 'story_manager__user',
+            ).prefetch_related(
+                'managers', 'estimate_items', 'estimate_items__service',
+                'employee_items__employee', 'employee_items__show',
+                'payments__created_by', 'expenses__created_by', 'expenses__decided_by',
+                'checklist_items__show', 'checklist_items__template', 'contact_items',
+            ).get(id=order_id)
 
-            if order.content_changed_at and not request.GET.get('peek'):
-                order.content_changed_at = None
-                order.save(update_fields=['content_changed_at'])
+            if order.content_changed_at:
+                OrderReadMark.objects.update_or_create(
+                    employee=employee,
+                    order=order,
+                    defaults={'seen_changed_at': order.content_changed_at},
+                )
+
+            order.content_changed_at = None
+
+            def show_staff(show_id):
+                linked = [row for row in employee_items if row['show_id'] == show_id]
+                linked_ids = {row['show_id'] for row in employee_items if row['show_id']}
+
+                if not linked:
+                    linked = [row for row in employee_items if row['show_id'] not in linked_ids]
+
+                return [
+                    {
+                        'employee_id': row['employee_id'],
+                        'name': row['name'],
+                        'role': row['role'],
+                        'comment': row['comment'] or '',
+                        'is_story': bool(row.get('is_story')),
+                        'is_responsible': bool(row.get('is_responsible')),
+                    }
+                    for row in linked
+                    if row['name']
+                ]
 
             estimate_items = []
             for item in order.estimate_items.all():
@@ -456,6 +929,7 @@ class OrderDetailView(View):
                     'service_id': item.service.id if item.service else None,
                     'name': item.service_name,
                     'people_count': item.people_count,
+                    'start_time': item.start_time or '',
                     'people_count_unknown': item.people_count_unknown,
                     'coefficient': float(item.coefficient),
                     'price': float(item.price),
@@ -497,9 +971,21 @@ class OrderDetailView(View):
                 'date': format_date(order.date),
                 'date_display': format_date_short(order.date),
                 'start_datetime': format_datetime(order.start_datetime),
+                'start_time': order.start_time_text or format_time_value(order.start_datetime),
                 'end_datetime': format_datetime(order.end_datetime),
                 'address': order.address or '',
                 'chat_number': order.chat_number or '',
+                'chat_links': chat_links_map(),
+                'contact_items': [
+                    {
+                        'id': item.id,
+                        'name': item.name,
+                        'phone': item.phone,
+                        'telegram': item.telegram,
+                        'is_primary': item.is_primary,
+                    }
+                    for item in order.contact_items.all()
+                ],
                 'contact_name': order.contact_name or '',
                 'contact_phone': order.contact_phone or '',
                 'contact_telegram': order.contact_telegram or '',
@@ -515,6 +1001,10 @@ class OrderDetailView(View):
                 'tech_comment': order.tech_comment or '',
                 'venue_comment': order.venue_comment or '',
                 'props_comment': order.props_comment or '',
+                'importance': order.importance or '',
+                'event_comment': order.event_comment or '',
+                'donotforget_comment': order.donotforget_comment or '',
+                'adaptation_comment': order.adaptation_comment or '',
                 'manager_id': order.manager.id if order.manager else None,
                 'manager_name': order.manager.display_name if order.manager else '',
                 'manager_ids': [item.id for item in order.managers.all()],
@@ -536,7 +1026,12 @@ class OrderDetailView(View):
                 'story_manager_id': order.story_manager.id if order.story_manager else None,
                 'story_manager_name': order.story_manager.display_name if order.story_manager else None,
                 'estimate_items': estimate_items,
+                'services': [
+                    dict(item, employees=show_staff(item['id']))
+                    for item in estimate_items
+                ],
                 'employee_items': employee_items,
+                'change_logs': serialize_change_logs(order),
                 'expenses': [serialize_expense(item) for item in order.expenses.select_related('created_by', 'decided_by')],
                 'checklist': serialize_checklist(order, employee.can_edit_checklists(), employee.can_build_checklists()),
                 'can_see_rates': can_see_rates,
@@ -579,9 +1074,183 @@ class OrderDetailView(View):
                 payload.pop('payments', None)
                 payload.pop('total_paid', None)
 
+                for item in payload.get('services', []):
+                    item.pop('price', None)
+
             return JsonResponse(payload)
         except Order.DoesNotExist:
             return JsonResponse({'error': 'Заказ не найден'}, status=404)
+
+
+CHANGE_LABELS = {
+    'name': 'Название',
+    'client': 'Клиент',
+    'city': 'Город',
+    'date': 'Дата',
+    'address': 'Адрес',
+    'chat_number': 'Узкий чат',
+    'start_time': 'Время выхода',
+    'setup_time': 'Чек',
+    'contacts': 'Контакты',
+    'shows': 'Шоу',
+    'artists': 'Артисты',
+    'cost': 'Стоимость',
+    'payment': 'Оплата',
+    'status': 'Статус',
+    'importance': 'Важность',
+    'event_comment': 'Про событие',
+    'venue_comment': 'Про площадку',
+    'donotforget_comment': 'Не забыть',
+    'adaptation_comment': 'Адаптация',
+    'dressing_room_comment': 'Гримёрка, еда',
+    'props_comment': 'Реквизит',
+    'concept': 'Комментарий',
+    'tech': 'Техничка',
+}
+
+STATUS_LABELS = {
+    'request': 'Запрос',
+    'confirmed': 'Подтверждённый',
+    'completed': 'Выполненный',
+}
+
+TECH_FLAGS = [
+    ('tech_lamps', 'УФ'),
+    ('tech_laser', 'Лазер'),
+    ('tech_hazer', 'Хейзер'),
+    ('tech_grid', 'Сетка'),
+    ('tech_projection', 'Проекция'),
+]
+
+
+def money_label(value):
+    number = parse_money(value)
+
+    if number is None:
+        return (value or '').strip()
+
+    return '{:,.0f} ₽'.format(number).replace(',', ' ') if number == int(number) else f'{number:.2f} ₽'
+
+
+def order_snapshot(order):
+    day = order.date.isoformat() if order.date else ''
+    contacts = []
+
+    for item in order.contact_items.all().order_by('id'):
+        part = ' · '.join(part for part in [item.name, item.phone, item.telegram] if part)
+
+        if not part:
+            continue
+
+        contacts.append(part + (' (основной)' if item.is_primary else ''))
+
+    if not contacts:
+        fallback = ' · '.join(
+            part for part in [order.contact_name, order.contact_phone, order.contact_telegram] if part
+        )
+
+        if fallback:
+            contacts.append(fallback)
+
+    shows = []
+    artists = []
+
+    for item in order.estimate_items.all().order_by('id'):
+        if not item.service_name:
+            continue
+
+        label = item.service_name
+
+        if item.people_count:
+            label = f'{label} {item.people_count}'
+
+        if item.start_time:
+            label = f'{label} ({item.start_time})'
+
+        shows.append(label)
+
+    for item in order.employee_items.all().order_by('id'):
+        if not item.employee_name or item.employee_name in artists:
+            continue
+
+        artists.append(item.employee_name)
+
+    tech = [label for flag, label in TECH_FLAGS if getattr(order, flag, False)]
+
+    return {
+        'name': (order.name or '').strip(),
+        'client': order.client.full_name if order.client_id else '',
+        'city': order.city.name if order.city_id else '',
+        'date': day,
+        'address': (order.address or '').strip(),
+        'chat_number': (order.chat_number or '').strip(),
+        'start_time': (order.start_time_text or '').strip(),
+        'setup_time': (order.setup_time or '').strip(),
+        'contacts': ', '.join(contacts),
+        'shows': ', '.join(shows),
+        'artists': ', '.join(artists),
+        'cost': money_label(order.cost),
+        'payment': ' · '.join(part for part in [
+            {'cash': 'Нал', 'ip': 'ИП', 'self': 'СЗ'}.get(order.payment_method, ''),
+            (order.payment_due_comment or '').strip(),
+        ] if part),
+        'status': STATUS_LABELS.get(order.status, order.get_status_display()),
+        'importance': (order.importance or '').strip(),
+        'event_comment': (order.event_comment or '').strip(),
+        'venue_comment': (order.venue_comment or '').strip(),
+        'donotforget_comment': (order.donotforget_comment or '').strip(),
+        'adaptation_comment': (order.adaptation_comment or '').strip(),
+        'dressing_room_comment': (order.dressing_room_comment or '').strip(),
+        'props_comment': (order.props_comment or '').strip(),
+        'concept': (order.concept or '').strip(),
+        'tech': ', '.join(tech + [(order.tech_comment or '').strip()]).strip(', '),
+    }
+
+
+def format_change_date(value):
+    if not value:
+        return ''
+
+    try:
+        return datetime.strptime(value, '%Y-%m-%d').strftime('%d.%m.%Y')
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def write_order_changes(order, employee, before):
+    after = order_snapshot(order)
+    changes = []
+
+    for field, label in CHANGE_LABELS.items():
+        old_value = before.get(field, '')
+        new_value = after.get(field, '')
+
+        if field == 'date':
+            old_value = format_change_date(before.get('date'))
+            new_value = format_change_date(after.get('date'))
+
+        if old_value == new_value:
+            continue
+
+        changes.append((label, old_value, new_value))
+
+    return OrderChangeLog.write(order, employee, changes)
+
+
+def serialize_change_logs(order, limit=5):
+    logs = order.change_logs.select_related('changed_by').all()[:limit]
+
+    return [
+        {
+            'field': item.field,
+            'old_value': item.old_value,
+            'new_value': item.new_value,
+            'changed_by': item.changed_by.display_name if item.changed_by_id else item.changed_by_name,
+            'changed_at': item.changed_at.isoformat() if item.changed_at else None,
+            'changed_at_display': timezone.localtime(item.changed_at).strftime('%d.%m.%Y %H:%M') if item.changed_at else '',
+        }
+        for item in logs
+    ]
 
 
 class OrderUpdateView(View):
@@ -599,6 +1268,15 @@ class OrderUpdateView(View):
 
         try:
             order = get_object_or_404(Order, id=order_id)
+            order = (
+                Order.objects
+                .select_related('client', 'city', 'manager')
+                .prefetch_related(
+                    'estimate_items', 'employee_items', 'contact_items', 'managers',
+                )
+                .get(id=order.id)
+            )
+            before_snapshot = order_snapshot(order)
 
             name = request.POST.get('name', '').strip()
             client_id = request.POST.get('client_id')
@@ -622,15 +1300,20 @@ class OrderUpdateView(View):
             order.name = name
             order.client = get_object_or_404(Client, id=client_id)
 
-            city_name_raw = request.POST.get('city_name', '').strip()
+            city_name_raw = ' '.join(request.POST.get('city_name', '').split())
+            city_obj = None
 
-            if city_id:
-                order.city = City.objects.filter(id=city_id).first()
-            elif city_name_raw:
-                order.city = City.objects.filter(name__iexact=city_name_raw).first()
+            if city_id and str(city_id).strip().isdigit():
+                city_obj = City.objects.filter(id=int(city_id)).first()
 
-                if order.city is None:
-                    order.city = City.objects.create(name=city_name_raw)
+            if city_obj is None and city_name_raw:
+                city_obj = City.objects.filter(name__iexact=city_name_raw).first()
+
+                if city_obj is None:
+                    city_obj = City.objects.create(name=city_name_raw)
+
+            if city_obj is not None:
+                order.city = city_obj
             elif 'city_id' in request.POST:
                 order.city = None
 
@@ -651,6 +1334,10 @@ class OrderUpdateView(View):
             order.tech_comment = request.POST.get('tech_comment', '').strip()
             order.venue_comment = request.POST.get('venue_comment', '').strip()
             order.props_comment = request.POST.get('props_comment', '').strip()
+            order.importance = request.POST.get('importance', '').strip()
+            order.event_comment = request.POST.get('event_comment', '').strip()
+            order.donotforget_comment = request.POST.get('donotforget_comment', '').strip()
+            order.adaptation_comment = request.POST.get('adaptation_comment', '').strip()
 
             if allow_rates_post:
                 if 'cost' in request.POST:
@@ -673,8 +1360,15 @@ class OrderUpdateView(View):
             start_raw = request.POST.get('start_datetime', '').strip()
             end_raw = request.POST.get('end_datetime', '').strip()
 
+            end_raw = request.POST.get('end_datetime', '').strip()
+
             if 'start_datetime' in request.POST:
                 order.start_datetime = parse_datetime(start_raw)
+
+            if 'start_time' in request.POST:
+                raw_start_time = (request.POST.get('start_time', '') or '').strip()
+                order.start_time_text = raw_start_time[:100]
+                order.start_datetime = parse_start_time(raw_start_time, order.date)
 
             if 'end_datetime' in request.POST:
                 order.end_datetime = parse_datetime(end_raw)
@@ -736,7 +1430,25 @@ class OrderUpdateView(View):
                 order.manager = employee
                 order.save(update_fields=['manager'])
 
+            if request.POST.get('contacts_json'):
+                save_order_contacts(order, request.POST.get('contacts_json'))
+                order.save(update_fields=['contact_name', 'contact_phone', 'contact_telegram'])
+
+            shows_payload = request.POST.get('shows_json') or ''
+
+            if shows_payload:
+                save_order_shows(order, shows_payload)
+                shows_saved = True
+            else:
+                shows_saved = False
+
             estimate_items_str = request.POST.get('estimate_items', '')
+            if not estimate_items_str and not shows_payload and request.POST.get('service_id', '').strip():
+                service_payload = build_service_estimate_item(request)
+
+                if service_payload:
+                    estimate_items_str = json.dumps([service_payload], ensure_ascii=False)
+
             if estimate_items_str:
                 try:
                     estimate_items = json.loads(estimate_items_str)
@@ -806,15 +1518,52 @@ class OrderUpdateView(View):
                 created_items = []
 
             employee_items_str = request.POST.get('employee_items', '')
+            previous_rows = []
+
+            if shows_saved:
+                for item in order.employee_items.select_related('employee').all():
+                    show_index = next(
+                        (
+                            index for index, estimate in enumerate(created_items)
+                            if estimate.id == item.show_id
+                        ),
+                        None,
+                    )
+
+                    previous_rows.append({
+                        'employee_id': item.employee_id,
+                        'name': item.employee_name,
+                        'role': item.employee_role,
+                        'role_code': item.role_code,
+                        'show_index': show_index,
+                        'payment': float(item.payment),
+                        'is_overridden': item.is_overridden,
+                        'is_story': item.is_story,
+                        'is_responsible': item.is_responsible,
+                        'comment': item.comment or '',
+                    })
+
+                staff_payload = request.POST.get('shows_json') or ''
+
+                if staff_payload:
+                    order.employee_items.all().delete()
+                    save_order_shows(order, staff_payload)
+                    employee_items_str = ''
+                elif not employee_items_str:
+                    employee_items_str = json.dumps(
+                        [row for row in previous_rows if row['show_index'] is not None],
+                        ensure_ascii=False,
+                    )
+
             if employee_items_str:
                 try:
                     employee_items = json.loads(employee_items_str)
 
                     previous_staff = {}
 
-                    for item in order.employee_items.select_related('employee').all():
-                        key = (item.employee_id, item.employee_name, item.employee_role)
-                        previous_staff.setdefault(key, item)
+                    for row in previous_rows:
+                        key = (row['employee_id'], row['name'], row['role'])
+                        previous_staff.setdefault(key, row)
 
                     order.employee_items.all().delete()
 
@@ -824,6 +1573,8 @@ class OrderUpdateView(View):
                         if employee_id:
                             emp = Employee.objects.filter(id=employee_id).first()
 
+                        role_code = item.get('role_code', '')
+
                         show_index = item.get('show_index')
                         show_obj = None
 
@@ -832,8 +1583,6 @@ class OrderUpdateView(View):
                                 show_obj = created_items[int(show_index)]
                             except (IndexError, ValueError, TypeError):
                                 show_obj = None
-
-                        role_code = item.get('role_code', '')
 
                         payment_value = item.get('payment')
 
@@ -845,12 +1594,12 @@ class OrderUpdateView(View):
                             ))
 
                             if old_staff is not None:
-                                payment_value = float(old_staff.payment)
-                                overridden_value = old_staff.is_overridden
+                                payment_value = float(old_staff['payment'])
+                                overridden_value = old_staff['is_overridden']
                             else:
                                 payment_value = 0
                                 overridden_value = False
-                        elif payment_value is None:
+                        elif payment_value is None or (payment_value == 0 and previous_staff):
                             old_staff = previous_staff.get((
                                 emp.id if emp else None,
                                 item.get('name', ''),
@@ -858,8 +1607,8 @@ class OrderUpdateView(View):
                             ))
 
                             if old_staff is not None:
-                                payment_value = float(old_staff.payment)
-                                overridden_value = old_staff.is_overridden
+                                payment_value = float(old_staff['payment'])
+                                overridden_value = old_staff['is_overridden']
                             else:
                                 payment_value = 0
                                 overridden_value = False
@@ -890,8 +1639,21 @@ class OrderUpdateView(View):
 
             order.save(update_fields=['auto_name', 'name', 'name_is_manual'])
 
-            if order.touch_content_change():
-                order.save(update_fields=['content_hash', 'content_changed_at'])
+            order.refresh_from_db()
+
+            order.touch_content_change()
+            order.save(update_fields=['content_hash', 'content_changed_at'])
+
+            order = (
+                Order.objects
+                .select_related('client', 'city', 'manager')
+                .prefetch_related(
+                    'estimate_items', 'employee_items', 'contact_items', 'managers',
+                )
+                .get(id=order.id)
+            )
+
+            write_order_changes(order, employee, before_snapshot)
 
             sync_order_balance(order, previous_status, employee)
 
@@ -1050,12 +1812,15 @@ class OrderListView(View):
         )
 
         limit = parse_int(request.GET.get('limit'))
+        offset = parse_int(request.GET.get('offset')) or 0
 
         return order_list_response(
             orders,
             limit=limit,
+            offset=offset if offset > 0 else 0,
             can_see_cost=employee.can_see_costs(),
             can_see_rates=employee.can_see_rates(),
+            employee=employee,
         )
 
 
@@ -1089,11 +1854,17 @@ class MyOrdersListView(View):
 
             return {'my_payment': payment}
 
+        limit = parse_int(request.GET.get('limit'))
+        offset = parse_int(request.GET.get('offset')) or 0
+
         return order_list_response(
             orders,
             extra,
+            limit=limit,
+            offset=offset if offset > 0 else 0,
             can_see_cost=employee.can_see_costs(),
             can_see_rates=employee.can_see_rates(),
+            employee=employee,
         )
 
 
@@ -1233,6 +2004,21 @@ class CityListView(View):
         return JsonResponse({'cities': data})
 
 
+class NarrowChatListView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        chats = NarrowChat.objects.filter(is_active=True).order_by('order', 'name')
+
+        return JsonResponse({
+            'chats': [
+                {'id': chat.id, 'name': chat.name, 'link': chat.link or ''}
+                for chat in chats
+            ]
+        })
+
+
 class ServicesFlatListView(View):
     def get(self, request):
         if not request.user.is_authenticated:
@@ -1300,16 +2086,6 @@ def serialize_price_period(period):
         'end_date': period.end_date.strftime('%Y-%m-%d'),
         'percent': float(period.percent),
     }
-
-
-def parse_request_date(value):
-    if not value:
-        return None
-
-    try:
-        return datetime.strptime(value, '%Y-%m-%d').date()
-    except (ValueError, TypeError):
-        return None
 
 
 class PricePeriodView(View):

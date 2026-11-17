@@ -132,6 +132,181 @@
   font-weight: 600;
 }
 
+.money-layout {
+  display: block;
+  padding: 1rem;
+  padding-left: calc(260px + 2rem);
+}
+
+.money-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  background: #13110e;
+  border: 1px solid #2b2620;
+  border-radius: 12px;
+  position: fixed;
+  top: calc(var(--navbar-height, 64px) + 0.75rem);
+  left: 1rem;
+  width: 260px;
+  max-height: calc(100vh - var(--navbar-height, 64px) - 1.5rem);
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.money-content {
+  min-width: 0;
+}
+
+.money-sidebar .money-title {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.money-sidebar .money-filters {
+  flex-direction: column;
+  align-items: stretch;
+  margin-bottom: 0;
+  gap: 0.5rem;
+}
+
+.money-sidebar .money-period {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+}
+
+.money-sidebar .money-period__label {
+  font-size: 0.7rem;
+}
+
+.money-sidebar .money-period__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.money-sidebar .money-period__caption {
+  flex: 0 0 20px;
+  font-size: 0.72rem;
+  color: #7a7267;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.money-sidebar .money-period__input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.82rem;
+  border: 1px solid #2b2620;
+  border-radius: 8px;
+  padding: 0.3rem 0.4rem;
+  background: #0f0e0c;
+  color-scheme: dark;
+}
+
+.money-sidebar .money-period__sep {
+  display: none;
+}
+
+.money-sidebar .money-period__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
+}
+
+.money-sidebar .money-period__step {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.money-sidebar .money-period__today {
+  flex: 1 1 auto;
+  width: auto;
+  justify-content: center;
+  font-size: 0.76rem;
+  padding: 0.25rem 0.4rem;
+}
+
+.money-sidebar .money-search {
+  min-width: 0;
+  width: 100%;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  margin-bottom: 0;
+}
+
+.money-sidebar .money-tabs {
+  flex-direction: column;
+  border-bottom: none;
+  gap: 0.15rem;
+  margin-bottom: 0;
+  padding: 0.2rem;
+  background: #0f0e0c;
+  border: 1px solid #2b2620;
+  border-radius: 10px;
+}
+
+.money-sidebar .money-tab {
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  border-bottom: none;
+  margin-bottom: 0;
+  font-size: 0.86rem;
+}
+
+.money-sidebar .money-tab.active {
+  background: #f0a868;
+  color: #0b0b0b;
+}
+
+.money-sidebar .money-stats {
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.money-sidebar .money-stat {
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+}
+
+.money-sidebar .money-stat__label {
+  font-size: 0.62rem;
+  margin-bottom: 0.15rem;
+}
+
+.money-sidebar .money-stat__value {
+  font-size: 0.95rem;
+}
+
+.money-content {
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .money-layout {
+    padding: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .money-sidebar {
+    position: static;
+    width: auto;
+    max-height: none;
+  }
+}
+
 .money-header {
   padding: 1.5rem 0 1rem;
 }

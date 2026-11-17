@@ -420,15 +420,15 @@
 }
 
 .profile-event--request {
-    border-left-color: #2164c8;
+    border-left-color: #ff7a1a;
 }
 
 .profile-event--confirmed {
-    border-left-color: #2e7d32;
+    border-left-color: #2fbf71;
 }
 
 .profile-event--completed {
-    border-left-color: #dcc8a0;
+    border-left-color: #c9a86a;
 }
 
 .profile-event__top {

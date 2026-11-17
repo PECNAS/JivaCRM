@@ -1,3 +1,5 @@
+from django.db.models import Max
+
 from ..models import (
     ChecklistItem, ChecklistTemplate, OrderShowTemplate,
 )
@@ -41,27 +43,77 @@ def attach_template(order, template, employee, show=None):
     if template is None:
         return 0
 
-    existing = ChecklistItem.objects.filter(order=order, template=template)
+    from django.db import transaction
+    from ..models import Order as OrderModel
 
-    if show is None:
-        existing = existing.filter(show__isnull=True)
-    else:
-        existing = existing.filter(show=show)
+    with transaction.atomic():
+        OrderModel.objects.select_for_update().filter(id=order.id).first()
 
-    if existing.exists():
-        return 0
+        existing = ChecklistItem.objects.filter(order=order, template=template)
 
-    return add_template(order, template, employee, show)
+        if show is None:
+            existing = existing.filter(show__isnull=True)
+        else:
+            existing = existing.filter(show=show)
+
+        if existing.exists():
+            return 0
+
+        return add_template(order, template, employee, show)
+
+
+def dedupe_order_checklist(order):
+    rows = (
+        ChecklistItem.objects
+        .filter(order=order, template__isnull=False)
+        .order_by('id')
+        .values_list('id', 'template_id', 'show_id', 'text')
+    )
+
+    seen = {}
+    extra_ids = []
+
+    for item_id, template_id, show_id, text in rows:
+        key = (template_id, show_id, text)
+
+        if key in seen:
+            extra_ids.append(item_id)
+        else:
+            seen[key] = item_id
+
+    removed = 0
+
+    for start in range(0, len(extra_ids), 500):
+        chunk = extra_ids[start:start + 500]
+        removed += len(chunk)
+        ChecklistItem.objects.filter(id__in=chunk).delete()
+
+    return removed
 
 
 def add_template(order, template, employee, show=None):
     if template is None:
         return 0
 
-    index = order.checklist_items.count()
+    last = (
+        ChecklistItem.objects
+        .filter(order=order)
+        .aggregate(value=Max('order_index'))
+    )
+    index = (last.get('value') if last.get('value') is not None else -1) + 1
     created = 0
+    seen = set(
+        ChecklistItem.objects
+        .filter(order=order, template=template, show=show)
+        .values_list('text', flat=True)
+    )
 
     for source in template.items.order_by('order_index', 'id'):
+        if source.text in seen:
+            continue
+
+        seen.add(source.text)
+
         ChecklistItem.objects.create(
             order=order,
             show=show,
@@ -93,7 +145,7 @@ def is_template_detached(order, template):
 def attach_for_order(order, employee):
     created = 0
 
-    for show in order.estimate_items.order_by('id'):
+    for show in order.estimate_items.all():
         template = template_for_show(show)
 
         if not template or is_template_detached(order, template):
@@ -140,12 +192,17 @@ def serialize_item(item):
 def serialize_checklist(order, can_edit, can_build=None):
     shows = [
         {'id': show.id, 'name': show.service_name}
-        for show in order.estimate_items.order_by('id')
+        for show in order.estimate_items.all()[:50]
     ]
+
+    if 'checklist_items' in getattr(order, '_prefetched_objects_cache', {}):
+        source = order._prefetched_objects_cache['checklist_items']
+    else:
+        source = order.checklist_items.select_related('show', 'template', 'created_by')
 
     items = [
         serialize_item(item)
-        for item in order.checklist_items.select_related('show', 'template', 'created_by').order_by('order_index', 'id')
+        for item in source
     ]
 
     groups = []

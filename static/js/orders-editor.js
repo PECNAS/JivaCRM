@@ -697,6 +697,8 @@
         copyOrderModal.addEventListener('click', function(e) {
             if (e.target === this) closeCopyModal();
         });
+
+        window.UI.registerModal(copyOrderModal, closeCopyModal);
     }
 
     if (copyOrderKeepDate) {
@@ -1157,7 +1159,7 @@
         orderPayments = (data.payments || []).map(item => ({ ...item }));
         renderOrderPayments();
         editOrderDressingRoom.value = data.dressing_room_comment || '';
-        editOrderMeal.value = data.meal_comment || '';
+        if (editOrderMeal) editOrderMeal.value = data.meal_comment || '';
         editOrderConcept.value = data.concept || '';
         setTimeout(autoSizeConcept, 0);
 
@@ -1636,6 +1638,7 @@
 
                 if (field === 'people_count' || field === 'price') {
                     value = parseFloat(String(value).replace(',', '.')) || 0;
+                    if (field === 'price') value = Math.round(value);
                 }
 
                 if (field === 'price') {
@@ -1648,6 +1651,7 @@
                     recalcServicePrice(index);
                     renderServices();
                 } else {
+                    renderServices();
                     updateServicesTotal();
                 }
             });
@@ -1965,16 +1969,6 @@
     function selectShowService(index) {
         activeShowIndex = index;
 
-        const list = document.getElementById('orderShowSelectorList');
-        const label = document.getElementById('orderShowSelectorLabel');
-
-        if (list) list.classList.remove('open');
-
-        if (label) {
-            const item = estimateItems[index];
-            label.textContent = item ? item.name || 'Услуга' : 'Выберите услугу';
-        }
-
         const panel = document.getElementById('orderShowPanel');
 
         if (!panel) return;
@@ -2005,7 +1999,6 @@
 
     function renderShowsTab() {
         const badge = document.getElementById('orderShowsBadge');
-        const list = document.getElementById('orderShowSelectorList');
         const dropdown = document.getElementById('orderShowsDropdown');
 
         if (badge) badge.textContent = String(estimateItems.length);
@@ -2034,32 +2027,6 @@
             });
         }
 
-        if (!list) return;
-
-        if (!estimateItems.length) {
-            list.innerHTML = '<div class="order-show-empty">Услуги не выбраны</div>';
-            return;
-        }
-
-        list.innerHTML = estimateItems.map((item, index) => {
-            const count = item.people_count_unknown || !item.people_count
-                ? 'артисты не указаны'
-                : `${item.people_count} чел.`;
-
-            return `
-                <button type="button" class="order-show-selector__item ${index === activeShowIndex ? 'active' : ''}" data-show-pick="${index}">
-                    <span>${index + 1}. ${escapeHtml(item.name || 'Услуга')}</span>
-                    <span class="order-show-selector__count">${escapeHtml(count)}</span>
-                </button>
-            `;
-        }).join('');
-
-        list.querySelectorAll('[data-show-pick]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                selectShowService(parseInt(this.dataset.showPick, 10));
-            });
-        });
-
         if (activeShowIndex >= estimateItems.length) activeShowIndex = 0;
 
         selectShowService(activeShowIndex);
@@ -2080,6 +2047,30 @@
 
         return `
             <div class="show-tab">
+                <div class="show-services-table">
+                    <div class="show-services-table__scroll">
+                        <table class="show-services-table__table">
+                            <thead>
+                                <tr>
+                                    <th>Услуга</th>
+                                    <th style="width:90px;">Артисты</th>
+                                    <th style="width:110px;">Стоимость</th>
+                                    <th style="width:60px;" title="Основное">Осн.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${estimateItems.map((row, rowIndex) => `
+                                    <tr class="show-services-table__row ${rowIndex === index ? 'active' : ''}" data-show-pick="${rowIndex}" title="${rowIndex === index ? '' : 'Открыть артистов этой услуги'}">
+                                        <td class="show-services-table__name"><span class="show-services-table__link">${rowIndex + 1}. ${escapeHtml(row.name || 'Услуга')}</span></td>
+                                        <td>${row.people_count_unknown || !row.people_count ? '—' : row.people_count}</td>
+                                        <td>${formatPrice(row.price)}</td>
+                                        <td class="cell-center">${row.is_main ? 'Да' : '—'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <div class="employees-container employees-container--in-show">
                     <div class="employees-list-panel">
                         <div class="panel-header">
@@ -2099,7 +2090,7 @@
                                     <input type="checkbox" data-show-main="${index}" ${item.is_main ? 'checked' : ''}>
                                     <span>Основное</span>
                                 </label>
-                                <span class="show-unified-head__total">Итого: <span data-show-total="${index}">0.00₽</span></span>
+                                <span class="show-unified-head__total">Итого: <span data-show-total="${index}">0₽</span></span>
                             </div>
                         </div>
                         <div class="employees-table-container">
@@ -2107,7 +2098,7 @@
                                 <thead>
                                     <tr>
                                         <th>Сотрудник</th>
-                                        <th>Роль</th>
+                                        <th style="width:130px;">Роль</th>
                                         <th style="width:110px;">Оплата</th>
                                         <th>Комментарий</th>
                                         <th style="width:36px;" title="Сториз">С</th>
@@ -2126,23 +2117,51 @@
         `;
     }
 
+    function employeeRoleOptions(emp) {
+        if (!emp) return [];
+
+        let codes = emp.role_codes && emp.role_codes.length ? emp.role_codes.slice() : [];
+        codes = codes.filter(code => code && roleLabels[code]);
+
+        if (!codes.length && emp.role && roleLabels[emp.role]) codes = [emp.role];
+
+        return codes;
+    }
+
+    function buildRoleCell(emp) {
+        const empData = allEmployees.find(item => item.id === emp.employee_id);
+        const codes = employeeRoleOptions(empData);
+
+        if (codes.length > 1) {
+            const current = codes.includes(emp.role_code) ? emp.role_code : codes[0];
+
+            return `
+                <select class="cell-select" data-field="role_code" data-index="${emp.empIndex}">
+                    ${codes.map(code => `<option value="${code}" ${code === current ? 'selected' : ''}>${escapeHtml(roleLabels[code])}</option>`).join('')}
+                </select>
+            `;
+        }
+
+        return `<span class="cell-role">${escapeHtml(emp.role || (codes.length ? roleLabels[codes[0]] : ''))}</span>`;
+    }
+
     function buildShowStaffRow(emp) {
-        const partners = employeeItems
-            .filter(other => other !== emp && other.show_index === emp.show_index && other.employee_id !== emp.employee_id)
-            .map(other => other.name + (other.comment ? ' (' + other.comment + ')' : ''));
+        const columnHas = function(field) {
+            return employeeItems.some(other => other.show_index === emp.show_index && other[field]);
+        };
+
+        const storyDim = columnHas('is_story') && !emp.is_story;
+        const responsibleDim = columnHas('is_responsible') && !emp.is_responsible;
 
         return `
             <tr data-index="${emp.empIndex}" class="${emp.overridden ? 'row-overridden' : ''} ${emp.inactive ? 'row-inactive-employee' : ''}">
                 <td>
                     <span class="employee-cell">
-                        <span class="employee-cell__name">${escapeHtml(emp.name)}</span>
-                        ${partners.length
-                            ? `<span class="employee-cell__partners" title="${escapeHtml(partners.join(', '))}">с ${escapeHtml(partners.join(', '))}</span>`
-                            : ''}
+                        <span class="employee-cell__name" title="${escapeHtml(emp.name)}">${escapeHtml(emp.name)}</span>
                     </span>
                     ${emp.inactive ? '<span class="inactive-badge">Деактивирован</span>' : ''}
                 </td>
-                <td>${escapeHtml(emp.role)}</td>
+                <td>${buildRoleCell(emp)}</td>
                 <td>
                     ${canSeeRates()
                         ? `<input type="text" inputmode="decimal" class="cell-input cell-input--price ${emp.overridden ? 'cell-input--overridden' : ''}"
@@ -2154,10 +2173,10 @@
                            placeholder="Комментарий" data-field="comment" data-index="${emp.empIndex}">
                 </td>
                 <td class="cell-center">
-                    <input type="checkbox" class="cell-checkbox" data-field="is_story" data-index="${emp.empIndex}" ${emp.is_story ? 'checked' : ''}>
+                    <input type="checkbox" class="cell-checkbox ${storyDim ? 'cell-checkbox--dim' : ''}" data-field="is_story" data-index="${emp.empIndex}" ${emp.is_story ? 'checked' : ''}>
                 </td>
                 <td class="cell-center">
-                    <input type="checkbox" class="cell-checkbox" data-field="is_responsible" data-index="${emp.empIndex}" ${emp.is_responsible ? 'checked' : ''}>
+                    <input type="checkbox" class="cell-checkbox ${responsibleDim ? 'cell-checkbox--dim' : ''}" data-field="is_responsible" data-index="${emp.empIndex}" ${emp.is_responsible ? 'checked' : ''}>
                 </td>
                 <td>
                     <button class="remove-btn" data-remove-index="${emp.empIndex}" title="Удалить">
@@ -2637,6 +2656,24 @@
         const searchInput = content.querySelector('[data-employee-search]');
         const listPanel = content.querySelector('[data-employees-list]');
         const staffBody = content.querySelector('[data-show-staff]');
+        const servicesTable = content.querySelector('.show-services-table');
+
+        if (servicesTable) {
+            servicesTable.addEventListener('click', function(e) {
+                const row = e.target.closest('[data-show-pick]');
+
+                if (!row) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const targetIndex = parseInt(row.dataset.showPick, 10);
+
+                if (isNaN(targetIndex) || targetIndex === showIndex) return;
+
+                selectShowService(targetIndex);
+            });
+        }
 
         if (searchInput && initialSearch) {
             searchInput.value = initialSearch;
@@ -2685,14 +2722,26 @@
                             <div class="employee-role">${escapeHtml(roleLabel)}</div>
                             ${availabilityHtml}
                         </div>
-                        <button class="add-employee-btn" data-employee-id="${emp.id}" data-role="${emp.role}" title="Добавить">+</button>
+                        <button class="add-employee-btn" data-employee-id="${emp.id}" data-role="${emp.role}" title="${isAdded ? 'Убрать' : 'Добавить'}">
+                            ${isAdded
+                                ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+                                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'}
+                        </button>
                     </div>
                 `;
             }).join('');
 
             listPanel.querySelectorAll('.add-employee-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    addEmployeeToShow(parseInt(this.dataset.employeeId, 10), this.dataset.role, showIndex);
+                    const employeeId = parseInt(this.dataset.employeeId, 10);
+                    const added = employeeItems.some(item => item.employee_id === employeeId && item.show_index === showIndex);
+
+                    if (added) {
+                        removeEmployeeFromShow(employeeId, showIndex);
+                        return;
+                    }
+
+                    addEmployeeToShow(employeeId, this.dataset.role, showIndex);
                 });
             });
         }
@@ -2718,7 +2767,7 @@
                 if (!item) return;
 
                 if (field === 'payment') {
-                    item.payment = parseFloat(String(target.value).replace(',', '.')) || 0;
+                    item.payment = Math.round(parseFloat(String(target.value).replace(',', '.')) || 0);
                     item.overridden = true;
                     updateCostField();
                     updateShowTotals();
@@ -2727,6 +2776,25 @@
 
                 if (field === 'comment') {
                     item.comment = target.value;
+                    return;
+                }
+
+                if (field === 'role_code') {
+                    const code = target.value;
+
+                    if (!code || !roleLabels[code]) return;
+
+                    item.role_code = code;
+                    item.role = roleLabels[code];
+
+                    if (!item.overridden) {
+                        const def = getDefaultPaymentByRole(code);
+
+                        if (def !== null) item.payment = def;
+                    }
+
+                    updateCostField();
+                    renderShowsTab();
                     return;
                 }
 
@@ -2817,6 +2885,17 @@
         renderShowsTab();
     }
 
+    function removeEmployeeFromShow(employeeId, showIndex) {
+        const index = employeeItems.findIndex(item => item.employee_id === employeeId && item.show_index === showIndex);
+
+        if (index === -1) return;
+
+        employeeItems.splice(index, 1);
+
+        updateCostField();
+        renderShowsTab();
+    }
+
     function updateEmployeesTotal() {
         updateShowTotals();
         updateCostField();
@@ -2859,20 +2938,20 @@
     }
 
     function serializeCostForServer() {
-        if (!editOrderCost) return '0.00';
+        if (!editOrderCost) return '0';
 
         const number = parseCostValue(editOrderCost.value);
         const calc = getCalculatedCost();
 
         if (costOverride && number !== null && number > 0) {
-            return number.toFixed(2);
+            return String(Math.round(number));
         }
 
         if (calc > 0) {
-            return calc.toFixed(2);
+            return String(Math.round(calc));
         }
 
-        return '0.00';
+        return '0';
     }
 
     function renderPaymentTax() {
@@ -3056,6 +3135,8 @@
         orderExpenseModal.addEventListener('click', function(e) {
             if (e.target === orderExpenseModal) requestCloseExpenseModal();
         });
+
+        window.UI.registerModal(orderExpenseModal, requestCloseExpenseModal);
     }
 
     if (orderChecklistTemplateInput) {
@@ -3137,7 +3218,7 @@
                 contact_telegram: editOrderContactTelegram.value.trim(),
                 setup_time: editOrderSetupTime.value.trim(),
                 dressing_room_comment: editOrderDressingRoom.value.trim(),
-                meal_comment: editOrderMeal.value.trim(),
+                meal_comment: editOrderMeal ? editOrderMeal.value.trim() : '',
                 concept: editOrderConcept.value.trim(),
                 tech_lamps: editOrderTechLamps.checked ? 'on' : 'off',
                 tech_laser: editOrderTechLaser.checked ? 'on' : 'off',
@@ -3292,34 +3373,22 @@
 
     document.addEventListener('keydown', e => {
         if (e.key !== 'Escape') return;
+        if (e.defaultPrevented) return;
+        if (window.UI.isConfirmOpen()) return;
 
-        const confirmElement = document.getElementById('uiConfirmModal');
-
-        if (confirmElement && confirmElement.classList.contains('active')) {
-            if (editorModal.classList.contains('active')) {
-                e.preventDefault();
-            }
-
+        if (orderChecklistTemplateDropdown && orderChecklistTemplateDropdown.classList.contains('open')) {
+            closeChecklistPicker();
+            e.preventDefault();
             return;
         }
 
-        if (orderExpenseModal && orderExpenseModal.classList.contains('active')) {
-            e.preventDefault();
-            requestCloseExpenseModal();
-            return;
-        }
+        const picker = document.querySelector('.client-combobox__dropdown.open, .city-selector__dropdown.open');
 
-        if (copyOrderModal && copyOrderModal.classList.contains('active')) {
-            e.preventDefault();
-            closeCopyModal();
-            return;
-        }
+        if (!picker) return;
 
-        if (editorModal.classList.contains('active')) {
-            e.preventDefault();
-            requestClose();
-        }
-    }, true);
+        picker.classList.remove('open');
+        e.preventDefault();
+    }, false);
 
     const editorCloseBtn = document.getElementById('editorModalCloseBtn');
 
@@ -3331,5 +3400,7 @@
         editorModal.addEventListener('click', function(e) {
             if (e.target === this) requestClose();
         });
+
+        window.UI.registerModal(editorModal, requestClose);
     }
 })();

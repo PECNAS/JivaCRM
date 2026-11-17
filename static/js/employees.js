@@ -21,6 +21,10 @@
     const deleteEmployeeBtn = document.getElementById('deleteEmployeeBtn');
     const viewMode = document.getElementById('viewMode');
     const editMode = document.getElementById('editMode');
+    const employeeEditFooter = document.getElementById('employeeEditFooter');
+    const editSubmitBtn = document.getElementById('editSubmitBtn');
+    const addSubmitBtn = document.getElementById('addSubmitBtn');
+    const artistCardSubmitBtn = document.getElementById('artistCardSubmitBtn');
     const notificationContainer = document.getElementById('notificationContainer');
 
     const artistCardModal = document.getElementById('artistCardModal');
@@ -83,14 +87,6 @@
     }
 
     function attachRowEvents() {
-        tableBody.querySelectorAll('[data-id]').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const id = parseInt(this.getAttribute('data-id'));
-                openEmployeeModal(id);
-            });
-        });
-
         tableBody.querySelectorAll('tr[data-employee-id]').forEach(row => {
             row.addEventListener('click', function() {
                 const id = parseInt(row.getAttribute('data-employee-id'));
@@ -103,6 +99,7 @@
         currentEmployeeId = employeeId;
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
+        if (employeeEditFooter) employeeEditFooter.style.display = 'none';
 
         fetch(`/employees/${employeeId}/`)
             .then(response => response.json())
@@ -219,6 +216,7 @@
         currentArtistCard = null;
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
+        if (employeeEditFooter) employeeEditFooter.style.display = 'none';
         isEditMode = false;
         formSnapshot = null;
     }
@@ -266,6 +264,7 @@
         isEditMode = true;
         viewMode.style.display = 'none';
         editMode.style.display = 'block';
+        if (employeeEditFooter) employeeEditFooter.style.display = '';
         formSnapshot = window.UI.snapshot(editForm);
     }
 
@@ -273,6 +272,7 @@
         isEditMode = false;
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
+        if (employeeEditFooter) employeeEditFooter.style.display = 'none';
     }
 
     function openAddModal() {
@@ -308,6 +308,24 @@
     }
     if (editCancelBtn) {
         editCancelBtn.addEventListener('click', cancelEdit);
+    }
+
+    if (editSubmitBtn) {
+        editSubmitBtn.addEventListener('click', function() {
+            if (editForm) editForm.requestSubmit();
+        });
+    }
+
+    if (addSubmitBtn) {
+        addSubmitBtn.addEventListener('click', function() {
+            if (addForm) addForm.requestSubmit();
+        });
+    }
+
+    if (artistCardSubmitBtn) {
+        artistCardSubmitBtn.addEventListener('click', function() {
+            if (artistCardForm) artistCardForm.requestSubmit();
+        });
     }
 
     if (editForm) {
@@ -823,19 +841,32 @@
         employeeDocumentUploadBtn.addEventListener('click', uploadEmployeeDocument);
     }
 
+    function updateRowNumbers() {
+        tableBody.querySelectorAll('tr[data-employee-id]').forEach(function(row, index) {
+            const cell = row.querySelector('.employees-table__index');
+
+            if (cell) cell.textContent = String(index + 1);
+        });
+    }
+
     function employeeRow(emp) {
         return `
             <tr data-employee-id="${emp.id}">
-                <td>${escapeHtml(emp.full_name)}${emp.nickname ? ' · ' + escapeHtml(emp.nickname) : ''}</td>
+                <td class="employees-table__index"></td>
+                <td>
+                    <div class="employee-name-cell">
+                        <span class="employee-name-cell__main">${escapeHtml(emp.display_name || emp.full_name)}</span>
+                        <span class="employee-name-cell__sub">${escapeHtml(emp.full_name)}</span>
+                    </div>
+                </td>
                 <td>${escapeHtml(emp.username)}</td>
-                <td>${escapeHtml(emp.role_display || '')}</td>
+                <td>${escapeHtml(emp.roles_label || emp.role_display || '')}</td>
                 <td>${escapeHtml(emp.phone || '—')}</td>
                 <td>
                     <span class="status-badge status-badge--${emp.is_active ? 'active' : 'inactive'}">
                         ${emp.is_active ? 'Активен' : 'Неактивен'}
                     </span>
                 </td>
-                <td><button class="view-link" data-id="${emp.id}">Подробнее</button></td>
             </tr>
         `;
     }
@@ -886,6 +917,8 @@
 
                 employeesOffset += rows.length;
 
+                updateRowNumbers();
+
                 if (loadMoreBox) {
                     loadMoreBox.classList.toggle('load-more--done', !data.has_more);
                 }
@@ -918,32 +951,9 @@
         });
     }
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key !== 'Escape') return;
-
-        const confirmElement = document.getElementById('uiConfirmModal');
-
-        if (confirmElement && confirmElement.classList.contains('active')) {
-            if ((artistCardModal && artistCardModal.classList.contains('active')) ||
-                (modal && modal.classList.contains('active')) ||
-                (addModal && addModal.classList.contains('active'))) {
-                e.preventDefault();
-            }
-
-            return;
-        }
-
-        if (artistCardModal && artistCardModal.classList.contains('active')) {
-            e.preventDefault();
-            closeArtistCardModal();
-        } else if (modal && modal.classList.contains('active')) {
-            e.preventDefault();
-            requestCloseModal();
-        } else if (addModal && addModal.classList.contains('active')) {
-            e.preventDefault();
-            requestCloseAddModal();
-        }
-    }, true);
+    if (artistCardModal) window.UI.registerModal(artistCardModal, closeArtistCardModal);
+    if (modal) window.UI.registerModal(modal, requestCloseModal);
+    if (addModal) window.UI.registerModal(addModal, requestCloseAddModal);
 
     loadServices();
     attachRowEvents();

@@ -1537,6 +1537,20 @@
         let timer = null;
         let counter = 0;
 
+        function positionDropdown() {
+            const rect = input.getBoundingClientRect();
+            const available = window.innerHeight - rect.bottom - 12;
+            const height = Math.max(140, Math.min(280, available));
+
+            dropdown.style.position = 'fixed';
+            dropdown.style.left = rect.left + 'px';
+            dropdown.style.top = (rect.bottom + 6) + 'px';
+            dropdown.style.width = rect.width + 'px';
+            dropdown.style.minWidth = rect.width + 'px';
+            dropdown.style.maxHeight = height + 'px';
+            dropdown.style.zIndex = '3000';
+        }
+
         function close() {
             dropdown.classList.remove('open');
             dropdown.innerHTML = '';
@@ -1559,6 +1573,7 @@
                 return `<button type="button" class="city-selector__option${active}" data-city-id="${item.id}" data-city-name="${escapeHtml(item.name)}">${escapeHtml(item.name)}</button>`;
             }).join('');
 
+            positionDropdown();
             dropdown.classList.add('open');
 
             dropdown.querySelectorAll('[data-city-id]').forEach(function(button) {
@@ -1637,8 +1652,16 @@
         document.addEventListener('click', function(e) {
             const box = document.getElementById('cityFilterBox');
 
-            if (box && !box.contains(e.target)) close();
+            if (box && !box.contains(e.target) && !dropdown.contains(e.target)) close();
         });
+
+        window.addEventListener('resize', function() {
+            if (dropdown.classList.contains('open')) positionDropdown();
+        });
+
+        window.addEventListener('scroll', function() {
+            if (dropdown.classList.contains('open')) positionDropdown();
+        }, true);
 
         if (hidden && hidden.value && hidden.value !== 'all') {
             const preset = document.querySelector('#cityFilter option[value="' + hidden.value + '"]');
@@ -1738,38 +1761,20 @@
 
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-
-        const confirmElement = document.getElementById('uiConfirmModal');
-
-        if (confirmElement && confirmElement.classList.contains('active')) {
-            if ((duplicateModal && duplicateModal.classList.contains('active')) ||
-                (modal && modal.classList.contains('active')) ||
-                (addModal && addModal.classList.contains('active'))) {
-                e.preventDefault();
-            }
-
-            return;
-        }
+        if (e.defaultPrevented) return;
+        if (window.UI.isConfirmOpen()) return;
 
         const openDropdowns = document.querySelectorAll('.city-selector__dropdown.open');
 
-        if (openDropdowns.length) {
-            e.preventDefault();
-            openDropdowns.forEach(dropdown => dropdown.classList.remove('open'));
-            return;
-        }
+        if (!openDropdowns.length) return;
 
-        if (duplicateModal && duplicateModal.classList.contains('active')) {
-            e.preventDefault();
-            requestCloseDuplicateModal();
-        } else if (modal && modal.classList.contains('active')) {
-            e.preventDefault();
-            requestCloseClientModal();
-        } else if (addModal && addModal.classList.contains('active')) {
-            e.preventDefault();
-            requestCloseAddModal();
-        }
-    }, true);
+        e.preventDefault();
+        openDropdowns.forEach(dropdown => dropdown.classList.remove('open'));
+    }, false);
+
+    if (duplicateModal) window.UI.registerModal(duplicateModal, requestCloseDuplicateModal);
+    if (modal) window.UI.registerModal(modal, requestCloseClientModal);
+    if (addModal) window.UI.registerModal(addModal, requestCloseAddModal);
 
     const openClientParam = new URLSearchParams(window.location.search).get('open_client');
 
@@ -1787,4 +1792,6 @@
         div.textContent = String(text);
         return div.innerHTML;
     }
+
+    mountCityFilterPicker();
 })();

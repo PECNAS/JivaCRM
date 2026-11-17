@@ -658,7 +658,7 @@
         `;
     }
 
-    const availabilityWeekdays = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const availabilityWeekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     const availabilityState = { weekly: {}, exceptions: [], calendar: [], editingId: null, kind: 'weekly', intervals: [] };
 
     const availabilityModal = document.getElementById('availabilityModal');
@@ -1108,31 +1108,8 @@
         });
     });
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key !== 'Escape') return;
-
-        const confirmElement = document.getElementById('uiConfirmModal');
-
-        if (confirmElement && confirmElement.classList.contains('active')) {
-            if ((availabilityModal && availabilityModal.classList.contains('active')) ||
-                (editModal && editModal.classList.contains('active'))) {
-                e.preventDefault();
-            }
-
-            return;
-        }
-
-        if (availabilityModal && availabilityModal.classList.contains('active')) {
-            e.preventDefault();
-            closeAvailabilityModal();
-            return;
-        }
-
-        if (editModal && editModal.classList.contains('active')) {
-            e.preventDefault();
-            requestCloseEditModal();
-        }
-    }, true);
+    if (availabilityModal) window.UI.registerModal(availabilityModal, closeAvailabilityModal);
+    if (editModal) window.UI.registerModal(editModal, requestCloseEditModal);
 
     loadTab('info');
 })();

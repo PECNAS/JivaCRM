@@ -24,8 +24,7 @@
         } catch (error) {}
     }
 
-    let currentView = localStorage.getItem(VIEW_STORAGE_KEY) === 'list' ? 'list' : 'calendar';
-    let currentOrders = [];
+    let currentView = localStorage.getItem(VIEW_STORAGE_KEY) === 'list' ? 'list' : 'calendar';    let currentOrders = [];
     let calendarDate = readStoredMonth() || new Date();
     let activeOrderId = null;
     let statusColors = {};
@@ -75,7 +74,6 @@
     const pastCompletedToggle = document.getElementById('pastCompletedToggle');
     const calendarFilters = document.getElementById('dashboardCalendarFilters');
     const calendarStatusSelect = document.getElementById('calendarStatus');
-    const calendarFilledSelect = document.getElementById('calendarFilled');
     const dashboardFilters = document.getElementById('dashboardFilters');
     const dashboardList = document.getElementById('dashboardList');
     const dashboardCalendar = document.getElementById('dashboardCalendar');
@@ -88,9 +86,9 @@
 
     const eventModal = document.getElementById('eventModal');
     const eventModalTitle = document.getElementById('eventModalTitle');
-    const eventModalBody = document.getElementById('eventModalBody');
+    const eventModalBody = document.getElementById('eventModalPreviewBody');
     const eventModalCloseBtn = document.getElementById('eventModalCloseBtn');
-    const eventModalDismissBtn = document.getElementById('eventModalDismissBtn');
+    const eventModalDeleteBtn = document.getElementById('eventModalDeleteBtn');
     const eventModalDetailsBtn = document.getElementById('eventModalDetailsBtn');
 
     const eventChecklistModal = document.getElementById('eventChecklistModal');
@@ -101,6 +99,20 @@
     const eventModalCopyLinkBtn = document.getElementById('eventModalCopyLinkBtn');
     const eventChecklistCloseBtn = document.getElementById('eventChecklistCloseBtn');
     const eventChecklistCloseBtnFooter = document.getElementById('eventChecklistCloseBtnFooter');
+
+    const calendarEventModal = document.getElementById('calendarEventModal');
+    const calendarEventTitle = document.getElementById('calendarEventTitle');
+    const calendarEventName = document.getElementById('calendarEventName');
+    const calendarEventDate = document.getElementById('calendarEventDate');
+    const calendarEventTime = document.getElementById('calendarEventTime');
+    const calendarEventDescription = document.getElementById('calendarEventDescription');
+    const calendarEventError = document.getElementById('calendarEventError');
+    const calendarEventSaveBtn = document.getElementById('calendarEventSaveBtn');
+    const calendarEventDeleteBtn = document.getElementById('calendarEventDeleteBtn');
+    const calendarEventCloseBtn = document.getElementById('calendarEventCloseBtn');
+
+    let calendarEvents = [];
+    let activeCalendarEventId = null;
 
     let checklistState = { orderId: null, groups: [], can_edit: false, total: 0, done: 0 };
     let checklistExpanded = {};
@@ -187,8 +199,63 @@
         return !!order.is_incomplete;
     }
 
+    const ALERT_ROLES = ['manager', 'boss', 'senior_admin'];
+
+    function canSeeIncompleteAlert() {
+        return ALERT_ROLES.indexOf(getRole()) !== -1;
+    }
+
+    function needsIncompleteAlert(order) {
+        if (!canSeeIncompleteAlert()) return false;
+
+        return order.status === 'confirmed' && isOrderIncomplete(order);
+    }
+
+    function getOrderNameParts(order) {
+        const fullName = order.name_display || order.name || 'Без названия';
+
+        if (!order.has_date || !order.date) {
+            return { date: '', name: fullName };
+        }
+
+        const parts = order.date.split('-');
+
+        if (parts.length !== 3) {
+            return { date: '', name: fullName };
+        }
+
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+
+        if (!year || !month || !day || month < 1 || month > 12) {
+            return { date: '', name: fullName };
+        }
+
+        const stamp = String(day).padStart(2, '0') + '.' + String(month).padStart(2, '0');
+        const weekday = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][new Date(year, month - 1, day).getDay()];
+
+        return {
+            date: day + ' ' + MONTHS_GENITIVE[month - 1] + ', ' + weekday,
+            name: fullName.replace(new RegExp('\\s*' + stamp.replace('.', '\\.') + '\\s*$'), '').trim(),
+        };
+    }
+
+    function orderNameHtml(order) {
+        const parts = getOrderNameParts(order);
+
+        return '<span class="order-name__date">' + escapeHtml(parts.date) + '</span>'
+            + '<span class="order-name__title">' + escapeHtml(parts.name) + '</span>';
+    }
+
     function getOrderName(order) {
-        return order.name_display || order.name || 'Без названия';
+        const parts = getOrderNameParts(order);
+
+        return parts.date ? parts.date + '\n' + parts.name : parts.name;
+    }
+
+    function getCalendarOrderName(order) {
+        return getOrderNameParts(order).name;
     }
 
     function getRowClasses(order, extra) {
@@ -198,6 +265,7 @@
         if (!order.has_date) classes += ' order-row--no-date';
         if (isOrderChanged(order)) classes += ' order-row--changed';
         if (isOrderIncomplete(order)) classes += ' order-row--incomplete';
+        if (needsIncompleteAlert(order)) classes += ' order-row--alert';
 
         return classes;
     }
@@ -302,10 +370,6 @@
     }
 
     function openOrderFromLink(order) {
-        if (canManageOrders() && openOrderEditor(order.id)) {
-            return;
-        }
-
         handleOrderOpen(order.id);
     }
 
@@ -322,9 +386,24 @@
             return;
         }
 
-        fetchOrdersForLink(function() {
-            openOrderByLink(orderId, attempts - 1);
-        });
+        fetch('/orders/' + orderId + '/', { cache: 'no-store' })
+            .then(r => r.json())
+            .then(function(data) {
+                if (data && !data.error && data.id) {
+                    currentOrders.push(data);
+                    openOrderFromLink(data);
+                    return;
+                }
+
+                fetchOrdersForLink(function() {
+                    openOrderByLink(orderId, attempts - 1);
+                });
+            })
+            .catch(function() {
+                fetchOrdersForLink(function() {
+                    openOrderByLink(orderId, attempts - 1);
+                });
+            });
     }
 
     function showShareLink(orderId) {
@@ -379,17 +458,80 @@
         return window.openOrderEditor(orderId);
     }
 
-    function handleOrderOpen(orderId) {
-        if (canManageOrders() && openOrderEditor(orderId)) {
+    function openOrderCard(orderId) {
+        const order = currentOrders.find(item => String(item.id) === String(orderId));
+
+        if (!order) return;
+
+        markOrderViewed(order.id, order.updated_at);
+        renderEventModal(order);
+        clearChangedFlag(orderId);
+    }
+
+    function clearChangedFlag(orderId) {
+        const id = parseInt(orderId, 10);
+
+        if (isNaN(id)) return;
+
+        fetch('/orders/' + id + '/peek/', { cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(response) {
+                if (!response.ok) return;
+
+                currentOrders.forEach(function(item) {
+                    if (String(item.id) === String(id)) {
+                        item.content_changed = false;
+                    }
+                });
+
+                document.querySelectorAll('.calendar-event--changed[data-order-id="' + id + '"]').forEach(function(node) {
+                    node.classList.remove('calendar-event--changed');
+
+                    const flag = node.querySelector('.calendar-event__flag');
+
+                    if (flag) flag.remove();
+                });
+
+                document.querySelectorAll('.order-row--changed[data-order-id="' + id + '"]').forEach(function(node) {
+                    node.classList.remove('order-row--changed');
+
+                    const badge = node.querySelector('.order-row__badge');
+
+                    if (badge) badge.remove();
+                });
+            })
+            .catch(function() {});
+    }
+
+    function openOrderEditorFor(orderId) {
+        if (!canOpenOrders()) return false;
+
+        return openOrderEditor(orderId);
+    }
+
+    function handleOrderClick(orderId) {
+        if (!orderId) return;
+
+        openOrderCard(orderId);
+    }
+
+    function handleOrderEdit(orderId) {
+        if (!orderId) return;
+
+        if (!canManageOrders()) {
+            openOrderCard(orderId);
             return;
         }
 
-        const order = currentOrders.find(item => String(item.id) === String(orderId));
-
-        if (order) {
-            markOrderViewed(order.id, order.updated_at);
-            renderEventModal(order);
+        if (window.openOrderForm && window.openOrderForm(orderId)) {
+            closeEventModal();
+            return;
         }
+
+        openOrderCard(orderId);
+    }
+
+    function handleOrderOpen(orderId) {
+        openOrderCard(orderId);
     }
 
     function getEventStyle(status) {
@@ -397,138 +539,131 @@
 
         if (!c) return '';
 
-        return `background:${c.background}2e; border-left-color:${c.border}; color:#f5efe7;`;
+        return `background:${c.background}; color:${c.text};`;
     }
 
-    function modalTitleLine(order) {
-        const dateLabel = order.has_date ? formatDate(order.date) : 'Без даты';
-        const city = (order.city_name || '').trim();
+    function getStatusChipStyle(status) {
+        const c = statusColors['order:' + status];
 
-        return city ? `${dateLabel}, ${city}` : dateLabel;
+        if (!c) return '';
+
+        return `background:${c.background}; border-color:${c.border}; color:${c.text};`;
     }
 
-    function modalShowsLine(order) {
-        const services = order.services || [];
+    function applyEventModalStatus(status) {
+        if (!eventModal) return;
 
-        if (!services.length) return '';
+        const c = statusColors['order:' + status];
+        const card = eventModal.querySelector('.modal--event-card');
 
-        return services.map(item => serviceLabel(item)).filter(Boolean).join(', ');
+        if (!card) return;
+
+        card.classList.toggle('modal--event-tinted', !!c);
+        card.style.setProperty('--event-status-bg', c ? c.background + '2e' : 'transparent');
+        card.style.setProperty('--event-status-bg-color', c ? c.background : 'transparent');
+        card.style.setProperty('--event-status-border', c ? c.border : '#2b2620');
+        card.style.setProperty('--event-status-text', c ? c.text : '');
     }
 
-    function modalStaffHtml(order) {
-        const staff = order.staff || [];
+    function buildChangedBanner(order) {
+        if (!isOrderChanged(order)) return '';
 
-        if (!staff.length) {
-            return '<div class="event-modal__staff-empty">Сотрудники не назначены</div>';
-        }
+        const logs = (Array.isArray(order.change_logs) ? order.change_logs : []).slice(0, 5);
 
-        return staff.map(item => {
-            const parts = [];
+        const items = logs.map(function(item) {
+            const oldValue = String(item.old_value || '').trim();
+            const newValue = String(item.new_value || '').trim();
+            const who = String(item.changed_by || '').trim();
+            const when = whenLabel(item.changed_at);
 
-            if (item.show_name) parts.push(escapeHtml(item.show_name));
-            if (item.role_label) parts.push(escapeHtml(item.role_label));
-            if (item.comment) parts.push(`<span class="event-modal__staff-comment">${escapeHtml(item.comment)}</span>`);
-
-            return `
-                <div class="event-modal__staff-row">
-                    <span class="event-modal__staff-name">${escapeHtml(item.name)}</span>
-                    ${item.is_responsible ? '<span class="event-modal__staff-badge">Отв.</span>' : ''}
-                    ${parts.length ? `<span class="event-modal__staff-meta">${parts.join(' · ')}</span>` : ''}
-                </div>
-            `;
+            return '<div class="event-modal__change">'
+                + '<div class="event-modal__change-head">'
+                + (when ? '<span class="event-modal__change-when">' + escapeHtml(when) + '</span> ' : '')
+                + '<b>' + escapeHtml(item.field || '') + '</b>'
+                + (who ? ', ' + escapeHtml(who) : '')
+                + '</div>'
+                + '<div class="event-modal__change-values">'
+                + '<span class="event-modal__change-old">' + escapeHtml(oldValue || 'пусто') + '</span>'
+                + '<span class="event-modal__change-arrow"> - </span>'
+                + '<span class="event-modal__change-new">' + escapeHtml(newValue || 'пусто') + '</span>'
+                + '</div>'
+                + '</div>';
         }).join('');
+
+        return '<div class="event-modal__banner event-modal__banner--changed" data-changes-banner>'
+            + '<button type="button" class="event-modal__banner-toggle" data-changes-toggle aria-expanded="false">'
+            + '<span class="event-modal__banner-title">Информация о заказе изменена</span>'
+            + '<svg class="event-modal__banner-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            + '<polyline points="6 9 12 15 18 9"/>'
+            + '</svg>'
+            + '</button>'
+            + (items ? '<div class="event-modal__changes">' + items + '</div>' : '')
+            + '</div>';
+    }
+
+    function mountChangedBanner() {
+        if (!eventModalBody) return;
+
+        eventModalBody.querySelectorAll('[data-changes-banner]').forEach(function(banner) {
+            const toggle = banner.querySelector('[data-changes-toggle]');
+            const changes = banner.querySelector('.event-modal__changes');
+
+            if (!toggle || !changes) return;
+
+            if (toggle.disabled) return;
+
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const expanded = banner.classList.toggle('event-modal__banner--open');
+
+                toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            });
+        });
+    }
+
+    function whenLabel(value) {
+        if (!value) return '';
+
+        const date = new Date(value);
+
+        if (isNaN(date.getTime())) return '';
+
+        return date.toLocaleString('ru-RU', {
+            hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric',
+        });
     }
 
     function renderEventModal(order) {
         if (!order) return;
 
-        eventModalTitle.textContent = order.name || 'Заказ';
+        const isArtistView = !canManageOrders();
+        const changedBanner = buildChangedBanner(order);
 
-        const changedBanner = isOrderChanged(order)
-            ? '<div class="event-modal__banner event-modal__banner--changed">Информация о заказе изменена</div>'
-            : '';
-
-        const incompleteBanner = isOrderIncomplete(order)
+        const incompleteBanner = !isArtistView && isOrderIncomplete(order)
             ? `<div class="event-modal__banner event-modal__banner--incomplete">Заказ заполнен не полностью: ${escapeHtml((order.missing_fields || []).join(', '))}</div>`
             : '';
 
-        const showsLine = modalShowsLine(order);
+        eventModalTitle.textContent = order.name || 'Заказ';
+        applyEventModalStatus(order.status);
 
-        const canEditOrder = canManageOrders();
+        if (eventModalBody) {
+            if (window.renderOrderPreviewCard) {
+                window.renderOrderPreviewCard(order, changedBanner + incompleteBanner, { hideClient: isArtistView, hideStatus: isArtistView, hidePayment: isArtistView });
+            } else {
+                eventModalBody.innerHTML = changedBanner + incompleteBanner;
+            }
 
-        const clientHtml = order.client_id && canEditOrder
-            ? `<a href="/clients/?open_client=${order.client_id}" class="event-modal__client">${escapeHtml(order.client || '—')}</a>`
-            : `<span class="event-modal__client event-modal__client--plain">${escapeHtml(order.client || '—')}</span>`;
-        const addressClass = order.address
-            ? 'event-modal__address'
-            : 'event-modal__address event-modal__address--empty';
-
-        const addressHtml = canEditOrder
-            ? `<div class="${addressClass} event-modal__editable" data-edit-field="address" data-order-id="${order.id}" title="Двойной клик для редактирования">${escapeHtml(order.address || 'Адрес не указан')}</div>`
-            : `<div class="${addressClass}">${escapeHtml(order.address || 'Адрес не указан')}</div>`;
-
-        const managerHtml = order.manager
-            ? `<div class="event-modal__manager">Менеджер: <b>${escapeHtml(order.manager)}</b></div>`
-            : '';
-
-        const costHtml = canSeeCost() && order.cost && order.cost !== '—'
-            ? `<div class="event-modal__money">Стоимость: <b>${escapeHtml(order.cost)}</b></div>`
-            : '';
-
-        const paymentHtml = canSeeRates() && order.my_payment !== undefined && order.my_payment > 0
-            ? `<div class="event-modal__money">Моя оплата: <b>${formatPrice(order.my_payment)}</b></div>`
-            : '';
-
-        const checklistHtml = order.checklist_total
-            ? `<div class="event-modal__checklist-line">Чек-лист: <b>${order.checklist_done} из ${order.checklist_total}</b></div>`
-            : '';
-
-        const detailsRows = [
-            ['Контакт', [order.contact_name, order.contact_phone, order.contact_telegram].filter(Boolean).join(' · ')],
-            ['Время чека/установки', order.setup_time],
-            ['Комментарий к гримерке', order.dressing_room_comment],
-            ['Комментарий к еде', order.meal_comment],
-            ['Техничка', order.tech_comment],
-            ['Особенности площадки', order.venue_comment]
-        ].filter(row => row[1]);
-
-        const detailsHtml = detailsRows.length
-            ? `<div class="event-modal__details">${detailsRows.map(([label, value]) => `
-                <div class="event-modal__detail">
-                    <span class="event-modal__detail-label">${escapeHtml(label)}:</span>
-                    <span class="event-modal__detail-value">${escapeHtml(value)}</span>
-                </div>
-            `).join('')}</div>`
-            : '';
-
-        eventModalBody.innerHTML = `
-            ${changedBanner}
-            ${incompleteBanner}
-            <div class="event-modal__head">
-                <div class="event-modal__head-date${canEditOrder ? ' event-modal__editable' : ''}"${canEditOrder ? ` data-edit-field="date" data-order-id="${order.id}" title="Двойной клик для редактирования"` : ''}>${escapeHtml(modalTitleLine(order))}</div>
-                <div class="event-modal__head-client">${clientHtml}</div>
-                ${showsLine ? `<div class="event-modal__head-shows">${escapeHtml(showsLine)}</div>` : ''}
-                ${addressHtml}
-                ${managerHtml}
-                ${costHtml}
-                ${paymentHtml}
-                ${checklistHtml}
-            </div>
-            <div class="event-modal__section">
-                <div class="event-modal__section-title">Сотрудники</div>
-                <div class="event-modal__staff">${modalStaffHtml(order)}</div>
-            </div>
-            ${detailsHtml ? `<div class="event-modal__section">
-                <div class="event-modal__section-title">Организация</div>
-                ${detailsHtml}
-            </div>` : ''}
-            <div class="event-modal__status-line">
-                <span class="order-row__status order-row__status--${order.status}">${getStatusLabel(order.status)}</span>
-            </div>
-        `;
+            mountChangedBanner();
+        }
 
         if (eventModalDetailsBtn) {
-            eventModalDetailsBtn.style.display = canOpenOrders() ? '' : 'none';
+            eventModalDetailsBtn.style.display = canManageOrders() ? '' : 'none';
+        }
+
+        if (eventModalDeleteBtn) {
+            eventModalDeleteBtn.style.display = canManageOrders() ? '' : 'none';
         }
 
         if (eventModalChecklistBtn) {
@@ -539,124 +674,53 @@
         activeOrderId = order.id;
         eventModal.classList.add('active');
         document.body.style.overflow = 'hidden';
-
-        attachInlineEdit();
-    }
-
-    function attachInlineEdit() {
-        if (!eventModalBody) return;
-
-        eventModalBody.querySelectorAll('.event-modal__editable').forEach(node => {
-            node.addEventListener('dblclick', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (this.querySelector('input')) return;
-
-                startInlineEdit(this);
-            });
-        });
-    }
-
-    function startInlineEdit(node) {
-        const field = node.dataset.editField;
-        const orderId = node.dataset.orderId;
-        const order = currentOrders.find(item => String(item.id) === String(orderId));
-
-        if (!order || !canOpenOrders()) return;
-
-        const currentValue = field === 'date' ? (order.date || '') : (order.address || '');
-        const input = document.createElement('input');
-
-        input.type = field === 'date' ? 'date' : 'text';
-        input.className = 'event-modal__inline-input';
-        input.value = currentValue;
-
-        node.textContent = '';
-        node.appendChild(input);
-        input.focus();
-
-        let cancelled = false;
-
-        const commit = function() {
-            if (cancelled) return;
-
-            const value = input.value.trim();
-
-            if (value === currentValue) {
-                renderEventModal(order);
-                return;
-            }
-
-            const body = new URLSearchParams({
-                name: order.name || '',
-                client_id: String(order.client_id || ''),
-                status: order.status || 'request',
-                cost: order.cost || '',
-                address: field === 'address' ? value : (order.address || ''),
-                date: field === 'date' ? value : (order.date || ''),
-            });
-
-            fetch('/orders/' + orderId + '/update/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': window.UI.getCSRFToken(),
-                },
-                body: body,
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    window.UI.showToast(data.error);
-                    renderEventModal(order);
-                    return;
-                }
-
-                window.UI.showToast('Изменения сохранены');
-
-                if (window.refreshSchedule) window.refreshSchedule();
-
-                if (data.order) {
-                    Object.assign(order, {
-                        name: data.order.name,
-                        address: data.order.address,
-                        date: data.order.date,
-                        has_date: !!data.order.date,
-                        city_name: data.order.city_name,
-                        status: data.order.status,
-                    });
-
-                    order.date_display = data.order.date_display;
-                    renderEventModal(order);
-                }
-            })
-            .catch(() => {
-                window.UI.showToast('Не удалось сохранить');
-                renderEventModal(order);
-            });
-        };
-
-        input.addEventListener('blur', commit);
-
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                input.blur();
-            }
-
-            if (e.key === 'Escape') {
-                cancelled = true;
-                e.stopPropagation();
-                renderEventModal(order);
-            }
-        });
     }
 
     function closeEventModal() {
         eventModal.classList.remove('active');
         document.body.style.overflow = '';
         activeOrderId = null;
+    }
+
+    function deleteActiveOrder() {
+        if (!activeOrderId) return;
+
+        const orderId = activeOrderId;
+
+        window.UI.confirm({
+            title: 'Удалить заказ?',
+            text: 'Заказ будет удалён из расписания и списка заказов. Действие необратимо.',
+            okText: 'Удалить',
+            cancelText: 'Отмена',
+            danger: true
+        }).then(function(confirmed) {
+            if (!confirmed) return;
+
+            fetch('/orders/' + orderId + '/delete/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': window.UI.getCSRFToken() }
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.error) {
+                        window.UI.showToast(data.error);
+                        return;
+                    }
+
+                    if (!data.success) return;
+
+                    window.UI.showToast('Заказ удалён');
+                    closeEventModal();
+
+                    if (window.refreshSchedule) {
+                        window.refreshSchedule(true);
+                    }
+                })
+                .catch(function(error) {
+                    window.UI.showToast('Ошибка удаления');
+                    console.error(error);
+                });
+        });
     }
 
     function closeEventChecklist() {
@@ -820,18 +884,14 @@
     function updateChecklistButton(order) {
         if (!eventModalChecklistBtn) return;
 
-        let counter = eventModalChecklistBtn.querySelector('.event-checklist-btn__count');
-
-        if (!counter) {
-            counter = document.createElement('span');
-            counter.className = 'event-checklist-btn__count';
-            eventModalChecklistBtn.appendChild(counter);
-        }
-
         const total = order.checklist_total || 0;
         const done = order.checklist_done || 0;
 
-        counter.textContent = total ? `${done}/${total}` : '';
+        eventModalChecklistBtn.querySelectorAll('svg, .event-checklist-btn__count').forEach(function(node) {
+            node.remove();
+        });
+
+        eventModalChecklistBtn.textContent = 'Чек-лист' + (total ? ' ' + done + '/' + total : '');
         eventModalChecklistBtn.classList.toggle('btn--attention', total > 0 && done < total);
     }
 
@@ -927,12 +987,11 @@
             ? (selectedClientName || '').toLowerCase()
             : (clientFilterInput ? clientFilterInput.value : '').trim().toLowerCase();
         const status = statusSelect ? statusSelect.value : 'all';
-        const sort = sortSelect ? sortSelect.value : 'date_desc';
 
         let result = orders.slice();
 
         if (!showPastCompleted) {
-            result = result.filter(o => !isPastCompleted(o));
+            result = result.filter(o => !isPastOrder(o));
         }
 
         if (search) {
@@ -950,23 +1009,54 @@
             result = result.filter(o => o.status === status);
         }
 
-        return sortByDate(result, sort);
+        return sortListByUpcoming(result);
+    }
+
+    function isPastOrder(order) {
+        if (!order.has_date || !order.date) return false;
+
+        return order.date < getTodayIso();
+    }
+
+    function sortListByUpcoming(result) {
+        const today = getTodayIso();
+
+        result.sort((a, b) => {
+            const aHasDate = !!a.has_date && !!a.date;
+            const bHasDate = !!b.has_date && !!b.date;
+
+            if (aHasDate !== bHasDate) {
+                return aHasDate ? -1 : 1;
+            }
+
+            if (!aHasDate) {
+                return String(b.id).localeCompare(String(a.id));
+            }
+
+            const aPast = a.date < today;
+            const bPast = b.date < today;
+
+            if (aPast !== bPast) {
+                return aPast ? 1 : -1;
+            }
+
+            const diff = a.date.localeCompare(b.date);
+
+            if (diff !== 0) return diff;
+
+            return String(a.id).localeCompare(String(b.id));
+        });
+
+        return result;
     }
 
     function applyCalendarFilters(orders) {
         const status = calendarStatusSelect ? calendarStatusSelect.value : 'all';
-        const filled = calendarFilledSelect ? calendarFilledSelect.value : 'all';
 
         let result = orders.slice();
 
         if (status !== 'all') {
             result = result.filter(o => o.status === status);
-        }
-
-        if (filled === 'full') {
-            result = result.filter(o => !o.is_incomplete);
-        } else if (filled === 'partial') {
-            result = result.filter(o => !!o.is_incomplete);
         }
 
         return sortByDate(result, 'date_asc');
@@ -1000,13 +1090,31 @@
         }
 
         if (showPastCompleted) {
-            const sorted = filtered.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            const sorted = filtered.slice().sort((a, b) => {
+                const aPast = isPastOrder(a);
+                const bPast = isPastOrder(b);
 
-            let pastHtml = `<div class="order-list-note">Выполненные ранее — ${sorted.length}. Фильтр по статусу не применяется.</div>`;
+                if (aPast !== bPast) return aPast ? 1 : -1;
 
-            pastHtml += sorted.map(order => renderOrderRow(order, 'order-row--past')).join('');
+                return (a.date || '').localeCompare(b.date || '');
+            });
 
-            dashboardList.innerHTML = pastHtml;
+            dashboardList.innerHTML = sorted
+                .map(order => renderOrderRow(order, isPastOrder(order) ? 'order-row--past' : ''))
+                .join('');
+
+            if (listHasMore) {
+                const loadMoreBtn = document.createElement('button');
+
+                loadMoreBtn.type = 'button';
+                loadMoreBtn.className = 'schedule-load-more';
+                loadMoreBtn.textContent = 'Загрузить ещё';
+                loadMoreBtn.addEventListener('click', function() {
+                    loadMoreOrders();
+                });
+
+                dashboardList.appendChild(loadMoreBtn);
+            }
 
             attachOrderRowEvents();
             return;
@@ -1044,6 +1152,19 @@
 
         dashboardList.innerHTML = html;
 
+        if (listHasMore) {
+            const loadMoreBtn = document.createElement('button');
+
+            loadMoreBtn.type = 'button';
+            loadMoreBtn.className = 'schedule-load-more';
+            loadMoreBtn.textContent = 'Загрузить ещё';
+            loadMoreBtn.addEventListener('click', function() {
+                loadMoreOrders();
+            });
+
+            dashboardList.appendChild(loadMoreBtn);
+        }
+
         const noDateToggle = document.getElementById('noDateToggle');
 
         if (noDateToggle) {
@@ -1072,10 +1193,23 @@
 
     function attachOrderRowEvents() {
         dashboardList.querySelectorAll('.order-row').forEach(row => {
-            row.addEventListener('click', function() {
+            row.addEventListener('click', function(e) {
+                e.stopPropagation();
+
                 const id = parseInt(this.getAttribute('data-order-id'));
 
-                if (id) handleOrderOpen(id);
+                if (!id) return;
+
+                if (e.defaultPrevented) return;
+
+                handleOrderClick(id);
+            });
+
+            row.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideContextMenu();
+                handleOrderEdit(parseInt(this.getAttribute('data-order-id'), 10));
             });
         });
 
@@ -1102,7 +1236,7 @@
 
         const costCell = showMyPayment
             ? formatPrice(order.my_payment)
-            : (canSeeCost() && order.cost ? order.cost : '—');
+            : (canSeeCost() && order.cost ? formatPrice(order.cost) : '—');
 
         const managerBadge = isOrderChanged(order)
             ? '<span class="order-row__badge">Обновлено</span>'
@@ -1142,7 +1276,7 @@
             <div class="${getRowClasses(order, extra)}" data-order-id="${order.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
                 <div class="order-row__head">
                     <span class="order-row__cell order-row__name">
-                        ${escapeHtml(getOrderName(order))}${incompleteBadge}
+                        ${orderNameHtml(order)}${incompleteBadge}
                     </span>
                     <span class="order-row__status">${escapeHtml(getStatusLabel(order.status))}</span>
                 </div>
@@ -1169,6 +1303,73 @@
                 </div>
             </div>
         `;
+    }
+
+    function calendarShowsHtml(order) {
+        const shows = order.services || [];
+        const parts = shows.map(function(item) {
+            if (typeof item === 'string') return item;
+
+            const name = item.name || '';
+            const count = item.people_count;
+
+            if (!name) return '';
+
+            return count ? name + ' ' + count : name;
+        }).filter(Boolean);
+
+        if (!parts.length) return '';
+
+        return '<div class="calendar-event__show">' + escapeHtml(parts.join(', ')) + '</div>';
+    }
+
+    function calendarShowTimeHtml(order) {
+        const shows = order.services || [];
+        let time = '';
+
+        for (let index = 0; index < shows.length; index++) {
+            const item = shows[index];
+
+            if (item && typeof item === 'object') {
+                const value = String(item.start_time || item.time || '').trim();
+
+                if (value) {
+                    time = value;
+                    break;
+                }
+            }
+        }
+
+        if (!time) {
+            time = String(order.start_time_text || order.start_time || '').trim();
+        }
+
+        if (!time) return '';
+
+        return '<div class="calendar-event__time">' + escapeHtml(time) + '</div>';
+    }
+
+    function calendarStaffHtml(order) {
+        return '';
+    }
+
+    function getCalendarEventsForDate(dateStr) {
+        if (!dateStr) return [];
+
+        return calendarEvents.filter(function(item) {
+            return item.date === dateStr;
+        });
+    }
+
+    function calendarEventHtml(item) {
+        const timeText = String(item.time_text || '').trim();
+        const description = String(item.description || '').trim();
+
+        return '<div class="calendar-event calendar-event--event" data-event-id="' + item.id + '">'
+            + '<div class="calendar-event__name">' + escapeHtml(item.title || 'Событие') + '</div>'
+            + (timeText ? '<div class="calendar-event__show">' + escapeHtml(timeText) + '</div>' : '')
+            + (description ? '<div class="calendar-event__staff">' + escapeHtml(description) + '</div>' : '')
+            + '</div>';
     }
 
     function renderCalendar() {
@@ -1241,12 +1442,16 @@
                     return cellDate >= start && cellDate <= end;
                 });
 
-                if (events.length > 0) {
+                const cellEvents = getCalendarEventsForDate(
+                    `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`
+                );
+
+                if (events.length > 0 || cellEvents.length > 0) {
                     eventsHtml = '<div class="calendar-cell__events">' +
                         events.map(e => {
                             const servicesLabel = getServicesLabel(e);
                             const costHtml = (canSeeCost() && e.cost && e.cost !== '—')
-                                ? `<div class="calendar-event__cost">${escapeHtml(e.cost)}</div>`
+                                ? `<div class="calendar-event__cost">${formatPrice(e.cost)}</div>`
                                 : '';
                             const style = getEventStyle(e.status);
 
@@ -1254,14 +1459,24 @@
 
                             if (isOrderChanged(e)) eventClass += ' calendar-event--changed';
                             if (isOrderIncomplete(e)) eventClass += ' calendar-event--incomplete';
+                            if (needsIncompleteAlert(e)) eventClass += ' calendar-event--alert';
 
                             const missingTitle = getMissingTitle(e);
+                            const showsHtml = calendarShowsHtml(e);
+                            const showTimeHtml = calendarShowTimeHtml(e);
+                            const staffHtml = calendarStaffHtml(e);
+                            const clientHtml = canManageOrders()
+                                ? `<div class="calendar-event__client">${escapeHtml(e.client || '—')}</div>`
+                                : '';
 
                             return `
                                 <div class="${eventClass}" style="${style}" data-order-id="${e.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
-                                    <div class="calendar-event__name">${escapeHtml(getOrderName(e))}</div>
-                                    <div class="calendar-event__client">${escapeHtml(e.client || '—')}</div>
-                                    ${servicesLabel ? `<div class="calendar-event__service">${escapeHtml(servicesLabel)}</div>` : ''}
+                                    ${isOrderChanged(e) ? '<span class="calendar-event__flag" title="Заказ обновлён">!</span>' : ''}
+                                    <div class="calendar-event__name">${escapeHtml(getCalendarOrderName(e))}</div>
+                                    ${showTimeHtml}
+                                    ${clientHtml}
+                                    ${showsHtml}
+                                    ${staffHtml}
                                     ${costHtml}
                                     <button type="button" class="calendar-event__share" data-order-share="${e.id}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1271,7 +1486,7 @@
                                     </button>
                                 </div>
                             `;
-                        }).join('') +
+                        }).join('') + cellEvents.map(calendarEventHtml).join('') +
                         '</div>';
                 }
             }
@@ -1283,7 +1498,7 @@
                 : `${cellDateObj.getFullYear()}-${String(cellDateObj.getMonth() + 1).padStart(2, '0')}-${String(cellDateObj.getDate()).padStart(2, '0')}`;
             html += `
                 <div class="${cellClass}" data-date="${cellDateValue}">
-                    <div class="calendar-cell__date">
+                    <div class="calendar-cell__date${isToday ? ' calendar-cell__date--today' : ''}">
                         <span>${isCurrentMonth ? dayNumber : ''}</span>
                         <span class="calendar-cell__weekday">${isCurrentMonth ? weekdaysShort[weekdayIndex] : ''}</span>
                     </div>
@@ -1295,6 +1510,8 @@
         calendarGrid.innerHTML = html;
 
         calendarGrid.querySelectorAll('.calendar-event').forEach(ev => {
+            if (ev.classList.contains('calendar-event--event')) return;
+
             ev.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const id = parseInt(this.getAttribute('data-order-id'));
@@ -1315,11 +1532,24 @@
             ev.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                showContextMenu(e.clientX, e.clientY, null, this.dataset.orderId);
+                hideContextMenu();
+                handleOrderEdit(parseInt(this.getAttribute('data-order-id'), 10));
             });
         });
 
-        calendarGrid.querySelectorAll('.calendar-cell').forEach(cell => {
+        calendarGrid.querySelectorAll('.calendar-event--event').forEach(ev => {
+            ev.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openCalendarEventModal(parseInt(this.dataset.eventId, 10));
+            });
+
+            ev.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideContextMenu();
+                openCalendarEventModal(parseInt(this.dataset.eventId, 10));
+            });
+        });        calendarGrid.querySelectorAll('.calendar-cell').forEach(cell => {
             cell.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 const dateStr = this.dataset.date;
@@ -1363,8 +1593,6 @@
     }
 
     function render() {
-        const toolbar = document.querySelector('.dashboard-toolbar');
-
         if (currentView === 'list') {
             dashboardList.style.display = 'flex';
             dashboardCalendar.style.display = 'none';
@@ -1372,7 +1600,6 @@
 
             if (dashboardFilters) dashboardFilters.style.display = 'flex';
             if (calendarFilters) calendarFilters.style.display = 'none';
-            if (toolbar) toolbar.classList.add('dashboard-toolbar--list');
         } else {
             dashboardList.style.display = 'none';
             dashboardCalendar.style.display = 'block';
@@ -1380,9 +1607,7 @@
 
             if (dashboardFilters) dashboardFilters.style.display = 'none';
             if (calendarFilters) calendarFilters.style.display = 'flex';
-            if (toolbar) toolbar.classList.remove('dashboard-toolbar--list');
-        }
-    }
+        }    }
 
     function applyInitialView() {
         document.querySelectorAll('.view-switch__btn').forEach(b => {
@@ -1395,17 +1620,60 @@
         return myOrdersOnlyToggle.checked;
     }
 
-    function ordersUrl() {
-        if (isOnlyMyOrders()) {
-            return '/schedule/my-orders/';
+    const LIST_PAGE_SIZE = 50;
+
+    let listLimit = LIST_PAGE_SIZE;
+    let listHasMore = false;
+    let loadingOrders = false;
+
+    function monthDateRange(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const start = new Date(year, month, 1);
+        const end = new Date(year, month + 1, 0);
+
+        return {
+            from: dateToIso(start),
+            to: dateToIso(end),
+        };
+    }
+
+    function dateToIso(date) {
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0')
+            + '-' + String(date.getDate()).padStart(2, '0');
+    }
+
+    function ordersUrl(options) {
+        const settings = options || {};
+        const isList = settings.list === true;
+        const base = isOnlyMyOrders() ? '/schedule/my-orders/' : '/orders/list/';
+        const params = new URLSearchParams();
+
+        params.set('status', 'all');
+
+        if (!isList) {
+            const range = monthDateRange(calendarDate);
+
+            params.set('date_from', range.from);
+            params.set('date_to', range.to);
         }
 
-        return '/orders/list/?status=all';
+        if (settings.limit) params.set('limit', String(settings.limit));
+        if (settings.offset) params.set('offset', String(settings.offset));
+
+        return base + '?' + params.toString();
+    }
+
+    function fetchOrdersQuery(settings) {
+        return fetch(ordersUrl(settings), { cache: 'no-store' })
+            .then(r => r.json())
+            .catch(function() {
+                return { error: 'network' };
+            });
     }
 
     function fetchOrdersForLink(callback) {
-        fetch('/orders/list/?status=all', { cache: 'no-store' })
-            .then(r => r.json())
+        fetchOrdersQuery({ limit: LIST_PAGE_SIZE, offset: 0 })
             .then(data => {
                 if (!data.error && data.orders) {
                     currentOrders = data.orders;
@@ -1419,22 +1687,71 @@
     }
 
     function loadOrders() {
-        const url = ordersUrl();
+        if (loadingOrders) return;
 
-        fetch(url, { cache: 'no-store' })
-            .then(r => r.json())
+        loadingOrders = true;
+
+        const isList = currentView !== 'calendar';
+        const limit = isList ? listLimit : null;
+        const silent = arguments[0] === true;
+
+        fetchOrdersQuery({ list: isList, limit: limit, offset: 0 })
             .then(data => {
                 if (data.error) {
-                    dashboardList.innerHTML = `<div class="dashboard-empty">${escapeHtml(data.error)}</div>`;
+                    if (!silent) {
+                        dashboardList.innerHTML = `<div class="dashboard-empty">${escapeHtml(data.error === 'network' ? 'Ошибка загрузки расписания' : data.error)}</div>`;
+                    }
                     return;
                 }
+
                 currentOrders = data.orders || [];
                 statusColors = data.colors || {};
+                listHasMore = isList ? !!data.has_more : false;
                 render();
             })
             .catch(err => {
-                dashboardList.innerHTML = '<div class="dashboard-empty">Ошибка загрузки расписания</div>';
+                if (!silent) {
+                    dashboardList.innerHTML = '<div class="dashboard-empty">Ошибка загрузки расписания</div>';
+                }
                 console.error(err);
+            })
+            .finally(function() {
+                loadingOrders = false;
+            });
+    }
+
+    function loadMoreOrders() {
+        if (loadingOrders || !listHasMore) return;
+
+        loadingOrders = true;
+
+        const offset = currentOrders.length;
+
+        fetchOrdersQuery({ list: true, limit: listLimit, offset: offset })
+            .then(data => {
+                if (data.error) return;
+
+                const seen = {};
+
+                currentOrders.forEach(function(item) {
+                    seen[item.id] = true;
+                });
+
+                (data.orders || []).forEach(function(item) {
+                    if (seen[item.id]) return;
+
+                    seen[item.id] = true;
+                    currentOrders.push(item);
+                });
+
+                if (data.colors) statusColors = data.colors;
+
+                listHasMore = !!data.has_more;
+                render();
+            })
+            .catch(function() {})
+            .finally(function() {
+                loadingOrders = false;
             });
     }
 
@@ -1452,10 +1769,13 @@
             if (openModal) return;
         }
 
-        const url = ordersUrl();
+        loadCalendarEvents().then(refreshOrders);
+    }
 
-        fetch(url, { cache: 'no-store' })
-            .then(r => r.json())
+    function refreshOrders() {
+        const isList = currentView !== 'calendar';
+
+        fetchOrdersQuery({ list: isList, limit: isList ? listLimit : null, offset: 0 })
             .then(data => {
                 if (data.error) return;
 
@@ -1467,6 +1787,9 @@
 
                 currentOrders = next;
                 statusColors = data.colors || {};
+
+                if (isList) listHasMore = !!data.has_more;
+
                 render();
             })
             .catch(() => {});
@@ -1477,10 +1800,10 @@
             clearInterval(refreshTimer);
         }
 
-        refreshTimer = setInterval(silentRefresh, REFRESH_INTERVAL_MS);
+        refreshTimer = setInterval(refreshOrders, REFRESH_INTERVAL_MS);
 
         document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) silentRefresh();
+            if (!document.hidden) refreshOrders();
         });
     }
 
@@ -1499,7 +1822,9 @@
             try {
                 localStorage.setItem(VIEW_STORAGE_KEY, currentView);
             } catch {}
-            render();
+            listLimit = LIST_PAGE_SIZE;
+            listHasMore = false;
+            loadOrders();
         });
     });
 
@@ -1542,14 +1867,171 @@
     calendarPrev.addEventListener('click', function() {
         calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1);
         storeMonth(calendarDate);
+        loadOrders();
         renderCalendar();
     });
 
     calendarNext.addEventListener('click', function() {
         calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1);
         storeMonth(calendarDate);
+        loadOrders();
         renderCalendar();
     });
+
+    function loadCalendarEvents() {
+        return fetch('/schedule/events/', { cache: 'no-store' })
+            .then(r => r.json())
+            .then(data => {
+                calendarEvents = Array.isArray(data.events) ? data.events : [];
+            })
+            .catch(function() {
+                calendarEvents = [];
+            });
+    }
+
+    function setCalendarEventError(message) {
+        if (!calendarEventError) return;
+
+        calendarEventError.textContent = message || '';
+        calendarEventError.style.display = message ? 'block' : 'none';
+    }
+
+    function openCalendarEventModal(eventId, prefillDate) {
+        if (!calendarEventModal) return;
+
+        setCalendarEventError('');
+
+        const event = eventId
+            ? calendarEvents.find(item => String(item.id) === String(eventId))
+            : null;
+
+        activeCalendarEventId = event ? event.id : null;
+
+        if (calendarEventTitle) calendarEventTitle.textContent = event ? 'Событие' : 'Новое событие';
+        if (calendarEventName) calendarEventName.value = event ? event.title || '' : '';
+        if (calendarEventDate) calendarEventDate.value = event ? event.date || '' : (prefillDate || '');
+        if (calendarEventTime) calendarEventTime.value = event ? event.time_text || '' : '';
+        if (calendarEventDescription) calendarEventDescription.value = event ? event.description || '' : '';
+        if (calendarEventDeleteBtn) calendarEventDeleteBtn.style.display = event ? '' : 'none';
+
+        calendarEventModal.classList.add('active');
+
+        setTimeout(function() {
+            if (calendarEventName) calendarEventName.focus();
+        }, 60);
+    }
+
+    function closeCalendarEventModal() {
+        if (!calendarEventModal) return;
+
+        calendarEventModal.classList.remove('active');
+        activeCalendarEventId = null;
+    }
+
+    function saveCalendarEvent() {
+        if (!calendarEventModal) return;
+
+        const title = calendarEventName ? calendarEventName.value.trim() : '';
+        const dateValue = calendarEventDate ? calendarEventDate.value : '';
+
+        if (!title) {
+            setCalendarEventError('Введите название события');
+            return;
+        }
+
+        if (!dateValue) {
+            setCalendarEventError('Укажите дату события');
+            return;
+        }
+
+        setCalendarEventError('');
+
+        const url = activeCalendarEventId
+            ? '/schedule/events/' + activeCalendarEventId + '/'
+            : '/schedule/events/';
+        const body = new URLSearchParams();
+
+        body.append('action', 'save');
+        body.append('title', title);
+        body.append('date', dateValue);
+        body.append('time_text', calendarEventTime ? calendarEventTime.value.trim() : '');
+        body.append('description', calendarEventDescription ? calendarEventDescription.value.trim() : '');
+
+        window.UI.setButtonBusy(calendarEventSaveBtn, true);
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': window.UI.getCSRFToken() },
+            body: body,
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    setCalendarEventError(data.error);
+                    return;
+                }
+
+                closeCalendarEventModal();
+                loadCalendarEvents().then(function() {
+                    renderCalendar();
+                });
+            })
+            .catch(function() {
+                setCalendarEventError('Не удалось сохранить событие');
+            })
+            .finally(function() {
+                window.UI.setButtonBusy(calendarEventSaveBtn, false);
+            });
+    }
+
+    function deleteCalendarEvent() {
+        if (!activeCalendarEventId) return;
+
+        const eventId = activeCalendarEventId;
+
+        window.UI.confirm({
+            title: 'Удалить событие?',
+            text: 'Событие будет удалено из календаря.',
+            okText: 'Удалить',
+            cancelText: 'Отмена',
+            danger: true,
+        }).then(function(confirmed) {
+            if (!confirmed) return;
+
+            fetch('/schedule/events/' + eventId + '/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': window.UI.getCSRFToken() },
+                body: new URLSearchParams({ action: 'delete' }),
+            })
+                .then(r => r.json())
+                .then(function(data) {
+                    if (data.error) {
+                        setCalendarEventError(data.error);
+                        return;
+                    }
+
+                    closeCalendarEventModal();
+                    loadCalendarEvents().then(function() {
+                        renderCalendar();
+                    });
+                })
+                .catch(function() {
+                    setCalendarEventError('Не удалось удалить событие');
+                });
+        });
+    }
+
+    if (calendarEventSaveBtn) calendarEventSaveBtn.addEventListener('click', saveCalendarEvent);
+    if (calendarEventDeleteBtn) calendarEventDeleteBtn.addEventListener('click', deleteCalendarEvent);
+    if (calendarEventCloseBtn) calendarEventCloseBtn.addEventListener('click', closeCalendarEventModal);
+
+    if (calendarEventModal) {
+        calendarEventModal.addEventListener('click', function(e) {
+            if (e.target === this) closeCalendarEventModal();
+        });
+
+        window.UI.registerModal(calendarEventModal, closeCalendarEventModal);
+    }
 
     if (contextMenu) {
         contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
@@ -1566,7 +2048,7 @@
                 } else if (action === 'create-availability') {
                     if (window.openAvailabilityModal) window.openAvailabilityModal(dateStr);
                 } else if (action === 'create-event') {
-                    window.UI.showToast('Создание события — функция в разработке');
+                    openCalendarEventModal(null, dateStr);
                 }
             });
         });
@@ -1589,8 +2071,8 @@
     if (eventModalCloseBtn) {
         eventModalCloseBtn.addEventListener('click', closeEventModal);
     }
-    if (eventModalDismissBtn) {
-        eventModalDismissBtn.addEventListener('click', closeEventModal);
+    if (eventModalDeleteBtn) {
+        eventModalDeleteBtn.addEventListener('click', deleteActiveOrder);
     }
     if (eventModal) {
         eventModal.addEventListener('click', function(e) {
@@ -1601,12 +2083,14 @@
         eventModalDetailsBtn.addEventListener('click', function() {
             if (!activeOrderId) return;
 
-            if (openOrderEditor(activeOrderId)) {
-                closeEventModal();
+            if (!canManageOrders()) {
+                window.UI.showToast('Подробные данные заказа доступны только с правом управления заказами');
                 return;
             }
 
-            window.location.href = `/schedule/`;
+            if (window.openOrderForm && window.openOrderForm(activeOrderId)) {
+                closeEventModal();
+            }
         });
     }
 
@@ -1636,31 +2120,13 @@
         });
     }
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key !== 'Escape') return;
+    if (eventModal) {
+        window.UI.registerModal(eventModal, closeEventModal);
+    }
 
-        const confirmElement = document.getElementById('uiConfirmModal');
-
-        if (confirmElement && confirmElement.classList.contains('active')) {
-            if ((eventChecklistModal && eventChecklistModal.classList.contains('active')) ||
-                (eventModal && eventModal.classList.contains('active'))) {
-                e.preventDefault();
-            }
-
-            return;
-        }
-
-        if (eventChecklistModal && eventChecklistModal.classList.contains('active')) {
-            e.preventDefault();
-            closeEventChecklist();
-            return;
-        }
-
-        if (eventModal && eventModal.classList.contains('active')) {
-            e.preventDefault();
-            closeEventModal();
-        }
-    }, true);
+    if (eventChecklistModal) {
+        window.UI.registerModal(eventChecklistModal, closeEventChecklist);
+    }
 
     function closeClientFilterDropdown() {
         if (!clientFilterDropdown) return;
@@ -1753,7 +2219,11 @@
 
     if (searchInput) searchInput.addEventListener('input', render);
     if (statusSelect) statusSelect.addEventListener('change', render);
-    if (sortSelect) sortSelect.addEventListener('change', render);
+    if (sortSelect) {
+        const sortWrap = sortSelect.closest('.dashboard-filter') || sortSelect.parentElement;
+
+        if (sortWrap) sortWrap.style.display = 'none';
+    }
 
     if (pastCompletedToggle) {
         pastCompletedToggle.addEventListener('change', function() {
@@ -1764,7 +2234,6 @@
     }
 
     if (calendarStatusSelect) calendarStatusSelect.addEventListener('change', render);
-    if (calendarFilledSelect) calendarFilledSelect.addEventListener('change', render);
 
     document.addEventListener('click', function(e) {
         if (!clientFilterInput) return;
@@ -1908,6 +2377,8 @@
         availabilityModal.addEventListener('click', function(e) {
             if (e.target === this) closeAvailabilityModal();
         });
+
+        window.UI.registerModal(availabilityModal, closeAvailabilityModal);
     }
 
     window.openAvailabilityModal = openAvailabilityModal;
@@ -1916,7 +2387,9 @@
     const openingOrderId = parseInt(startParams.get('open_order') || startParams.get('order'), 10);
 
     applyInitialView();
-    loadOrders();
+    loadCalendarEvents().then(function() {
+        loadOrders();
+    });
     startAutoRefresh();
 
     if (!isNaN(openingOrderId)) {

@@ -1,0 +1,26 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+}
+
+body {
+  padding-top: var(--navbar-height, 64px);
+}
+
+.js-sidebar {
+  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.28s ease, border-color 0.28s ease;
+}
+
+.js-sidebar--scrolled {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  border-color: #3b342c;
+}
+
+@media (max-width: 1024px) {
+  .js-sidebar {
+    transform: none !important;
+  }
+}

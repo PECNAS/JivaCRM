@@ -8,10 +8,10 @@
 {% endblock %}
 
 {% block content %}
-<section class="clients-header">
-    <div class="clients-header__top">
+<div class="clients-layout">
+    <aside class="clients-sidebar js-sidebar">
         <h1 class="clients-title">Клиенты</h1>
-        <button class="btn btn-primary" id="addClientBtn">
+        <button class="btn btn-primary clients-sidebar__add" id="addClientBtn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="16"/>
@@ -19,24 +19,24 @@
             </svg>
             Добавить клиента
         </button>
-    </div>
-    <div class="clients-filters">
-        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, агентству, телеге или телефону" value="{{ search_query }}">
-        <select class="filter-select" id="ratingFilter">
-            <option value="all" {% if rating_filter == 'all' %}selected{% endif %}>Все рейтинги</option>
-            <option value="high" {% if rating_filter == 'high' %}selected{% endif %}>Высокий</option>
-            <option value="medium" {% if rating_filter == 'medium' %}selected{% endif %}>Средний</option>
-            <option value="low" {% if rating_filter == 'low' %}selected{% endif %}>Низкий</option>
-        </select>
-        <div class="city-filter" id="cityFilterBox">
-            <input type="text" class="filter-select city-filter__input" id="cityFilterSearch" placeholder="Город" autocomplete="off">
-            <input type="hidden" id="cityFilter" value="{{ city_filter }}">
-            <div class="city-selector__dropdown city-filter__dropdown" id="cityFilterDropdown"></div>
+        <div class="clients-filters">
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, агентству, телеге или телефону" value="{{ search_query }}">
+            <select class="filter-select" id="ratingFilter">
+                <option value="all" {% if rating_filter == 'all' %}selected{% endif %}>Все рейтинги</option>
+                <option value="high" {% if rating_filter == 'high' %}selected{% endif %}>Высокий</option>
+                <option value="medium" {% if rating_filter == 'medium' %}selected{% endif %}>Средний</option>
+                <option value="low" {% if rating_filter == 'low' %}selected{% endif %}>Низкий</option>
+            </select>
+            <div class="city-filter" id="cityFilterBox">
+                <input type="text" class="filter-select city-filter__input" id="cityFilterSearch" placeholder="Город" autocomplete="off">
+                <input type="hidden" id="cityFilter" value="{{ city_filter }}">
+                <div class="city-selector__dropdown city-filter__dropdown" id="cityFilterDropdown"></div>
+            </div>
         </div>
-    </div>
-</section>
+    </aside>
 
-<section class="clients-table-wrapper">
+    <section class="clients-main">
+        <section class="clients-table-wrapper">
     <table class="clients-table">
         <thead>
             <tr>
@@ -94,6 +94,8 @@
 
 <div class="load-more" id="clientsLoadMore" data-has-more="{% if has_more %}1{% else %}0{% endif %}">
     <button type="button" class="btn btn-outline" id="clientsLoadMoreBtn">Загрузить ещё</button>
+</div>
+    </section>
 </div>
 
 <div class="modal-overlay" id="clientModal">

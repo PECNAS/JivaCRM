@@ -1,3 +1,80 @@
+.clients-layout {
+  padding: 1rem;
+  padding-left: calc(260px + 1.6rem);
+  padding-right: 0.4rem;
+  width: auto;
+  margin-left: calc(50% - 50vw + 0.4rem);
+  margin-right: calc(50% - 50vw + 0.4rem);
+  box-sizing: border-box;
+}
+
+.clients-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.85rem;
+  background: #13110e;
+  border: 1px solid #2b2620;
+  border-radius: 12px;
+  position: fixed;
+  top: calc(var(--navbar-height, 64px) + 0.75rem);
+  left: 1rem;
+  width: 260px;
+  max-height: calc(100vh - var(--navbar-height, 64px) - 1.5rem);
+  overflow-y: auto;
+  overflow-x: visible;
+  z-index: 50;
+  isolation: auto;
+}
+
+.clients-sidebar .clients-title {
+  font-size: 1.2rem;
+  margin: 0;
+  color: #f5efe7;
+}
+
+.clients-sidebar__add {
+  width: 100%;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+
+.clients-sidebar .clients-filters {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.clients-sidebar .search-input,
+.clients-sidebar .filter-select,
+.clients-sidebar .city-filter,
+.clients-sidebar .city-filter__input {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.clients-main {
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .clients-layout {
+    padding: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .clients-sidebar {
+    position: static;
+    width: auto;
+    max-height: none;
+    margin-bottom: 0.75rem;
+  }
+}
+
 .clients-header {
   padding: 1.5rem 0 1rem;
 }
@@ -102,18 +179,19 @@
 }
 
 .clients-table-wrapper {
-  overflow-x: auto;
-  margin: 0 -0.5rem;
-  padding: 0 0.5rem;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
   position: relative;
   z-index: 1;
 }
 
 .clients-table {
   width: 100%;
+  min-width: 0;
   border-collapse: collapse;
   font-size: 0.88rem;
-  table-layout: auto;
+  table-layout: fixed;
 }
 
 .clients-table thead th {
@@ -150,26 +228,79 @@
   border-bottom: 1px solid #1f1b17;
   color: #ddd4c7;
   height: 2.6rem;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.clients-table thead th,
+.clients-table tbody td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.clients-table thead th:nth-child(1),
+.clients-table tbody td:nth-child(1) {
+  width: 3.5%;
+}
+
+.clients-table thead th:nth-child(2),
+.clients-table tbody td:nth-child(2) {
+  width: 17%;
+}
+
+.clients-table thead th:nth-child(3),
+.clients-table tbody td:nth-child(3) {
+  width: 13%;
+}
+
+.clients-table thead th:nth-child(4),
+.clients-table tbody td:nth-child(4) {
+  width: 14%;
+}
+
+.clients-table thead th:nth-child(5),
+.clients-table tbody td:nth-child(5) {
+  width: 14%;
+}
+
+.clients-table thead th:nth-child(6),
+.clients-table tbody td:nth-child(6) {
+  width: 14%;
+}
+
+.clients-table thead th:nth-child(7),
+.clients-table tbody td:nth-child(7) {
+  width: 9%;
+}
+
+.clients-table thead th:nth-child(8),
+.clients-table tbody td:nth-child(8),
+.clients-table thead th:nth-child(9),
+.clients-table tbody td:nth-child(9) {
+  width: 7.5%;
 }
 
 .clients-table__cities {
-  max-width: 150px;
-  width: 150px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: none;
+  width: auto;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.35;
 }
 
 .clients-table__index {
-  width: 40px;
+  width: auto;
   color: #7a7267;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .clients-table__name {
-  min-width: 130px;
-  max-width: 200px;
+  min-width: 0;
+  max-width: none;
   white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.35;
@@ -178,13 +309,14 @@
 .clients-table__phone,
 .clients-table__telegram,
 .clients-table__num {
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .clients-table__telegram {
-  max-width: 190px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .clients-table__num {
@@ -208,10 +340,12 @@
   background: #17140f;
   border-left: 1px solid #23201b;
   border-right: 1px solid #23201b;
-  white-space: nowrap;
-  max-width: 175px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 .clients-table tbody tr:hover td.clients-table__agency {
@@ -233,9 +367,13 @@
 }
 
 .city-filter__dropdown {
-  z-index: 60;
+  z-index: 3000;
   max-height: 260px;
   min-width: 220px;
+}
+
+.city-filter__dropdown.open {
+  position: fixed;
 }
 
 .clients-table tbody tr {
@@ -1265,6 +1403,11 @@
   .clients-table {
     display: block;
     width: 100%;
+    min-width: 0;
+  }
+
+  .clients-table-wrapper {
+    overflow-x: visible;
   }
 
   .clients-table thead {

@@ -173,6 +173,19 @@
             if (e.target === confirmModal) settle(false);
         });
 
+        const escapeHandler = function(e) {
+            if (e.key !== 'Escape') return;
+            if (!confirmModal.classList.contains('active')) return;
+
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            settle(false);
+        };
+
+        document.addEventListener('keydown', escapeHandler, true);
+
+        confirmModal.__escapeHandler = escapeHandler;
+
         return confirmModal;
     }
 
@@ -392,6 +405,68 @@
     function isConfirmOpen() {
         return !!(confirmModal && confirmModal.classList.contains('active'));
     }
+
+    const modalCloseHandlers = new Map();
+
+    function modalId(modal) {
+        return modal.id || ('modal_' + Array.prototype.indexOf.call(document.querySelectorAll('.modal-overlay'), modal));
+    }
+
+    function registerModal(modal, handler) {
+        if (!modal || typeof handler !== 'function') return;
+
+        modalCloseHandlers.set(modalId(modal), { modal: modal, handler: handler });
+    }
+
+    function unregisterModal(modal) {
+        if (!modal) return;
+
+        modalCloseHandlers.delete(modalId(modal));
+    }
+
+    function activeModalStack() {
+        const stack = [];
+
+        modalCloseHandlers.forEach(entry => {
+            if (!entry.modal.isConnected) return;
+            if (!entry.modal.classList.contains('active')) return;
+            if (getComputedStyle(entry.modal).display === 'none') return;
+
+            stack.push(entry);
+        });
+
+        stack.sort(function(a, b) {
+            return (parseInt(getComputedStyle(b.modal).zIndex, 10) || 0)
+                - (parseInt(getComputedStyle(a.modal).zIndex, 10) || 0);
+        });
+
+        return stack;
+    }
+
+    function closeTopModal() {
+        if (isConfirmOpen()) {
+            settle(false);
+            return true;
+        }
+
+        const stack = activeModalStack();
+
+        if (!stack.length) return false;
+
+        stack[0].handler();
+        return true;
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        if (e.isComposing) return;
+        if (e.defaultPrevented) return;
+
+        if (!closeTopModal()) return;
+
+        e.preventDefault();
+    }, false);
+
     document.addEventListener('DOMContentLoaded', function() {
         attachAllPhoneMasks(document);
     });
@@ -405,13 +480,13 @@
         const number = parseFloat(raw);
         const safe = isFinite(number) ? number : 0;
         const negative = safe < 0;
-        const absolute = Math.abs(safe);
+        const absolute = Math.round(Math.abs(safe));
 
-        const parts = absolute.toFixed(2).split('.');
-        const grouped = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        const text = (negative ? '−' : '') + grouped + '.' + parts[1];
+        const text = (negative && absolute > 0 ? '−' : '') + String(absolute).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
-        return withCurrency === false ? text : text + '₽';
+        if (withCurrency === false) return text;
+
+        return text === '0' ? '0₽' : text + '₽';
     }
 
     window.UI = {
@@ -423,6 +498,9 @@
         snapshot: snapshot,
         isDirtyFromSnapshot: isDirtyFromSnapshot,
         isEmptyForm: isEmptyForm,
+        isConfirmOpen: isConfirmOpen,
+        registerModal: registerModal,
+        unregisterModal: unregisterModal,
         formatPhone: formatPhone,
         formatMoney: formatMoney,
         setButtonBusy: setButtonBusy,

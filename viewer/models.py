@@ -154,6 +154,21 @@ class Skill(models.Model):
         return self.name
 
 
+class NarrowChat(models.Model):
+    name = models.CharField('Название чата', max_length=200)
+    link = models.URLField('Ссылка', max_length=500, blank=True)
+    order = models.PositiveIntegerField('Порядок', default=0)
+    is_active = models.BooleanField('Активен', default=True)
+
+    class Meta:
+        verbose_name = 'Узкий чат'
+        verbose_name_plural = 'Узкие чаты'
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
 class CityGroup(models.Model):
     name = models.CharField('Название группы', max_length=200, unique=True)
     salary_bonus = models.DecimalField('Надбавка к ставке', max_digits=10, decimal_places=2, default=0)
@@ -286,9 +301,9 @@ class CalendarColor(models.Model):
 
     type = models.CharField('Тип', max_length=20, choices=COLOR_TYPES, default='order')
     status = models.CharField('Статус заказа', max_length=20, choices=ORDER_STATUSES, blank=True)
-    background_color = models.CharField('Цвет фона', max_length=20, default='#2164c8')
-    border_color = models.CharField('Цвет полосы', max_length=20, default='#2164c8')
-    text_color = models.CharField('Цвет текста', max_length=20, default='#ddd4c7')
+    background_color = models.CharField('Цвет фона', max_length=20, default='#e07b39')
+    border_color = models.CharField('Цвет полосы', max_length=20, default='#e07b39')
+    text_color = models.CharField('Цвет текста', max_length=20, default='#ffd9a8')
     is_active = models.BooleanField('Активен', default=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
@@ -303,6 +318,30 @@ class CalendarColor(models.Model):
         if self.type == 'order':
             return f'Заказ — {self.get_status_display() or "—"}'
         return self.get_type_display()
+
+
+class CalendarEvent(models.Model):
+    title = models.CharField('Название', max_length=200)
+    date = models.DateField('Дата')
+    time_text = models.CharField('Время', max_length=100, blank=True)
+    description = models.TextField('Описание', blank=True)
+    created_by = models.ForeignKey(
+        'Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_calendar_events', verbose_name='Создал',
+    )
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Событие календаря'
+        verbose_name_plural = 'События календаря'
+        ordering = ['date', 'id']
+        indexes = [
+            models.Index(fields=['date']),
+        ]
+
+    def __str__(self):
+        return self.title
 
 
 class Employee(models.Model):
@@ -758,6 +797,7 @@ class Order(models.Model):
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name='Город')
     date = models.DateField('Дата проведения', null=True, blank=True)
     start_datetime = models.DateTimeField('Начало мероприятия', null=True, blank=True)
+    start_time_text = models.CharField('Время начала (текст)', max_length=100, blank=True, default='')
     end_datetime = models.DateTimeField('Окончание мероприятия', null=True, blank=True)
     address = models.CharField('Адрес', max_length=300, blank=True, default='')
     contact_name = models.CharField('Контактное лицо - имя', max_length=200, blank=True)
@@ -768,7 +808,7 @@ class Order(models.Model):
     dressing_room_comment = models.TextField('Комментарии к гримерке', blank=True)
     meal_comment = models.TextField('Комментарии к еде', blank=True)
     concept = models.TextField('Концепция', blank=True)
-    tech_lamps = models.BooleanField('Лампы', default=False)
+    tech_lamps = models.BooleanField('УФ', default=False)
     tech_laser = models.BooleanField('Лазер', default=False)
     tech_hazer = models.BooleanField('Хейзер', default=False)
     tech_grid = models.BooleanField('Сетка', default=False)
@@ -776,6 +816,10 @@ class Order(models.Model):
     tech_comment = models.TextField('Комментарий к техничке', blank=True)
     venue_comment = models.TextField('Комментарии к площадке', blank=True)
     props_comment = models.TextField('Комментарии к реквизиту', blank=True)
+    importance = models.CharField('Важность', max_length=100, blank=True)
+    event_comment = models.TextField('Про событие', blank=True)
+    donotforget_comment = models.TextField('Не забыть', blank=True)
+    adaptation_comment = models.TextField('Адаптация костюмов, гримов, шоу', blank=True)
     manager = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='managed_orders', verbose_name='Менеджер', null=True, blank=True)
     managers = models.ManyToManyField(Employee, related_name='co_managed_orders', verbose_name='Дополнительные менеджеры', blank=True)
     story_manager = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='story_orders', verbose_name='Сториз ответственный')
@@ -806,6 +850,8 @@ class Order(models.Model):
         'tech_lamps', 'tech_laser', 'tech_hazer', 'tech_grid', 'tech_projection', 'tech_comment',
         'venue_comment', 'props_comment', 'manager_id', 'story_manager_id', 'cost',
         'payment_method', 'status', 'duration', 'payment_due_date', 'payment_due_comment',
+        'importance', 'event_comment', 'donotforget_comment', 'adaptation_comment',
+        'start_time_text',
     ]
 
     def build_auto_name(self):
@@ -873,7 +919,10 @@ class Order(models.Model):
             items.append(f'{field}={value if value is not None else ""}')
 
         for item in self.estimate_items.all().order_by('id'):
-            items.append(f'est:{item.service_name}:{item.people_count}:{item.coefficient}:{item.price}:{item.comment}:{item.is_overridden}:{item.is_main}')
+            items.append(f'est:{item.service_name}:{item.people_count}:{item.coefficient}:{item.price}:{item.comment}:{item.is_overridden}:{item.is_main}:{item.start_time}')
+
+        for item in self.contact_items.all().order_by('id'):
+            items.append(f'contact:{item.name}:{item.phone}:{item.telegram}:{item.is_primary}')
 
         for item in self.employee_items.all().order_by('id'):
             items.append(f'emp:{item.employee_name}:{item.employee_role}:{item.payment}:{item.comment}:{item.is_overridden}:{item.is_story}:{item.is_responsible}')
@@ -894,8 +943,59 @@ class Order(models.Model):
         if new_hash == self.content_hash:
             return False
 
+        # Изменённым помечается любой заказ, показывается метка только у подтверждённых.
         self.content_hash = new_hash
-        self.content_changed_at = timezone.now()
+        self.content_changed_at = timezone.now() if self.status == 'confirmed' else None
+
+        return bool(self.content_changed_at)
+
+    def is_content_complete(self):
+        labels = {
+            'name': 'название',
+            'date': 'дата',
+            'address': 'адрес',
+            'setup_time': 'время чека',
+            'city_id': 'город',
+            'client_id': 'клиент',
+        }
+
+        for field in labels:
+            value = getattr(self, field, None)
+
+            if value is None or (isinstance(value, str) and not value.strip()):
+                return False
+
+        contact_items = list(self.contact_items.all())
+        has_phone = bool((self.contact_phone or '').strip())
+        has_telegram = bool((self.contact_telegram or '').strip())
+
+        for item in contact_items:
+            if (item.phone or '').strip():
+                has_phone = True
+
+            if (item.telegram or '').strip():
+                has_telegram = True
+
+        if not has_phone or not has_telegram:
+            return False
+
+        if not self.estimate_items.exists():
+            return False
+
+        if not self.employee_items.exists():
+            return False
+
+        cost_value = (self.cost or '').strip()
+
+        if not cost_value or cost_value == '—':
+            return False
+
+        if self.get_cost_value() <= 0:
+            return False
+
+        if not self.payment_method:
+            return False
+
         return True
 
     def get_missing_fields(self):
@@ -904,8 +1004,6 @@ class Order(models.Model):
             'date': 'дата',
             'address': 'адрес',
             'setup_time': 'время чека',
-            'contact_phone': 'телефон контакта',
-            'contact_telegram': 'телеграм контакта',
             'city_id': 'город',
             'manager_id': 'менеджер',
             'client_id': 'клиент',
@@ -918,6 +1016,23 @@ class Order(models.Model):
 
             if value is None or (isinstance(value, str) and not value.strip()):
                 missing.append(label)
+
+        contact_items = list(self.contact_items.all())
+        has_phone = bool((self.contact_phone or '').strip())
+        has_telegram = bool((self.contact_telegram or '').strip())
+
+        for item in contact_items:
+            if (item.phone or '').strip():
+                has_phone = True
+
+            if (item.telegram or '').strip():
+                has_telegram = True
+
+        if not has_phone:
+            missing.append('телефон контакта')
+
+        if not has_telegram:
+            missing.append('телеграм контакта')
 
         if not self.estimate_items.exists():
             missing.append('услуги')
@@ -941,7 +1056,7 @@ class Order(models.Model):
     def get_tech_list(self):
         tech = []
         if self.tech_lamps:
-            tech.append('Лампы')
+            tech.append('УФ')
         if self.tech_laser:
             tech.append('Лазер')
         if self.tech_hazer:
@@ -964,6 +1079,7 @@ class OrderEstimate(models.Model):
     comment = models.TextField('Комментарий', blank=True)
     is_overridden = models.BooleanField('Переопределена вручную', default=False)
     is_main = models.BooleanField('Основное шоу', default=False)
+    start_time = models.CharField('Время шоу', max_length=100, blank=True, default='')
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
 
@@ -971,6 +1087,9 @@ class OrderEstimate(models.Model):
         verbose_name = 'Смета заказа'
         verbose_name_plural = 'Сметы заказов'
         ordering = ['id']
+        indexes = [
+            models.Index(fields=['order']),
+        ]
 
     def __str__(self):
         return f'{self.service_name} - {self.price}'
@@ -1004,6 +1123,10 @@ class OrderEmployee(models.Model):
         verbose_name = 'Сотрудник заказа'
         verbose_name_plural = 'Сотрудники заказов'
         ordering = ['id']
+        indexes = [
+            models.Index(fields=['order', 'show']),
+            models.Index(fields=['employee']),
+        ]
 
     def __str__(self):
         return f'{self.employee_name} - {self.payment}'
@@ -1013,6 +1136,27 @@ class OrderEmployee(models.Model):
             return ''
 
         return self.show.service_name
+
+
+class OrderContact(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='contact_items', verbose_name='Заказ')
+    name = models.CharField('Имя', max_length=200, blank=True)
+    phone = models.CharField('Телефон', max_length=30, blank=True)
+    telegram = models.CharField('Телеграм', max_length=100, blank=True)
+    is_primary = models.BooleanField('Основной контакт', default=False)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Контакт заказа'
+        verbose_name_plural = 'Контакты заказов'
+        ordering = ['id']
+        indexes = [
+            models.Index(fields=['order']),
+        ]
+
+    def __str__(self):
+        return self.name or self.phone or self.telegram or f'Контакт {self.id}'
 
 
 class OrderPayment(models.Model):
@@ -1153,6 +1297,25 @@ class OrderFeedback(models.Model):
 
     def __str__(self):
         return f'{self.order_id} - {self.get_kind_display()}'
+
+
+class OrderReadMark(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='read_marks', verbose_name='Заказ')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='order_read_marks', verbose_name='Сотрудник')
+    seen_changed_at = models.DateTimeField('Отметка обновления просмотрена', null=True, blank=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Отметка просмотра заказа'
+        verbose_name_plural = 'Отметки просмотра заказов'
+        unique_together = ['employee', 'order']
+        indexes = [
+            models.Index(fields=['employee', 'order']),
+        ]
+
+    def __str__(self):
+        return f'{self.order_id} - {self.employee_id}'
 
 
 class OrderExpense(models.Model):
@@ -1321,7 +1484,7 @@ class ArtistAvailability(models.Model):
         return ', '.join(labels) if labels else 'Занят'
 
 
-WEEKDAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+WEEKDAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
 
 def normalize_intervals(values):
@@ -1622,3 +1785,69 @@ class MoneyPayout(models.Model):
     @property
     def is_active(self):
         return not self.is_reverted
+
+
+class OrderChangeLog(models.Model):
+    LIMIT = 200
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='change_logs', verbose_name='Заказ')
+    field = models.CharField('Поле', max_length=100)
+    old_value = models.TextField('Было', blank=True)
+    new_value = models.TextField('Стало', blank=True)
+    changed_by = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='order_change_logs', verbose_name='Кто изменил',
+    )
+    changed_by_name = models.CharField('Кто изменил', max_length=200, blank=True)
+    changed_at = models.DateTimeField('Когда', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'История изменений заказа'
+        verbose_name_plural = 'История изменений заказов'
+        ordering = ['-changed_at', '-id']
+        indexes = [
+            models.Index(fields=['order', '-changed_at']),
+            models.Index(fields=['-changed_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.order_id}: {self.field}'
+
+    @classmethod
+    def write(cls, order, employee, fields):
+        """fields: список (поле, было, стало)."""
+        created = []
+        changed_by_name = employee.display_name if employee else ''
+
+        for field, old_value, new_value in fields:
+            if str(old_value or '') == str(new_value or ''):
+                continue
+
+            created.append(cls(
+                order=order,
+                field=field[:100],
+                old_value=str(old_value or '')[:2000],
+                new_value=str(new_value or '')[:2000],
+                changed_by=employee,
+                changed_by_name=changed_by_name[:200],
+            ))
+
+        if not created:
+            return 0
+
+        cls.objects.bulk_create(created)
+        cls.trim()
+
+        return len(created)
+
+    @classmethod
+    def trim(cls):
+        ids = list(
+            cls.objects.order_by('-changed_at', '-id')
+            .values_list('id', flat=True)[cls.LIMIT:]
+        )
+
+        while ids:
+            chunk = ids[:500]
+            cls.objects.filter(id__in=chunk).delete()
+            ids = ids[len(chunk):]

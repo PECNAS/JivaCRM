@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JIVA HUB · Заказ</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="app-nav">
+    <a class="app-brand" href="#"><span class="app-brand__icon"></span><span class="app-brand__name">JIVA·HUB</span></a>
+    <nav class="app-menu">
+        <span>Расписание</span><span>Клиенты</span><span>Сотрудники</span><span>Услуги</span><span>Деньги</span><span>Отчёты</span>
+    </nav>
+    <div class="app-user">DHS</div>
+</header>
+
+<main class="stage">
+
+    <div class="modal" role="dialog" aria-label="Создание заказа">
+
+        <header class="modal__head">
+            <div class="head-main">
+                <div class="head-title">Новый заказ</div>
+                <div class="head-sub" id="headTags"></div>
+            </div>
+            <div class="head-tools">
+                <div class="status-switch" id="statusSwitch">
+                    <button type="button" class="status-switch__btn" data-status="request">Запрос</button>
+                    <button type="button" class="status-switch__btn is-on" data-status="confirmed">Подтверждённый</button>
+                    <button type="button" class="status-switch__btn" data-status="completed">Выполненный</button>
+                </div>
+                <button type="button" class="icon-btn" title="Закрыть">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="modal__body">
+
+            <section class="write">
+                <div class="write__head">
+                    <span class="write__title">Ввод заказа</span>
+                    <span class="write__hint">Enter — перенос строки · Tab — следующее поле</span>
+                    <span class="write__count" id="writeCount"></span>
+                </div>
+                <div class="write__scroll" id="writeScroll">
+                    <div class="fields" id="fields"></div>
+                    <button type="button" class="add-line" id="addLine">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        Следующее пустое поле
+                    </button>
+                </div>
+            </section>
+
+            <section class="preview">
+                <div class="preview__head">
+                    <span class="preview__title">Карточка заказа</span>
+                    <span class="preview__state" id="activeLabel">—</span>
+                </div>
+
+                <div class="card" id="card">
+                    <div class="card__title" id="cardTitle">Без названия</div>
+                    <div class="card__badges" id="cardBadges"></div>
+                    <div class="card__note" id="cardNote" hidden>
+                        <div class="card__note-label">Комментарий заказа</div>
+                        <div class="card__note-body" id="cardNoteBody" contenteditable="true"></div>
+                    </div>
+                    <div class="card__rows" id="cardRows"></div>
+                </div>
+            </section>
+
+        </div>
+
+        <footer class="modal__foot">
+            <span class="foot__count" id="fieldCount"></span>
+            <div class="foot-right">
+                <button type="button" class="btn btn-outline" id="clearBtn">Очистить</button>
+                <button type="button" class="btn btn-outline">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveBtn">Сохранить</button>
+            </div>
+        </footer>
+
+    </div>
+
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -82,7 +82,7 @@
 
     function formatAmountInput(value) {
         const num = parseFloat(value) || 0;
-        return Number.isInteger(num) ? String(num) : num.toFixed(2);
+        return String(Math.round(num));
     }
 
     function request(url, options) {
@@ -1098,39 +1098,9 @@
         if (e.target === payoutModal) closePayoutModal();
     });
 
-    document.addEventListener('keydown', function(e) {
-        if (e.key !== 'Escape') return;
-
-        const confirmElement = document.getElementById('uiConfirmModal');
-
-        if (confirmElement && confirmElement.classList.contains('active')) {
-            const hasStacked =
-                (employeeModal && employeeModal.classList.contains('active')) ||
-                (accrualModal && accrualModal.classList.contains('active')) ||
-                (payoutModal && payoutModal.classList.contains('active'));
-
-            if (hasStacked) e.preventDefault();
-
-            return;
-        }
-
-        if (employeeModal && employeeModal.classList.contains('active')) {
-            e.preventDefault();
-            closeEmployeeDetail();
-            return;
-        }
-
-        if (accrualModal.classList.contains('active')) {
-            e.preventDefault();
-            closeAccrualModal();
-            return;
-        }
-
-        if (payoutModal.classList.contains('active')) {
-            e.preventDefault();
-            closePayoutModal();
-        }
-    }, true);
+    if (employeeModal) window.UI.registerModal(employeeModal, closeEmployeeDetail);
+    if (accrualModal) window.UI.registerModal(accrualModal, closeAccrualModal);
+    if (payoutModal) window.UI.registerModal(payoutModal, closePayoutModal);
 
     loadExpanded();
     loadData();

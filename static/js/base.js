@@ -83,6 +83,35 @@
 
   const SEARCH_FIELDS = ['searchInput', 'moneySearchInput'];
 
+  function applySidebarScroll() {
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const limit = 140;
+    const offset = Math.min(scrollY * 0.06, 8);
+
+    document.querySelectorAll('.js-sidebar').forEach(function(node) {
+      node.style.transform = scrollY > 0 ? 'translateY(' + offset.toFixed(2) + 'px)' : '';
+
+      if (scrollY > limit) {
+        node.classList.add('js-sidebar--scrolled');
+      } else {
+        node.classList.remove('js-sidebar--scrolled');
+      }
+    });
+  }
+
+  let sidebarFrame = null;
+
+  window.addEventListener('scroll', function() {
+    if (sidebarFrame) return;
+
+    sidebarFrame = window.requestAnimationFrame(function() {
+      sidebarFrame = null;
+      applySidebarScroll();
+    });
+  }, { passive: true });
+
+  window.addEventListener('DOMContentLoaded', applySidebarScroll);
+
   function findSearchField() {
     for (const id of SEARCH_FIELDS) {
       const field = document.getElementById(id);

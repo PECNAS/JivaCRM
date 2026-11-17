@@ -615,16 +615,9 @@
         modal.addEventListener('click', function(e) {
             if (e.target === modal) closeTemplateModal();
         });
+
+        window.UI.registerModal(modal, closeTemplateModal);
     }
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key !== 'Escape') return;
-
-        if (modal && modal.classList.contains('active')) {
-            e.preventDefault();
-            closeTemplateModal();
-        }
-    }, true);
 
     const dataScript = document.querySelector('script[data-checklists]');
 

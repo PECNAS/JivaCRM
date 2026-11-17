@@ -178,6 +178,18 @@ def role_label(code):
     return ROLE_LABELS.get(code, code or '')
 
 
+def role_labels_text(codes):
+    labels = []
+
+    for code in codes or []:
+        label = role_label(code)
+
+        if label and label not in labels:
+            labels.append(label)
+
+    return ', '.join(labels)
+
+
 def role_options():
     return [{'code': code, 'label': label} for code, label in ROLE_CHOICES]
 

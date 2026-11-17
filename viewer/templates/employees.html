@@ -8,10 +8,10 @@
 {% endblock %}
 
 {% block content %}
-<section class="employees-header">
-    <div class="employees-header__top">
+<div class="employees-layout">
+    <aside class="employees-sidebar js-sidebar">
         <h1 class="employees-title">Сотрудники</h1>
-        <button class="btn btn-primary" id="addEmployeeBtn">
+        <button class="btn btn-primary employees-sidebar__add" id="addEmployeeBtn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="16"/>
@@ -19,46 +19,49 @@
             </svg>
             Добавить сотрудника
         </button>
-    </div>
-    <div class="employees-filters">
-        <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, логину, телеге или телефону" value="{{ search_query }}">
-        <select class="filter-select" id="roleFilter">
-            <option value="all" {% if role_filter == 'all' %}selected{% endif %}>Все роли</option>
-            <option value="senior_admin" {% if role_filter == 'senior_admin' %}selected{% endif %}>Старший администратор</option>
-            <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Администратор</option>
-            <option value="manager" {% if role_filter == 'manager' %}selected{% endif %}>Менеджер</option>
-            <option value="trainer" {% if role_filter == 'trainer' %}selected{% endif %}>Тренер</option>
-            <option value="artist" {% if role_filter == 'artist' %}selected{% endif %}>Артист</option>
-        </select>
-    </div>
-</section>
+        <div class="employees-filters">
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, логину, телеге или телефону" value="{{ search_query }}">
+            <select class="filter-select" id="roleFilter">
+                <option value="all" {% if role_filter == 'all' %}selected{% endif %}>Все роли</option>
+                <option value="senior_admin" {% if role_filter == 'senior_admin' %}selected{% endif %}>Старший администратор</option>
+                <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Администратор</option>
+                <option value="manager" {% if role_filter == 'manager' %}selected{% endif %}>Менеджер</option>
+                <option value="trainer" {% if role_filter == 'trainer' %}selected{% endif %}>Тренер</option>
+                <option value="artist" {% if role_filter == 'artist' %}selected{% endif %}>Артист</option>
+            </select>
+        </div>
+    </aside>
 
-<section class="employees-table-wrapper">
+    <section class="employees-main">
+        <section class="employees-table-wrapper">
     <table class="employees-table">
         <thead>
             <tr>
+                <th class="employees-table__index">№</th>
                 <th>ФИО</th>
                 <th>Логин</th>
                 <th>Роль</th>
                 <th>Телефон</th>
                 <th>Статус</th>
-                <th></th>
             </tr>
         </thead>
         <tbody id="employeesTableBody">
             {% for emp in employees %}
             <tr data-employee-id="{{ emp.id }}">
-                <td>{{ emp.full_name }}{% if emp.nickname %} <span class="text-muted">· {{ emp.nickname }}</span>{% endif %}</td>
+                <td class="employees-table__index">{{ forloop.counter }}</td>
+                <td>
+                    <div class="employee-name-cell">
+                        <span class="employee-name-cell__main">{{ emp.display_name }}</span>
+                        <span class="employee-name-cell__sub">{{ emp.full_name }}</span>
+                    </div>
+                </td>
                 <td>{{ emp.user.username }}</td>
-                <td>{{ emp.get_role_display }}</td>
+                <td>{{ emp.roles_text }}</td>
                 <td>{{ emp.phone|default:"—" }}</td>
                 <td>
                     <span class="status-badge status-badge--{% if emp.is_active %}active{% else %}inactive{% endif %}">
                         {% if emp.is_active %}Активен{% else %}Неактивен{% endif %}
                     </span>
-                </td>
-                <td>
-                    <button class="view-link" data-id="{{ emp.id }}">Подробнее</button>
                 </td>
             </tr>
             {% empty %}
@@ -74,6 +77,8 @@
 
 <div class="load-more" id="employeesLoadMore" data-has-more="{% if has_more %}1{% else %}0{% endif %}">
     <button type="button" class="btn btn-outline" id="employeesLoadMoreBtn">Загрузить ещё</button>
+</div>
+    </section>
 </div>
 
 <div class="modal-overlay" id="employeeModal">
@@ -316,23 +321,23 @@
                             </div>
                         </div>
                     </div>
-                    <div class="modal__footer modal-footer-actions">
-                        <div class="modal-footer-actions__left">
-                            <button type="button" class="btn btn-danger btn-sm" id="editDeactivateBtn">Деактивировать</button>
-                        </div>
-                        <div class="modal-footer-actions__right">
-                            <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
-                            <button type="submit" class="btn btn-primary">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                    <polyline points="17 21 17 13 7 13 7 21"/>
-                                    <polyline points="7 3 7 8 15 8"/>
-                                </svg>
-                                Сохранить
-                            </button>
-                        </div>
-                    </div>
                 </form>
+            </div>
+            <div class="modal__footer modal-footer-actions" id="employeeEditFooter" style="display:none;">
+                <div class="modal-footer-actions__left">
+                    <button type="button" class="btn btn-danger btn-sm" id="editDeactivateBtn">Деактивировать</button>
+                </div>
+                <div class="modal-footer-actions__right">
+                    <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="editSubmitBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Сохранить
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -451,18 +456,20 @@
                         </div>
                     </div>
                 </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" id="addModalCancelBtn">Отмена</button>
-                    <button type="submit" class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="16"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                        </svg>
-                        Добавить
-                    </button>
-                </div>
             </form>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="addModalCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-primary" id="addSubmitBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    Добавить
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -506,18 +513,20 @@
                     <label class="form-label">Знание шоу</label>
                     <div class="shows-multi-select" id="showsMultiSelect"></div>
                 </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" id="artistCardCancelBtn">Отмена</button>
-                    <button type="submit" class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                            <polyline points="17 21 17 13 7 13 7 21"/>
-                            <polyline points="7 3 7 8 15 8"/>
-                        </svg>
-                        Сохранить
-                    </button>
-                </div>
             </form>
+        </div>
+        <div class="modal__footer modal-footer-actions">
+            <div class="modal-footer-actions__right">
+                <button type="button" class="btn btn-outline" id="artistCardCancelBtn">Отмена</button>
+                <button type="button" class="btn btn-primary" id="artistCardSubmitBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Сохранить
+                </button>
+            </div>
         </div>
     </div>
 </div>

@@ -277,10 +277,6 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="editOrderChat">Номер узкого чата</label>
-                                <input type="text" class="form-input" id="editOrderChat" placeholder="УЗ1, УЗ5, УЗ1 и УЗ3">
-                            </div>
-                            <div class="form-group">
                                 <label class="form-label" for="editOrderCityInput">Город</label>
                                 <div class="single-city-picker" id="editOrderCityPicker">
                                     <input type="text" class="form-input" id="editOrderCityInput" placeholder="Начните вводить название города" autocomplete="off">
@@ -358,7 +354,7 @@
                                 <input type="date" class="form-input" id="editOrderPaymentDue">
                             </div>
                             <div class="form-group detail-item--full">
-                                <label class="form-label" for="editOrderPaymentComment">Заметка к оплате</label>
+                                <label class="form-label" for="editOrderPaymentComment">ПО, комментарий</label>
                                 <input type="text" class="form-input" id="editOrderPaymentComment" placeholder="Например, предоплата 50%">
                             </div>
                         </div>
@@ -438,11 +434,15 @@
                         <div class="form-grid form-grid--3">
                             <div class="form-group">
                                 <label class="form-label" for="editOrderStart">Начало мероприятия</label>
-                                <input type="datetime-local" class="form-input" id="editOrderStart">
+                                <input type="date" class="form-input" id="editOrderStart">
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="editOrderEnd">Окончание мероприятия</label>
-                                <input type="datetime-local" class="form-input" id="editOrderEnd">
+                                <input type="date" class="form-input" id="editOrderEnd">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="editOrderChat">Номер узкого чата</label>
+                                <input type="text" class="form-input" id="editOrderChat" placeholder="Номер Чата">
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="editOrderSetupTime">Время чека/установки</label>
@@ -473,9 +473,9 @@
                         <h3 class="info-section__title">Технические требования</h3>
                         <div class="form-grid form-grid--2">
                             <div class="form-group detail-item--full">
-                                <label class="form-label">Оборудование</label>
+                                <label class="form-label">Техничка</label>
                                 <div class="checkbox-group">
-                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechLamps"> Лампы</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="editOrderTechLamps"> УФ</label>
                                     <label class="checkbox-label"><input type="checkbox" id="editOrderTechLaser"> Лазер</label>
                                     <label class="checkbox-label"><input type="checkbox" id="editOrderTechHazer"> Хейзер</label>
                                     <label class="checkbox-label"><input type="checkbox" id="editOrderTechGrid"> Сетка</label>

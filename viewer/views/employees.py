@@ -9,7 +9,7 @@ from ..models import (
     Employee, Role, Service, ArtistCard, EmployeeDocument, OrderEmployee, resolve_availability,
     ROLE_CHOICES, ROLE_LABELS, ROLE_ARTIST, ROLE_SENIOR_ADMIN, ARTIST_ROLES, normalize_text,
 )
-from .helpers import role_label, format_date_short
+from .helpers import role_label, role_labels_text, format_date_short
 
 
 EMPLOYEES_PAGE_SIZE = 50
@@ -102,6 +102,7 @@ def serialize_employee(employee_obj, with_card=False):
         'role_label': role_label(employee_obj.primary_role()),
         'role_display': role_label(employee_obj.primary_role()),
         'role_codes': employee_obj.role_codes(),
+        'roles_label': role_labels_text(employee_obj.role_codes()),
         'phone': normalize_phone_display(employee_obj.phone),
         'telegram': employee_obj.telegram_username or '',
         'is_active': employee_obj.is_active,
@@ -191,13 +192,20 @@ class EmployeesView(View):
             )
 
         if role_filter != 'all':
-            employees = employees.filter(role=role_filter)
+            employees = employees.filter(
+                Q(role=role_filter) | Q(roles__code=role_filter)
+            ).distinct()
 
         total = employees.count()
 
+        employee_list = list(employees[:EMPLOYEES_PAGE_SIZE])
+
+        for emp in employee_list:
+            emp.roles_text = role_labels_text(emp.role_codes())
+
         context = {
             'employee': employee,
-            'employees': employees[:EMPLOYEES_PAGE_SIZE],
+            'employees': employee_list,
             'has_more': total > EMPLOYEES_PAGE_SIZE,
             'employees_total': total,
             'search_query': search_query,
@@ -515,6 +523,7 @@ class EmployeeListView(View):
                 'role_label': role_label(emp.primary_role()),
                 'role_display': role_label(emp.primary_role()),
                 'role_codes': emp.role_codes(),
+                'roles_label': role_labels_text(emp.role_codes()),
                 'phone': normalize_phone_display(emp.phone),
                 'is_active': emp.is_active,
             })

@@ -1,10 +1,22 @@
+from datetime import datetime
+
 from django.http import HttpResponse, JsonResponse
 from django.views import View
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db.models import Q
-from ..models import Employee, Order, OrderEmployee, City, CalendarColor, ARTIST_ROLES, ROLE_TECHNICIAN
+from ..models import (
+    Employee, Order, OrderEmployee, City, CalendarColor, CalendarEvent,
+    ARTIST_ROLES, ROLE_TECHNICIAN,
+)
 from .helpers import format_date_short, role_label
+
+
+def parse_date_value(value):
+    try:
+        return datetime.strptime(str(value or '').strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
 
 
 def format_date(date_value):
@@ -36,7 +48,7 @@ def serialize_schedule_order(order, my_payment=None, can_see_cost=True):
     data = {
         'id': order.id,
         'name': order.name or '—',
-        'name_display': (order.name or '—').upper() if order.status == 'confirmed' else (order.name or '—'),
+        'name_display': order.name or '—',
         'auto_name': order.auto_name or '',
         'chat_number': order.chat_number or '',
         'date_display': format_date_short(order.date),
@@ -61,15 +73,25 @@ def serialize_schedule_order(order, my_payment=None, can_see_cost=True):
                 'name': item.service_name,
                 'people_count': item.people_count,
                 'people_count_unknown': item.people_count_unknown,
+                'start_time': item.start_time or '',
             }
             for item in order.estimate_items.all()
             if item.service_name
+        ],
+        'contact_items': [
+            {
+                'name': item.name,
+                'phone': item.phone,
+                'telegram': item.telegram,
+                'is_primary': item.is_primary,
+            }
+            for item in order.contact_items.all()
         ],
         'checklist_total': checklist_total,
         'checklist_done': len([item for item in checklist_items if item.is_done]),
         'staff': staff,
         'updated_at': order.updated_at.isoformat() if order.updated_at else None,
-        'content_changed': bool(order.content_changed_at),
+        'content_changed': bool(order.content_changed_at) and order.status == 'confirmed',
         'content_changed_at': order.content_changed_at.isoformat() if order.content_changed_at else None,
         'is_incomplete': order.is_incomplete(),
         'missing_fields': order.get_missing_fields(),
@@ -107,6 +129,7 @@ def serialize_calendar_colors():
 def order_queryset():
     return Order.objects.prefetch_related(
         'estimate_items', 'checklist_items', 'employee_items__employee', 'employee_items__show',
+        'contact_items',
     ).select_related('client', 'city', 'manager__user')
 
 
@@ -144,6 +167,120 @@ class ScheduleView(View):
         return HttpResponse("POST request successfully!")
 
 
+def serialize_calendar_event(item):
+    return {
+        'id': item.id,
+        'title': item.title or '',
+        'date': format_date(item.date),
+        'date_display': format_date_short(item.date),
+        'time_text': item.time_text or '',
+        'description': item.description or '',
+        'created_by': item.created_by.display_name if item.created_by_id else '',
+    }
+
+
+def can_manage_events(employee):
+    return employee.can_manage_orders() or employee.can_manage_calendar_colors()
+
+
+class CalendarEventListView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        try:
+            employee = request.user.employee_profile
+            if not employee.can_view_schedule():
+                return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+        except Exception:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+
+        items = CalendarEvent.objects.select_related('created_by').all()
+
+        return JsonResponse({
+            'events': [serialize_calendar_event(item) for item in items],
+        })
+
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        try:
+            employee = request.user.employee_profile
+            if not can_manage_events(employee):
+                return JsonResponse({'error': 'У вас недостаточно прав для создания событий'}, status=403)
+        except Exception:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+
+        title = ' '.join(request.POST.get('title', '').split())
+        date_raw = request.POST.get('date', '').strip()
+        time_text = request.POST.get('time_text', '').strip()[:100]
+        description = request.POST.get('description', '').strip()
+
+        if not title:
+            return JsonResponse({'error': 'Название события обязательно'}, status=400)
+
+        event_date = parse_date_value(date_raw)
+
+        if event_date is None:
+            return JsonResponse({'error': 'Укажите дату события'}, status=400)
+
+        event = CalendarEvent.objects.create(
+            title=title[:200],
+            date=event_date,
+            time_text=time_text,
+            description=description,
+            created_by=employee,
+        )
+
+        return JsonResponse({'success': True, 'event': serialize_calendar_event(event)})
+
+
+class CalendarEventDetailView(View):
+    def post(self, request, event_id):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        try:
+            employee = request.user.employee_profile
+            if not can_manage_events(employee):
+                return JsonResponse({'error': 'У вас недостаточно прав для изменения событий'}, status=403)
+        except Exception:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+
+        event = CalendarEvent.objects.filter(id=event_id).first()
+
+        if event is None:
+            return JsonResponse({'error': 'Событие не найдено'}, status=404)
+
+        action = request.POST.get('action', 'save')
+
+        if action == 'delete':
+            event.delete()
+            return JsonResponse({'success': True})
+
+        title = ' '.join(request.POST.get('title', '').split())
+        date_raw = request.POST.get('date', '').strip()
+        time_text = request.POST.get('time_text', '').strip()[:100]
+        description = request.POST.get('description', '').strip()
+
+        if not title:
+            return JsonResponse({'error': 'Название события обязательно'}, status=400)
+
+        event_date = parse_date_value(date_raw)
+
+        if event_date is None:
+            return JsonResponse({'error': 'Укажите дату события'}, status=400)
+
+        event.title = title[:200]
+        event.date = event_date
+        event.time_text = time_text
+        event.description = description
+        event.save(update_fields=['title', 'date', 'time_text', 'description', 'updated_at'])
+
+        return JsonResponse({'success': True, 'event': serialize_calendar_event(event)})
+
+
 class MyOrdersListView(View):
     def get(self, request):
         if not request.user.is_authenticated:
@@ -170,10 +307,38 @@ class MyOrdersListView(View):
         if status != 'all':
             orders = orders.filter(status=status)
 
+        date_from = parse_date_value(request.GET.get('date_from', ''))
+        date_to = parse_date_value(request.GET.get('date_to', ''))
+
+        if date_from:
+            orders = orders.filter(date__gte=date_from)
+
+        if date_to:
+            orders = orders.filter(date__lte=date_to)
+
         all_orders = list(orders)
         ordered_undated = sorted([o for o in all_orders if not o.date], key=lambda o: o.created_at, reverse=True)
         ordered_dated = sorted([o for o in all_orders if o.date], key=lambda o: o.date, reverse=True)
         ordered = ordered_undated + ordered_dated
+
+        total = len(ordered)
+
+        try:
+            limit = int(request.GET.get('limit', '0'))
+        except (TypeError, ValueError):
+            limit = 0
+
+        try:
+            offset = int(request.GET.get('offset', '0'))
+        except (TypeError, ValueError):
+            offset = 0
+
+        offset = max(offset, 0)
+
+        if limit > 0:
+            ordered = ordered[offset:offset + limit]
+        elif offset:
+            ordered = ordered[offset:]
 
         orders_list = []
 
@@ -190,4 +355,9 @@ class MyOrdersListView(View):
 
             orders_list.append(serialize_schedule_order(order, my_payment, can_see_cost))
 
-        return JsonResponse({'orders': orders_list, 'colors': serialize_calendar_colors()})
+        return JsonResponse({
+            'orders': orders_list,
+            'total': total,
+            'has_more': total > offset + len(orders_list),
+            'colors': serialize_calendar_colors(),
+        })

@@ -5,7 +5,8 @@ from .models import (
     ChecklistTemplate, ChecklistItem, OrderShowTemplate,
     Service, ServiceStaffRow, ArtistSchedule,
     City, CityGroup, ArtistCard, CalendarColor, PriceRisePeriod,
-    MoneyAccrual, MoneyPayout, OrderExpense,
+    MoneyAccrual, MoneyPayout, OrderExpense, OrderReadMark, NarrowChat, OrderContact,
+    OrderChangeLog, CalendarEvent,
 )
 
 admin.site.site_header = 'JIVA HUB'
@@ -86,6 +87,14 @@ class CalendarColorAdmin(admin.ModelAdmin):
             'description': 'Укажите цвет в формате HEX (например, #2164c8) или RGB (например, rgb(33, 100, 200)).'
         }),
     )
+
+
+@admin.register(CalendarEvent)
+class CalendarEventAdmin(admin.ModelAdmin):
+    list_display = ['id', 'title', 'date', 'time_text', 'created_by', 'created_at']
+    list_filter = ['date', 'created_by']
+    search_fields = ['title', 'description']
+    readonly_fields = ['created_at', 'updated_at']
 
 
 @admin.register(PriceRisePeriod)
@@ -318,3 +327,33 @@ class OrderExpenseAdmin(admin.ModelAdmin):
     list_filter = ['status', 'period_date']
     search_fields = ['payer_name', 'comment', 'order__name']
     readonly_fields = ['created_at', 'updated_at', 'decided_at']
+
+
+@admin.register(OrderReadMark)
+class OrderReadMarkAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'employee', 'seen_changed_at', 'updated_at']
+    list_filter = ['seen_changed_at']
+    search_fields = ['order__name', 'employee__full_name']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(NarrowChat)
+class NarrowChatAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'link', 'order', 'is_active']
+    list_editable = ['order', 'is_active']
+    search_fields = ['name', 'link']
+
+
+@admin.register(OrderContact)
+class OrderContactAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'name', 'phone', 'telegram', 'is_primary']
+    list_filter = ['is_primary']
+    search_fields = ['name', 'phone', 'telegram', 'order__name']
+
+
+@admin.register(OrderChangeLog)
+class OrderChangeLogAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'field', 'old_value', 'new_value', 'changed_by_name', 'changed_at']
+    list_filter = ['changed_at', 'field']
+    search_fields = ['order__name', 'field', 'old_value', 'new_value', 'changed_by_name']
+    readonly_fields = ['order', 'field', 'old_value', 'new_value', 'changed_by', 'changed_by_name', 'changed_at']
