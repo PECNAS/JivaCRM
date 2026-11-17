@@ -258,6 +258,14 @@
         return getOrderNameParts(order).name;
     }
 
+    function calendarOrderNameHtml(order) {
+        const name = getCalendarOrderName(order);
+        const city = String(order.city_name || '').trim();
+
+        return escapeHtml(name)
+            + (city ? '<span class="calendar-event__city">, ' + escapeHtml(city) + '</span>' : '');
+    }
+
     function getRowClasses(order, extra) {
         let classes = `order-row order-row--${order.status}`;
 
@@ -1472,7 +1480,7 @@
                             return `
                                 <div class="${eventClass}" style="${style}" data-order-id="${e.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
                                     ${isOrderChanged(e) ? '<span class="calendar-event__flag" title="Заказ обновлён">!</span>' : ''}
-                                    <div class="calendar-event__name">${escapeHtml(getCalendarOrderName(e))}</div>
+                                    <div class="calendar-event__name">${calendarOrderNameHtml(e)}</div>
                                     ${showTimeHtml}
                                     ${clientHtml}
                                     ${showsHtml}

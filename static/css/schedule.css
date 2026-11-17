@@ -313,6 +313,11 @@
     white-space: pre-line;
 }
 
+.calendar-event__city {
+    font-weight: 500;
+    opacity: 0.8;
+}
+
 .calendar-event__client {
     font-size: 0.65rem;
     color: inherit;
