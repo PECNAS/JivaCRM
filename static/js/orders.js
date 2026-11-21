@@ -1093,6 +1093,30 @@
         return node ? String(node.value || '').trim() : '';
     }
 
+    function normalizeOrderCost(value) {
+        const raw = String(value === undefined || value === null ? '' : value)
+            .replace(/\s/g, '')
+            .replace(',', '.')
+            .replace(/[^\d.]/g, '');
+
+        const number = parseFloat(raw);
+
+        if (!raw || !isFinite(number) || isNaN(number) || number <= 0) return 0;
+
+        return Math.round(number);
+    }
+
+    function syncCreateOrderCost() {
+        const node = createOrderField('createOrderCost');
+
+        if (!node) return;
+
+        if (node.dataset.costReady === '1' && document.activeElement === node) return;
+
+        node.dataset.costReady = '1';
+        node.value = String(normalizeOrderCost(node.value));
+    }
+
     function getCreateOrderName() {
         if (!createOrderName) return '';
 
@@ -2957,6 +2981,8 @@
         resetCreateOrderContacts();
     }
 
+    syncCreateOrderCost();
+
     const createStatusSwitch = createOrderField('createOrderStatusSwitch');
 
     if (createStatusSwitch) {
@@ -2994,6 +3020,30 @@
             autoGrowNode(node);
         }
     });
+
+    const createOrderCostField = createOrderField('createOrderCost');
+
+    if (createOrderCostField) {
+        createOrderCostField.addEventListener('input', function() {
+            this.value = this.value.replace(/[^\d\s,.]/g, '').replace(/-/g, '');
+        });
+
+        createOrderCostField.addEventListener('blur', function() {
+            this.value = String(normalizeOrderCost(this.value));
+        });
+
+        ['keydown'].forEach(function(type) {
+            createOrderCostField.addEventListener(type, function(e) {
+                if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+            });
+        });
+
+        document.querySelectorAll('#createOrderModal, #createOrderForm').forEach(function(form) {
+            form.addEventListener('submit', function() {
+                createOrderCostField.value = String(normalizeOrderCost(createOrderCostField.value));
+            }, true);
+        });
+    }
 
     ['createOrderTechLamps', 'createOrderTechLaser', 'createOrderTechHazer', 'createOrderTechGrid', 'createOrderTechProjection'].forEach(function(id) {
         const node = createOrderField(id);
@@ -4033,7 +4083,7 @@
             venue_comment: createOrderFieldValue('createOrderVenueComment'),
             donotforget_comment: createOrderFieldValue('createOrderDonotforget'),
             adaptation_comment: createOrderFieldValue('createOrderAdaptation'),
-            cost: createOrderFieldValue('createOrderCost').replace(/\s/g, '').replace(',', '.'),
+            cost: String(normalizeOrderCost(createOrderFieldValue('createOrderCost'))),
             payment_method: getCreateOrderPaymentMethod(),
             payment_due_date: createOrderFieldValue('createOrderPaymentDue'),
             payment_due_comment: createOrderFieldValue('createOrderPaymentComment'),
@@ -4238,6 +4288,13 @@
 
         setCreateOrderPaymentFlags('');
         setCreateOrderChats('');
+
+        const costNode = createOrderField('createOrderCost');
+
+        if (costNode) {
+            costNode.value = '0';
+            costNode.dataset.costReady = '1';
+        }
     }
 
     function mapOrderForForm(order) {
@@ -4340,7 +4397,7 @@
                 projection: !!order.tech_projection,
             },
             concept: order.concept || '',
-            cost: order.cost === null || order.cost === undefined ? '' : String(Math.round(Number(order.cost))),
+            cost: String(normalizeOrderCost(order.cost)),
             payment_method: order.payment_method || '',
             payment_due_comment: order.payment_due_comment || '',
             payment_due_date: order.payment_due_date || '',

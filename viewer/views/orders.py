@@ -798,13 +798,17 @@ class OrdersView(View):
                     order.managers.add(extra)
                     existing_ids.add(extra.id)
 
-            cost_raw = request.POST.get('cost', '').strip().replace(',', '.')
+            cost_raw = request.POST.get('cost', '').strip().replace(' ', '').replace(',', '.')
 
-            if cost_raw:
-                try:
-                    order.cost = f'{float(cost_raw):.2f}'
-                except ValueError:
-                    pass
+            try:
+                cost_value = Decimal(cost_raw) if cost_raw else Decimal('0')
+            except (InvalidOperation, ValueError):
+                cost_value = Decimal('0')
+
+            if cost_value.is_nan() or cost_value.is_infinite() or cost_value < 0:
+                cost_value = Decimal('0')
+
+            order.cost = f'{cost_value:.2f}'
 
             service_id = request.POST.get('service_id', '').strip()
             people_count_raw = request.POST.get('people_count', '').strip()
@@ -1359,13 +1363,12 @@ class OrderUpdateView(View):
 
             if allow_rates_post:
                 if 'cost' in request.POST:
-                    cost_raw = request.POST.get('cost', '')
-                    cost_number = parse_money(cost_raw)
+                    cost_number = parse_money(request.POST.get('cost', ''))
 
-                    if cost_number is not None and cost_number > 0:
-                        order.cost = f'{cost_number:.2f}'
-                    else:
-                        order.cost = '0.00'
+                    if cost_number is None or not cost_number.is_finite() or cost_number < 0:
+                        cost_number = Decimal('0')
+
+                    order.cost = f'{cost_number:.2f}'
 
                 if 'cost_is_manual' in request.POST:
                     order.cost_is_manual = request.POST.get('cost_is_manual') == '1'
