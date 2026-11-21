@@ -262,6 +262,12 @@
         const name = getCalendarOrderName(order);
         const city = String(order.city_name || '').trim();
 
+        if (!order.has_date) {
+            return escapeHtml(name)
+                + (city ? '<span class="calendar-event__city">, ' + escapeHtml(city) + '</span>' : '')
+                + '<span class="calendar-event__no-date">Без даты</span>';
+        }
+
         return escapeHtml(name)
             + (city ? '<span class="calendar-event__city">, ' + escapeHtml(city) + '</span>' : '');
     }
@@ -378,6 +384,8 @@
     }
 
     function openOrderFromLink(order) {
+        if (!order || !order.id) return;
+
         handleOrderOpen(order.id);
     }
 
@@ -432,10 +440,10 @@
                         </svg>
                     </button>
                 </div>
-                <div class="modal__body">
+                <div class="modal__body modal__body--confirm">
                     <p class="confirm-text">Скопируйте ссылку вручную:</p>
                     <input type="text" class="form-input" data-share-input value="${window.UI.escapeHtml(link)}" readonly>
-                    <div class="form-actions">
+                    <div class="form-actions form-actions--confirm">
                         <button type="button" class="btn btn-primary" data-share-close>Готово</button>
                     </div>
                 </div>
@@ -466,14 +474,67 @@
         return window.openOrderEditor(orderId);
     }
 
+    let statusColorsPromise = null;
+
+    function loadStatusColors() {
+        if (statusColors && Object.keys(statusColors).length) return Promise.resolve(statusColors);
+
+        if (statusColorsPromise) return statusColorsPromise;
+
+        statusColorsPromise = fetch('/orders/list/?status=all&limit=1', { cache: 'no-store' })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data && data.colors) statusColors = Object.assign({}, statusColors, data.colors);
+
+                return statusColors;
+            })
+            .catch(function() { return statusColors; })
+            .finally(function() {
+                statusColorsPromise = null;
+            });
+
+        return statusColorsPromise;
+    }
+
     function openOrderCard(orderId) {
+        if (!orderId) return;
+
         const order = currentOrders.find(item => String(item.id) === String(orderId));
 
-        if (!order) return;
+        if (order) renderEventModal(order);
 
-        markOrderViewed(order.id, order.updated_at);
-        renderEventModal(order);
-        clearChangedFlag(orderId);
+        Promise.all([
+            loadStatusColors(),
+            fetch('/orders/' + orderId + '/', { cache: 'no-store' })
+                .then(function(response) { return response.json(); }),
+        ])
+            .then(function(results) {
+                const data = results[1];
+
+                if (!data || data.error || !data.id) return;
+
+                const index = currentOrders.findIndex(item => String(item.id) === String(data.id));
+
+                if (index >= 0) {
+                    currentOrders[index] = Object.assign({}, currentOrders[index], data);
+                } else {
+                    currentOrders.push(data);
+                }
+            })
+            .then(function() {
+                if (!eventModal || !eventModal.classList.contains('active')) return;
+                if (String(activeOrderId) !== String(orderId)) return;
+
+                const current = currentOrders.find(item => String(item.id) === String(orderId));
+
+                if (current) renderEventModal(current);
+            })
+            .catch(function() {});
+
+        if (order) {
+            markOrderViewed(order.id, order.updated_at);
+            clearChangedFlag(order.id);
+        }
     }
 
     function clearChangedFlag(orderId) {
@@ -696,17 +757,25 @@
         const orderId = activeOrderId;
 
         window.UI.confirm({
-            title: 'Удалить заказ?',
-            text: 'Заказ будет удалён из расписания и списка заказов. Действие необратимо.',
+            title: 'Удалить заказ из календаря',
+            text: '',
             okText: 'Удалить',
             cancelText: 'Отмена',
-            danger: true
-        }).then(function(confirmed) {
-            if (!confirmed) return;
+            danger: true,
+            checkLabel: 'Также удалить из истории агентства',
+            checkDefault: false
+        }).then(function(result) {
+            if (!result) return;
+
+            const hardDelete = !!result.checked;
 
             fetch('/orders/' + orderId + '/delete/', {
                 method: 'POST',
-                headers: { 'X-CSRFToken': window.UI.getCSRFToken() }
+                headers: {
+                    'X-CSRFToken': window.UI.getCSRFToken(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ hard: hardDelete })
             })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
@@ -717,7 +786,7 @@
 
                     if (!data.success) return;
 
-                    window.UI.showToast('Заказ удалён');
+                    window.UI.showToast(hardDelete ? 'Заказ удалён' : 'Заказ отменён');
                     closeEventModal();
 
                     if (window.refreshSchedule) {
@@ -1404,8 +1473,10 @@
         const hasSearch = (searchInput.value || '').trim().length > 0;
         const hasStatusFilter = statusSelect.value !== 'all';
 
+        const isCurrentMonthView = month === today.getMonth() && year === today.getFullYear();
+
         const monthEvents = filtered.filter(o => {
-            if (!o.has_date) return false;
+            if (!o.has_date) return isCurrentMonthView;
 
             const start = parseDate(o.date);
             const end = new Date(start);
@@ -1443,7 +1514,9 @@
             if (isCurrentMonth) {
                 const cellDate = new Date(year, month, dayNumber);
                 const events = filtered.filter(o => {
-                    if (!o.has_date) return false;
+                    if (!o.has_date) {
+                        return dayNumber === 1 && month === today.getMonth() && year === today.getFullYear();
+                    }
                     const start = parseDate(o.date);
                     const end = new Date(start);
                     end.setDate(end.getDate() + (o.duration || 1) - 1);
@@ -1685,7 +1758,7 @@
             .then(data => {
                 if (!data.error && data.orders) {
                     currentOrders = data.orders;
-                    statusColors = data.colors || {};
+                    statusColors = Object.assign({}, statusColors, data.colors || {});
                 }
             })
             .catch(function() {})
@@ -1713,7 +1786,7 @@
                 }
 
                 currentOrders = data.orders || [];
-                statusColors = data.colors || {};
+                statusColors = Object.assign({}, statusColors, data.colors || {});
                 listHasMore = isList ? !!data.has_more : false;
                 render();
             })
@@ -1752,7 +1825,7 @@
                     currentOrders.push(item);
                 });
 
-                if (data.colors) statusColors = data.colors;
+                if (data.colors) statusColors = Object.assign({}, statusColors, data.colors);
 
                 listHasMore = !!data.has_more;
                 render();
@@ -1794,7 +1867,7 @@
                 }
 
                 currentOrders = next;
-                statusColors = data.colors || {};
+                statusColors = Object.assign({}, statusColors, data.colors || {});
 
                 if (isList) listHasMore = !!data.has_more;
 

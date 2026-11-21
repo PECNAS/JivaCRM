@@ -187,7 +187,7 @@ class ArtistCardAdmin(admin.ModelAdmin):
 class ClientAdmin(admin.ModelAdmin):
     list_display = ['id', 'full_name', 'agency', 'agency_manager', 'contact_type', 'phone', 'get_cities', 'rating', 'created_by']
     list_filter = ['rating', 'cities', 'agency', 'contact_type']
-    search_fields = ['full_name', 'phone', 'telegram_username', 'cities__name', 'comment']
+    search_fields = ['full_name', 'phone', 'telegram_username', 'instagram', 'cities__name', 'comment']
     raw_id_fields = ['agency_manager']
     filter_horizontal = ['cities']
     readonly_fields = ['created_at', 'updated_at', 'phone_normalized', 'full_name_normalized']

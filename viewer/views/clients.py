@@ -11,7 +11,9 @@ from django.conf import settings
 from pathlib import Path
 import json
 import re
+from decimal import Decimal, InvalidOperation
 from ..models import Client, Agency, AgencyAlias, AgencyManager, City, Order, Employee, Role
+from .schedule import serialize_calendar_colors
 from .helpers import format_date_short, match_score, search_key, similarity
 
 
@@ -224,6 +226,7 @@ def serialize_client_match(client, fields):
         'agency_manager': client.agency_manager.id if client.agency_manager else None,
         'agency_manager_name': client.agency_manager.name if client.agency_manager else None,
         'telegram': client.telegram_username or '',
+        'instagram': client.instagram or '',
         'email': client.email or '',
         'city': client.city or '',
         'cities': city_names,
@@ -338,6 +341,7 @@ def collect_client_payload(request):
         'agency': None,
         'agency_manager': None,
         'telegram': telegram,
+        'instagram': request.POST.get('instagram', '').strip(),
         'email': request.POST.get('email', '').strip(),
         'cities': client_cities,
         'city': client_cities[0].name if client_cities else '',
@@ -381,6 +385,7 @@ def apply_client_payload(client, payload):
     client.client_type = payload['client_type']
     client.agency = payload['agency']
     client.telegram_username = telegram_handle(payload['telegram'])
+    client.instagram = payload.get('instagram', '')
     client.email = payload['email']
     client.city = payload['city']
     client.comment = payload['comment']
@@ -434,9 +439,11 @@ def serialize_new_client(client, agency):
         'client_type': client.client_type,
         'client_type_display': client.get_client_type_display(),
         'telegram': client.telegram_username,
+        'instagram': client.instagram,
         'email': client.email,
         'agency_id': agency.id if agency else None,
         'agency': agency.name if agency else None,
+        'agency_aliases': [alias.name for alias in agency.aliases.all()] if agency else [],
         'agency_manager': client.agency_manager.name if client.agency_manager else None,
         'city': client.city,
         'cities': [city.name for city in client.cities.all()],
@@ -462,7 +469,7 @@ class ClientsView(View):
 
         clients = Client.objects.filter(is_active=True).annotate(
             orders_count=Count('orders')
-        ).prefetch_related('cities').select_related('agency', 'agency_manager', 'created_by__user').order_by('full_name')
+        ).prefetch_related('cities', 'agency__aliases').select_related('agency', 'agency_manager', 'created_by__user').order_by('full_name')
 
         search_query = request.GET.get('search', '')
         rating_filter = request.GET.get('rating', 'all')
@@ -541,6 +548,7 @@ class ClientsView(View):
             'group_by': group_by,
             'sort_by': sort_by,
             'grouped': grouped,
+            'calendar_colors': serialize_calendar_colors(),
         }
         return render(request, "clients.html", context)
 
@@ -607,9 +615,9 @@ class ClientDetailView(View):
         try:
             client = Client.objects.annotate(
                 orders_count=Count('orders')
-            ).prefetch_related('cities').select_related('agency', 'agency_manager', 'created_by__user').get(id=client_id)
+            ).prefetch_related('cities', 'agency__aliases').select_related('agency', 'agency_manager', 'created_by__user').get(id=client_id)
 
-            orders = Order.objects.filter(client=client).select_related('manager__user')
+            orders = Order.objects.filter(client=client).select_related('manager__user').order_by('-date', '-created_at')
 
             orders_list = []
             for order in orders:
@@ -621,8 +629,21 @@ class ClientDetailView(View):
                     'status': order.get_status_display(),
                     'status_key': order.status,
                     'cost': order.cost,
+                    'has_date': bool(order.date),
                     'manager': order.manager.display_name if order.manager else None,
                 })
+
+            last_order_date = None
+            turnover = Decimal('0')
+
+            for order in orders_list:
+                if order['has_date'] and last_order_date is None:
+                    last_order_date = order['date']
+
+                try:
+                    turnover += Decimal(str(order['cost'] or '0').replace(' ', '').replace(',', '.'))
+                except (InvalidOperation, ValueError):
+                    pass
 
             client_cities = client.cities.all()
 
@@ -636,9 +657,11 @@ class ClientDetailView(View):
                 'client_type_display': client.get_client_type_display(),
                 'agency_id': client.agency.id if client.agency else None,
                 'agency': client.agency.name if client.agency else None,
+                'agency_aliases': [item.name for item in client.agency.aliases.all()] if client.agency else [],
                 'agency_manager_id': client.agency_manager.id if client.agency_manager else None,
                 'agency_manager': client.agency_manager.name if client.agency_manager else None,
                 'telegram': client.telegram_username or '—',
+                'instagram': client.instagram or '—',
                 'rating': client.rating,
                 'rating_key': client.rating,
                 'rating_display': client.get_rating_display(),
@@ -650,7 +673,11 @@ class ClientDetailView(View):
                 'requests_count': client.requests_count,
                 'orders_count': client.orders_count,
                 'orders': orders_list,
+                'last_order': last_order_date or '',
+                'turnover': f'{turnover:.2f}',
+                'created_at': client.created_at.strftime('%d.%m.%Y') if client.created_at else '',
                 'created_by': client.created_by.display_name if client.created_by else None,
+                'colors': serialize_calendar_colors(),
             })
         except Client.DoesNotExist:
             return JsonResponse({'error': 'Клиент не найден'}, status=404)
@@ -691,6 +718,7 @@ class ClientUpdateView(View):
                     'client_type': client.client_type,
                     'client_type_display': client.get_client_type_display(),
                     'telegram': client.telegram_username,
+                    'instagram': client.instagram,
                     'email': client.email,
                     'agency': agency.name if agency else None,
                     'agency_manager': client.agency_manager.name if client.agency_manager else None,
@@ -759,7 +787,7 @@ class ClientListView(View):
 
         clients = Client.objects.filter(is_active=True).annotate(
             orders_count=Count('orders')
-        ).prefetch_related('cities').select_related('agency', 'agency_manager').order_by('full_name')
+        ).prefetch_related('cities', 'agency__aliases').select_related('agency', 'agency_manager').order_by('full_name')
 
         search = request.GET.get('search', '')
         rating = request.GET.get('rating', 'all')
@@ -805,8 +833,10 @@ class ClientListView(View):
                 'client_type': client.client_type,
                 'client_type_display': client.get_client_type_display(),
                 'telegram': client.telegram_username,
+                'instagram': client.instagram,
                 'agency': client.agency.name if client.agency else None,
                 'agency_id': client.agency.id if client.agency else None,
+                'agency_aliases': [alias.name for alias in client.agency.aliases.all()] if client.agency else [],
                 'agency_manager': client.agency_manager.name if client.agency_manager else None,
                 'rating': client.rating,
                 'rating_display': client.get_rating_display(),
@@ -1133,7 +1163,10 @@ class AgencyAliasView(View):
         exists = AgencyAlias.objects.filter(agency=agency, normalized_name=search_key(name)).exists()
 
         if exists:
-            return JsonResponse({'error': 'Такая вариация уже добавлена'}, status=400)
+            return JsonResponse({
+                'success': True,
+                'aliases': [item.name for item in agency.aliases.all()],
+            })
 
         AgencyAlias.objects.create(agency=agency, name=name)
 
@@ -1154,7 +1187,16 @@ class AgencyAliasView(View):
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
         alias_id = request.GET.get('id') or request.POST.get('id')
-        alias = AgencyAlias.objects.filter(id=alias_id, agency_id=agency_id).first()
+        alias_name = ' '.join((request.GET.get('name') or request.POST.get('name') or '').split())
+
+        if alias_id:
+            alias = AgencyAlias.objects.filter(id=alias_id, agency_id=agency_id).first()
+        elif alias_name:
+            alias = AgencyAlias.objects.filter(
+                agency_id=agency_id, normalized_name=search_key(alias_name),
+            ).first()
+        else:
+            alias = None
 
         if alias is None:
             return JsonResponse({'error': 'Вариация не найдена'}, status=404)

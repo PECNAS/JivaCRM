@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сотрудник · Вариант 2 · Просмотр</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="v2.css">
+</head>
+<body>
+
+<header class="app-nav">
+    <a class="app-brand" href="../index.html"><span class="app-brand__icon"></span><span class="app-brand__name">JIVA·HUB</span></a>
+    <nav class="app-menu">
+        <span>Расписание</span><span>Клиенты</span><span class="is-on">Сотрудники</span><span>Услуги</span><span>Деньги</span><span>Отчёты</span>
+    </nav>
+    <div class="app-user">DHS</div>
+</header>
+
+<main class="stage stage--center">
+    <div class="modal modal--sm" role="dialog" aria-label="Сотрудник">
+        <div class="modal__body" id="view"></div>
+        <footer class="modal__foot">
+            <div class="foot__left"><span class="dim">Вариант 2 · просмотр · сворачиваемые блоки</span></div>
+            <div class="foot__right">
+                <button type="button" class="btn btn-ghost" data-toast="Закрыть карточку">Закрыть</button>
+                <button type="button" class="btn btn-primary" data-toast="Режим правки">Изменить</button>
+            </div>
+        </footer>
+    </div>
+</main>
+
+<div class="toast-container" id="toasts"></div>
+<script src="data.js"></script>
+<script src="v2.js"></script>
+<script src="common.js"></script>
+</body>
+</html>

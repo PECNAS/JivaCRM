@@ -1,0 +1,264 @@
+.c-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.42rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.c-top--confirmed { background: rgba(21, 101, 192, 0.14); }
+.c-top--completed { background: rgba(46, 125, 50, 0.14); }
+.c-top--request { background: rgba(230, 81, 0, 0.14); }
+
+.c-top__left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+  font-size: 0.78rem;
+  min-width: 0;
+}
+
+.c-date {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.c-city {
+  color: var(--text-2);
+}
+
+.c-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  flex-shrink: 0;
+}
+
+.c-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.7rem 0.9rem 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.c-body::-webkit-scrollbar {
+  width: 7px;
+}
+
+.c-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}
+
+.c-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
+.c-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+}
+
+.c-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.c-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.04rem;
+  padding: 0.3rem 0.5rem;
+  border-right: 1px solid var(--border-soft);
+  min-width: 0;
+}
+
+.c-cell:last-child {
+  border-right: none;
+}
+
+.c-k {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.c-v {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-v--money {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.c-line {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: baseline;
+  font-size: 0.8rem;
+  color: var(--text-2);
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.c-line b {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.c-line .c-k {
+  text-align: right;
+  font-size: 0.64rem;
+}
+
+.c-tel {
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.c-tel:hover {
+  color: var(--accent);
+}
+
+.c-sec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.25rem;
+}
+
+.c-sec .dim {
+  font-size: 0.66rem;
+}
+
+.c-shows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.c-show {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 0.1rem 0.45rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.015);
+  border-left: 2px solid var(--border-strong);
+}
+
+.c-show:hover {
+  border-left-color: var(--accent);
+}
+
+.c-show__t {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.c-show__n {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.c-show__a {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.c-tech {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.c-tech b {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.c-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+
+.c-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.06rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 0.28rem 0.5rem;
+  min-width: 0;
+}
+
+.c-box__k {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.c-box__v {
+  font-size: 0.77rem;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.c-pay {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.c-pay b {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+@media (max-width: 520px) {
+  .c-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .c-grid {
+    grid-template-columns: 1fr;
+  }
+}

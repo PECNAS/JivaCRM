@@ -1022,6 +1022,42 @@
     border-color: #f0a868;
 }
 
+.client-inline-form__suggest {
+    background: #13110e;
+    border: 1px solid #2b2620;
+    border-radius: 8px;
+    max-height: 170px;
+    overflow-y: auto;
+    padding: 0.2rem;
+}
+
+.client-inline-form__suggest-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #ddd4c7;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.client-inline-form__suggest-item:hover {
+    background: #1a1714;
+    color: #f0a868;
+}
+
+.client-inline-form__suggest-hint {
+    font-size: 0.7rem;
+    color: #7a7267;
+}
+
 .client-inline-form__actions {
     display: flex;
     gap: 0.4rem;

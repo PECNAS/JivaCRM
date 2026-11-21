@@ -1006,6 +1006,20 @@
 .cof-ev-chat-wrap {
     margin-left: auto;
     text-align: right;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.cof-ev-chat-wrap:empty {
+    display: none;
+}
+
+.cof-ev-head .cof-ev-chat {
+    padding: 0.1rem 0.6rem;
+    border-radius: 40px;
+    border: 1px solid rgba(240, 168, 104, 0.45);
+    font-size: 0.76rem;
 }
 
 .cof-ev-chat {
@@ -1051,9 +1065,15 @@ a.cof-ev-chat:hover {
 }
 
 .cof-ev-box__next {
-    display: inline;
+    display: block;
     color: #f5efe7;
     white-space: pre-wrap;
+}
+
+.cof-ev-box__val {
+    display: inline;
+    color: #ddd4c7;
+    margin-left: 0.3rem;
 }
 
 .cof-ev-link {

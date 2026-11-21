@@ -29,6 +29,7 @@
             <option value="request" {% if status_filter == 'request' %}selected{% endif %}>Запрос</option>
             <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Подтвержденный</option>
             <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Выполненный</option>
+            <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Отменён</option>
         </select>
         <div class="orders-date-range">
             <label class="orders-date-range__field">
@@ -274,6 +275,7 @@
                                     <option value="request">Запрос</option>
                                     <option value="confirmed">Подтвержденный</option>
                                     <option value="completed">Выполненный</option>
+                                    <option value="cancelled">Отменён</option>
                                 </select>
                             </div>
                             <div class="form-group">

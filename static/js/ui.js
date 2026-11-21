@@ -146,18 +146,28 @@
             <div class="modal modal--confirm">
                 <div class="modal__header">
                     <h2 class="modal__title" data-confirm-title>Подтверждение</h2>
-                    <button type="button" class="modal__close" data-confirm-close>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button type="button" class="modal__close modal__close--sm" data-confirm-close>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"/>
                             <line x1="6" y1="6" x2="18" y2="18"/>
                         </svg>
                     </button>
                 </div>
-                <div class="modal__body">
-                    <p class="confirm-text" data-confirm-text></p>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-outline" data-confirm-cancel>Отмена</button>
-                        <button type="button" class="btn btn-primary" data-confirm-ok>Подтвердить</button>
+                <div class="modal__body modal__body--confirm">
+                    <div class="confirm-row">
+                        <div class="form-actions__left" data-confirm-check-slot hidden>
+                            <label class="confirm-check" data-confirm-check>
+                                <input type="checkbox" data-confirm-checkbox>
+                                <span data-confirm-check-label></span>
+                            </label>
+                        </div>
+                        <p class="confirm-text" data-confirm-text></p>
+                    </div>
+                    <div class="form-actions form-actions--confirm">
+                        <div class="form-actions__right">
+                            <button type="button" class="btn btn-outline" data-confirm-cancel>Отмена</button>
+                            <button type="button" class="btn btn-primary" data-confirm-ok>Подтвердить</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -165,7 +175,7 @@
 
         document.body.appendChild(confirmModal);
 
-        confirmModal.querySelector('[data-confirm-ok]').addEventListener('click', () => settle(true));
+        confirmModal.querySelector('[data-confirm-ok]').addEventListener('click', () => settleWithCheck(true));
         confirmModal.querySelector('[data-confirm-cancel]').addEventListener('click', () => settle(false));
         confirmModal.querySelector('[data-confirm-close]').addEventListener('click', () => settle(false));
 
@@ -205,18 +215,52 @@
         if (resolve) resolve(value);
     }
 
+    function settleWithCheck(value) {
+        if (!confirmModal || !confirmModal.classList.contains('active')) return;
+
+        const checkSlot = confirmModal.querySelector('[data-confirm-check-slot]');
+        const checkbox = confirmModal.querySelector('[data-confirm-checkbox]');
+        const checked = !!(checkSlot && !checkSlot.hidden && checkbox && checkbox.checked);
+
+        confirmModal.classList.remove('active');
+        confirmModal.style.zIndex = '';
+
+        const resolve = confirmResolve;
+        confirmResolve = null;
+
+        if (lastFocused && typeof lastFocused.focus === 'function') {
+            try { lastFocused.focus(); } catch (error) {}
+        }
+
+        if (resolve) resolve(value ? { checked: checked } : false);
+    }
+
     function uiConfirm(options) {
         const settings = typeof options === 'string' ? { text: options } : (options || {});
         const modal = buildConfirmModal();
 
         modal.querySelector('[data-confirm-title]').textContent = settings.title || 'Подтверждение';
-        modal.querySelector('[data-confirm-text]').textContent = settings.text || 'Вы уверены?';
+        const confirmText = modal.querySelector('[data-confirm-text]');
+        confirmText.textContent = settings.text || (settings.checkLabel ? '' : 'Вы уверены?');
+        confirmText.hidden = !confirmText.textContent;
 
         const okBtn = modal.querySelector('[data-confirm-ok]');
         okBtn.textContent = settings.okText || 'Подтвердить';
         okBtn.className = 'btn ' + (settings.danger ? 'btn-danger' : 'btn-primary');
 
         modal.querySelector('[data-confirm-cancel]').textContent = settings.cancelText || 'Отмена';
+
+        const checkSlot = modal.querySelector('[data-confirm-check-slot]');
+        const checkbox = modal.querySelector('[data-confirm-checkbox]');
+
+        if (settings.checkLabel) {
+            checkSlot.hidden = false;
+            checkbox.checked = !!settings.checkDefault;
+            modal.querySelector('[data-confirm-check-label]').textContent = settings.checkLabel;
+        } else {
+            checkSlot.hidden = true;
+            checkbox.checked = false;
+        }
 
         lastFocused = document.activeElement;
         modal.style.zIndex = '6000';

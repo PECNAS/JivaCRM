@@ -124,7 +124,12 @@
         notification.querySelector('[data-order-id]').addEventListener('click', function() {
             clearTimeout(timeoutId);
             removeNotification(notification);
-            openEditor(parseInt(this.dataset.orderId));
+
+            const id = parseInt(this.dataset.orderId);
+
+            if (openEditor(id)) return;
+
+            if (window.openOrderForm && window.openOrderForm(id)) return;
         });
 
         notification.querySelector('[data-dismiss]').addEventListener('click', function() {
@@ -315,6 +320,37 @@
             items = [];
             index = -1;
             inlineFormOpen = false;
+            pendingCreate = null;
+        }
+
+        function setSelectedClient(client) {
+            if (!client) return;
+
+            if (!allClients.some(item => String(item.id) === String(client.id))) {
+                allClients.push(client);
+            }
+
+            let option = Array.prototype.find.call(select.options, item => String(item.value) === String(client.id));
+
+            if (!option) {
+                option = document.createElement('option');
+                option.value = String(client.id);
+                option.textContent = client.full_name + (client.agency ? ' (' + client.agency + ')' : '');
+                select.appendChild(option);
+            }
+
+            option.selected = true;
+            select.value = String(client.id);
+
+            input.value = client.full_name + (client.agency ? ' (' + client.agency + ')' : '');
+            input.dataset.clientId = String(client.id);
+
+            applyClientContacts(client);
+            input.dispatchEvent(new CustomEvent('client-selected', { bubbles: true, detail: { client: client } }));
+
+            if (typeof syncCreateOrderPreview === 'function') {
+                setTimeout(function() { safeCall('preview', syncCreateOrderPreview); }, 0);
+            }
         }
 
         function openInlineClientForm(name) {
@@ -328,10 +364,12 @@
                 <div class="client-inline-form__title">Новый клиент</div>
                 <input type="text" class="client-inline-form__input" data-field="full_name" placeholder="Имя клиента *" value="${window.UI.escapeHtml(name || '')}">
                 <select class="client-inline-form__input" data-field="client_type">
+                    <option value="unknown">—</option>
                     <option value="organizer">Организатор</option>
                     <option value="agency">Агентство</option>
                 </select>
                 <input type="text" class="client-inline-form__input" data-field="agency" placeholder="Название агентства *" autocomplete="off" style="display:none;">
+                <div class="client-inline-form__suggest" data-agency-suggest style="display:none;"></div>
                 <input type="text" class="client-inline-form__input" data-field="contact" placeholder="Телефон или @телеграм *" autocomplete="off">
                 <div class="client-inline-form__actions">
                     <button type="button" class="client-inline-form__cancel">Отмена</button>
@@ -346,11 +384,89 @@
             const nameInput = form.querySelector('[data-field="full_name"]');
             const typeInput = form.querySelector('[data-field="client_type"]');
             const agencyInput = form.querySelector('[data-field="agency"]');
+            const agencySuggest = form.querySelector('[data-agency-suggest]');
             const contactInput = form.querySelector('[data-field="contact"]');
             const errorBox = form.querySelector('.client-inline-form__error');
 
+            let agencyTimer = null;
+            let agencyCounter = 0;
+
+            function hideAgencySuggest() {
+                if (!agencySuggest) return;
+
+                agencySuggest.innerHTML = '';
+                agencySuggest.style.display = 'none';
+            }
+
+            function renderAgencySuggest(agencies, query) {
+                if (!agencySuggest || !agencies.length) {
+                    hideAgencySuggest();
+                    return;
+                }
+
+                const q = query.toLowerCase().replace(/ё/g, 'е');
+
+                agencySuggest.innerHTML = '';
+
+                agencies.forEach(function(agency) {
+                    const alias = (agency.aliases || []).find(function(name) {
+                        return name.toLowerCase().replace(/ё/g, 'е').indexOf(q) !== -1;
+                    });
+
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'client-inline-form__suggest-item';
+                    option.textContent = agency.name;
+
+                    if (alias) {
+                        const hint = document.createElement('span');
+                        hint.className = 'client-inline-form__suggest-hint';
+                        hint.textContent = 'вариация: ' + alias;
+                        option.appendChild(hint);
+                    }
+
+                    option.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        agencyInput.value = agency.name;
+                        hideAgencySuggest();
+                        contactInput.focus();
+                    });
+
+                    agencySuggest.appendChild(option);
+                });
+
+                agencySuggest.style.display = 'block';
+            }
+
+            agencyInput.addEventListener('input', function() {
+                const query = agencyInput.value.trim();
+
+                clearTimeout(agencyTimer);
+                hideAgencySuggest();
+
+                if (!query) return;
+
+                const current = ++agencyCounter;
+
+                agencyTimer = setTimeout(function() {
+                    fetch('/agencies/catalog/?search=' + encodeURIComponent(query))
+                        .then(function(response) { return response.json(); })
+                        .then(function(data) {
+                            if (current !== agencyCounter) return;
+                            renderAgencySuggest(data.agencies || [], query);
+                        })
+                        .catch(function(error) { console.error(error); });
+                }, 180);
+            });
+
+            agencyInput.addEventListener('blur', function() {
+                setTimeout(hideAgencySuggest, 120);
+            });
+
             const syncAgencyVisibility = function() {
                 agencyInput.style.display = typeInput.value === 'agency' ? '' : 'none';
+
+                if (typeInput.value !== 'agency') hideAgencySuggest();
             };
 
             typeInput.addEventListener('change', syncAgencyVisibility);
@@ -416,21 +532,15 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.error) {
-                        errorBox.textContent = data.error;
-                        errorBox.style.display = 'block';
-                        return;
-                    }
-
-                    if (data.duplicate) {
-                        errorBox.textContent = 'Похожий клиент уже существует';
+                    if (data.error || data.duplicate || (Array.isArray(data.matches) && data.matches.length)) {
+                        errorBox.textContent = data.error || 'Похожий клиент уже существует';
                         errorBox.style.display = 'block';
                         return;
                     }
 
                     if (data.client) {
-                        allClients.push(data.client);
-                        pick(data.client);
+                        setSelectedClient(data.client);
+                        close();
                         window.UI.showToast('Клиент «' + data.client.full_name + '» создан');
                     }
                 })
@@ -497,11 +607,13 @@
 
             if (search) {
                 result = result.filter(client => {
+                    const agencyAliases = Array.isArray(client.agency_aliases) ? client.agency_aliases : [];
+
                     const text = [
                         client.full_name,
                         client.agency,
                         client.city
-                    ].map(normalize).join(' ');
+                    ].concat(agencyAliases).map(normalize).join(' ');
 
                     if (text.indexOf(search) !== -1) return true;
 
@@ -547,6 +659,13 @@
             applyClientContacts(client);
             close();
             input.dispatchEvent(new CustomEvent('client-selected', { bubbles: true, detail: { client: client } }));
+
+            if (selectId === 'createOrderClient' || selectId === 'editOrderClient') {
+                if (typeof syncCreateOrderPreview === 'function') {
+                    setTimeout(function() { safeCall('preview', syncCreateOrderPreview); }, 0);
+                }
+            }
+
             input.blur();
         }
 
@@ -736,7 +855,14 @@
                     return;
                 }
 
-                select.value = client.id;
+                if (!Array.prototype.some.call(select.options, option => String(option.value) === String(client.id))) {
+                    const option = document.createElement('option');
+                    option.value = String(client.id);
+                    option.textContent = client.full_name + (client.agency ? ' (' + client.agency + ')' : '');
+                    select.appendChild(option);
+                }
+
+                select.value = String(client.id);
                 input.value = client.full_name + (client.agency ? ' (' + client.agency + ')' : '');
                 input.dataset.clientId = client.id;
                 close();
@@ -991,24 +1117,49 @@
         };
     }
 
+    const PAYMENT_MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+
+    function formatPaymentDueLabel(value) {
+        const text = String(value || '').trim();
+
+        if (!text) return '';
+
+        const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+        if (match) {
+            return Number(match[3]) + ' ' + PAYMENT_MONTHS[Number(match[2]) - 1];
+        }
+
+        return text.replace(/\.\d{4}$/, '').replace(/\s+\d{4}\s*$/, '').trim();
+    }
+
+    const PAYMENT_METHOD_ORDER = ['cash', 'ip', 'self'];
+
+    function splitPaymentMethods(value) {
+        return String(value || '')
+            .split(/[,;\s]+/)
+            .map(item => item.trim())
+            .filter(Boolean);
+    }
+
+    function getCreateOrderPaymentMethods() {
+        const flags = getCreateOrderPaymentFlags();
+
+        return PAYMENT_METHOD_ORDER.filter(key => flags[key]);
+    }
+
     function setCreateOrderPaymentFlags(value) {
-        const raw = String(value || '');
+        const selected = splitPaymentMethods(value);
 
         [['createOrderPayCash', 'cash'], ['createOrderPayIp', 'ip'], ['createOrderPaySelf', 'self']].forEach(function(pair) {
             const node = createOrderField(pair[0]);
 
-            if (node) node.checked = raw.indexOf(pair[1]) !== -1;
+            if (node) node.checked = selected.indexOf(pair[1]) !== -1;
         });
     }
 
     function getCreateOrderPaymentMethod() {
-        const flags = getCreateOrderPaymentFlags();
-
-        if (flags.self) return 'self';
-        if (flags.ip) return 'ip';
-        if (flags.cash) return 'cash';
-
-        return '';
+        return getCreateOrderPaymentMethods().join(',');
     }
 
     function autoGrowNode(node) {
@@ -1922,14 +2073,15 @@
         return getCreateOrderShowRows().map(function(row, index) {
             const timeInput = row.querySelector('[data-show-time]');
             const serviceInput = row.querySelector('[data-show-input]');
+            const artists = getRowArtists(row);
 
             return {
                 id: serviceInput.dataset.serviceId || '',
                 name: serviceInput.value.trim(),
-                count: null,
+                count: artists.length || null,
                 time: timeInput.value.trim(),
                 main: index === 0,
-                employees: getRowArtists(row),
+                employees: artists,
             };
         }).filter(item => item.name);
     }
@@ -2500,9 +2652,7 @@
 
         let html = '<div class="cof-ev-head">'
             + '<div class="cof-ev-head__date">' + window.UI.escapeHtml(buildPreviewDateLabel(order)) + '</div>'
-            + (settings.hideStatus
-                ? '<span class="cof-ev-status cof-ev-status--chat">' + (chatHtml || '') + '</span>'
-                : '<span class="cof-ev-status">' + window.UI.escapeHtml(order.status_display || getStatusLabel(order.status)) + '</span>')
+            + '<span class="cof-ev-chat-wrap">' + (chatHtml || '') + '</span>'
             + '</div>';
 
         if (!settings.hideClient) {
@@ -2512,13 +2662,6 @@
         }
 
         if (settings.bannerHtml) html += settings.bannerHtml;
-
-        if (!settings.hideStatus && (showsHtml || chatHtml)) {
-            html += '<div class="cof-ev-section cof-ev-section--row cof-ev-section--chat">'
-                + '<span></span>'
-                + '<span class="cof-ev-chat-wrap">' + chatHtml + '</span>'
-                + '</div>';
-        }
 
         html += showsHtml;
 
@@ -2610,8 +2753,6 @@
 
             if (techLabels.length) {
                 techText += '<span class="cof-ev-box__next">' + window.UI.escapeHtml(techLabels.join(', ')) + '</span>';
-
-                if (order.tech_comment) techText += ', ';
             }
 
             if (order.tech_comment) {
@@ -2633,11 +2774,23 @@
             boxes.push(describeBox('Комментарий', conceptText));
         }
 
-        if (!settings.hidePayment && (order.payment_method || order.payment_due_comment)) {
+        if (!settings.hidePayment && (order.payment_method || order.payment_due_comment || order.payment_due_date)) {
             const methodLabels = { cash: 'Нал', ip: 'ИП', self: 'СЗ' };
-            const paymentText = [methodLabels[order.payment_method] || '', order.payment_due_comment].filter(Boolean).join(' · ');
-            boxes.push('<div class="cof-ev-box cof-ev-box--block"><b>Оплата:</b> '
-                + '<span class="cof-ev-box__next">' + window.UI.escapeHtml(paymentText) + '</span></div>');
+            const methodCodes = String(order.payment_method || '')
+                .split(/[,;\s]+/)
+                .map(item => item.trim())
+                .filter(item => methodLabels[item]);
+
+            const methodText = methodCodes.map(item => methodLabels[item]).join(', ');
+            const dueText = formatPaymentDueLabel(order.payment_due_display || order.payment_due_date || '');
+            const paymentComment = String(order.payment_due_comment || '').trim();
+
+            const values = [methodText, dueText ? 'до ' + dueText : ''].filter(Boolean).join(' ');
+
+            boxes.push('<div class="cof-ev-box cof-ev-box--block"><b>Оплата:</b>'
+                + (values ? '<span class="cof-ev-box__val">' + window.UI.escapeHtml(values) + '</span>' : '')
+                + (paymentComment ? '<span class="cof-ev-box__next">' + window.UI.escapeHtml(paymentComment) + '</span>' : '')
+                + '</div>');
         }
 
         if (boxes.length) {
@@ -2709,6 +2862,7 @@
         const cost = createOrderFieldValue('createOrderCost');
         const paymentMethod = getCreateOrderPaymentMethod();
         const paymentComment = createOrderFieldValue('createOrderPaymentComment');
+        const paymentDue = createOrderFieldValue('createOrderPaymentDue');
 
         if (titleNode) titleNode.textContent = name || 'Новый заказ';
 
@@ -2758,6 +2912,7 @@
                 adaptation_comment: adaptation,
                 payment_method: paymentMethod,
                 payment_due_comment: paymentComment,
+                payment_due_date: formatPaymentDueLabel(paymentDue),
                 concept: concept,
             }, { canSeeCost: true });
         }
@@ -2864,9 +3019,18 @@
             if (!client) return;
 
             const rows = getCreateOrderContactRows();
-            const firstRow = rows.length ? rows[0] : null;
 
-            if (!firstRow) return;
+            if (!rows.length) {
+                addCreateOrderContact({
+                    name: client.full_name || '',
+                    phone: client.phone || '',
+                    telegram: client.telegram || '',
+                    main: true,
+                });
+                return;
+            }
+
+            const firstRow = rows[0];
 
             const nameNode = firstRow.querySelector('[data-contact-name]');
             const phoneNode = firstRow.querySelector('[data-contact-phone]');
@@ -2986,6 +3150,12 @@
         if (agencyGroup) agencyGroup.style.display = 'none';
         if (phoneField) phoneField.value = '';
 
+        const agencySelectEl = document.getElementById('newClientAgency');
+        const agencySearchEl = document.getElementById('newClientAgencySearch');
+
+        if (agencySelectEl) agencySelectEl.value = '';
+        if (agencySearchEl) agencySearchEl.value = '';
+
         if (cityField) {
             cityField.value = '';
         }
@@ -3008,6 +3178,135 @@
 
     const newClientTypeField = document.getElementById('newClientType');
     const newClientPhoneField = document.getElementById('newClientPhone');
+
+    function mountNewClientAgencyPicker() {
+        const input = document.getElementById('newClientAgencySearch');
+        const select = document.getElementById('newClientAgency');
+
+        if (!input || !select || input.dataset.mounted === '1') return;
+
+        input.dataset.mounted = '1';
+
+        const group = input.closest('.form-group') || input.parentNode;
+
+        group.style.position = 'relative';
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'city-selector__dropdown';
+        group.appendChild(dropdown);
+
+        let items = [];
+        let index = -1;
+        let counter = 0;
+        let timer = null;
+
+        function close() {
+            dropdown.classList.remove('open');
+            dropdown.innerHTML = '';
+            items = [];
+            index = -1;
+        }
+
+        function pick(agency) {
+            select.value = String(agency.id);
+            input.value = agency.name;
+            close();
+        }
+
+        function render() {
+            dropdown.innerHTML = '';
+
+            items.forEach(function(agency, position) {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.className = 'city-selector__option' + (position === index ? ' active' : '');
+                option.textContent = agency.name;
+
+                if (agency.matched_alias) {
+                    const hint = document.createElement('span');
+                    hint.className = 'city-selector__option-subject';
+                    hint.textContent = 'вариация: ' + agency.matched_alias;
+                    option.appendChild(hint);
+                }
+
+                option.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    pick(agency);
+                });
+
+                dropdown.appendChild(option);
+            });
+
+            dropdown.classList.toggle('open', dropdown.children.length > 0);
+        }
+
+        function load(query) {
+            const current = ++counter;
+
+            fetch('/agencies/catalog/?search=' + encodeURIComponent(query))
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (current !== counter) return;
+
+                    const q = query.toLowerCase().replace(/ё/g, 'е');
+
+                    items = (data.agencies || []).map(function(agency) {
+                        const alias = (agency.aliases || []).find(function(name) {
+                            return name.toLowerCase().replace(/ё/g, 'е').indexOf(q) !== -1;
+                        });
+
+                        return Object.assign({}, agency, { matched_alias: alias || '' });
+                    });
+
+                    index = -1;
+                    render();
+                })
+                .catch(function(error) { console.error(error); });
+        }
+
+        input.addEventListener('input', function() {
+            select.value = '';
+            const query = input.value.trim();
+
+            clearTimeout(timer);
+
+            if (!query) {
+                close();
+                return;
+            }
+
+            timer = setTimeout(function() { load(query); }, 180);
+        });
+
+        input.addEventListener('focus', function() {
+            const query = input.value.trim();
+
+            if (query) load(query);
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                index = (index + 1) % Math.max(items.length, 1);
+                render();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                index = index <= 0 ? Math.max(items.length - 1, 0) : index - 1;
+                render();
+            } else if (e.key === 'Enter') {
+                if (!items.length) return;
+
+                e.preventDefault();
+                pick(index >= 0 ? items[index] : items[0]);
+            } else if (e.key === 'Escape') {
+                close();
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(close, 120);
+        });
+    }
 
     function mountNewClientCitySelector() {
         const container = document.getElementById('newClientCitySelector');
@@ -3216,6 +3515,7 @@
     }
 
     mountNewClientCitySelector();
+    mountNewClientAgencyPicker();
 
     window.createOrderCityPicker = {
         reset: function() {},
@@ -3495,6 +3795,10 @@
         }
 
         closeCreateClientModal();
+
+        if (typeof syncCreateOrderPreview === 'function') {
+            safeCall('preview', syncCreateOrderPreview);
+        }
     }
 
     if (addOrderBtn) {
@@ -3912,7 +4216,16 @@
         const cityInput = document.getElementById('createOrderCityInput');
 
         if (cityInput) cityInput.value = '';
-        if (window.createOrderManagerPicker) window.createOrderManagerPicker.reset();
+        if (window.createOrderManagerPicker) {
+            window.createOrderManagerPicker.reset();
+
+            const currentEmployeeId = document.body.dataset.employeeId;
+            const currentEmployeeName = document.body.dataset.employeeName;
+
+            if (currentEmployeeId) {
+                window.createOrderManagerPicker.setValue([{ id: currentEmployeeId, name: currentEmployeeName || '' }]);
+            }
+        }
 
         resetCreateOrderShows();
         resetCreateOrderContacts();

@@ -620,6 +620,7 @@ class Client(models.Model):
     phone = models.CharField('Номер телефона', max_length=20, blank=True)
     phone_normalized = models.CharField('Телефон (нормализованный)', max_length=20, blank=True, db_index=True, editable=False)
     telegram_username = models.CharField('Юзернейм в тг', max_length=100, blank=True)
+    instagram = models.CharField('Инста', max_length=150, blank=True)
     email = models.EmailField('Email', max_length=254, blank=True)
     full_name_normalized = models.CharField('ФИО (нормализованное)', max_length=200, blank=True, db_index=True, editable=False)
     city = models.CharField('Город', max_length=100, blank=True)
@@ -782,7 +783,10 @@ class Order(models.Model):
         ('request', 'Запрос'),
         ('confirmed', 'Подтвержденный'),
         ('completed', 'Выполненный'),
+        ('cancelled', 'Отменён'),
     ]
+
+    CANCELLED_STATUS = 'cancelled'
 
     PAYMENT_CHOICES = [
         ('self', 'Самозанятость'),
@@ -825,7 +829,7 @@ class Order(models.Model):
     story_manager = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='story_orders', verbose_name='Сториз ответственный')
     cost = models.CharField('Общая стоимость', max_length=50, blank=True, default='—')
     cost_is_manual = models.BooleanField('Цена задана вручную', default=False)
-    payment_method = models.CharField('Способ оплаты', max_length=10, choices=PAYMENT_CHOICES, blank=True)
+    payment_method = models.CharField('Способ оплаты', max_length=40, choices=PAYMENT_CHOICES, blank=True)
     payment_due_date = models.DateField('Дата оплаты по заказу', null=True, blank=True)
     payment_due_comment = models.CharField('Заметка к оплате', max_length=300, blank=True)
     status = models.CharField('Статус', max_length=20, choices=STATUS_CHOICES, default='request')

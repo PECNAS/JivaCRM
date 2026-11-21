@@ -292,7 +292,7 @@ class MyOrdersListView(View):
 
         orders = order_queryset().filter(
             employee_items__employee=employee
-        ).distinct().order_by('-date', '-created_at')
+        ).exclude(status='cancelled').distinct().order_by('-date', '-created_at')
 
         search = request.GET.get('search', '')
         status = request.GET.get('status', 'all')

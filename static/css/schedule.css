@@ -314,8 +314,22 @@
 }
 
 .calendar-event__city {
+    font-weight: inherit;
+    opacity: 1;
+}
+
+.calendar-event__no-date {
+    display: inline-block;
+    margin-left: 0.25rem;
+    padding: 0 0.3rem;
+    border-radius: 40px;
+    border: 1px solid currentColor;
+    font-size: 0.58rem;
+    line-height: 1.4;
     font-weight: 500;
-    opacity: 0.8;
+    opacity: 0.75;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 
 .calendar-event__client {
@@ -650,7 +664,7 @@
 
 .modal--event-card {
     width: 100%;
-    max-width: 440px;
+    max-width: 550px;
     max-height: 90vh;
     border: 1px solid #2b2620;
     border-radius: 14px;

@@ -9,6 +9,7 @@ from django.utils import timezone
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import json
+import logging
 from ..models import (
     Order, Client, Employee, OrderEstimate, OrderEmployee, Service, City,
     CityGroup, CalendarColor, PriceRisePeriod, OrderExpense,
@@ -19,6 +20,8 @@ from ..models import (
 from .helpers import format_date_short, format_money, parse_money, role_label
 
 ORDER_VIEWER_ROLES = [*ARTIST_ROLES, ROLE_TECHNICIAN, ROLE_CHOREOGRAPHER, ROLE_PRODUCTION]
+
+logger = logging.getLogger(__name__)
 
 
 def can_view_orders(employee):
@@ -246,6 +249,11 @@ def save_order_shows(order, raw):
         count_raw = item.get('count')
         count = int(count_raw) if isinstance(count_raw, (int, float)) and count_raw > 0 else 0
 
+        staff_items = [staff for staff in (item.get('employees') or []) if isinstance(staff, dict)]
+
+        if not count:
+            count = len([staff for staff in staff_items if staff.get('employee_id')])
+
         price = 0
         rows = sorted(service.staff_rows.all(), key=lambda row: row.artist_count) if service else []
 
@@ -279,12 +287,7 @@ def save_order_shows(order, raw):
 
         created.append(estimate)
 
-        employees = item.get('employees') or []
-
-        for staff in employees:
-            if not isinstance(staff, dict):
-                continue
-
+        for staff in staff_items:
             employee_id = staff.get('employee_id')
 
             if not employee_id or not str(employee_id).isdigit():
@@ -488,7 +491,7 @@ def serialize_order_line(order, employee=None):
 
         data['services'].append({
             'name': item.service_name,
-            'people_count': item.people_count or int(_show_people_digits(item.service_name) or 0) or len(rows),
+            'people_count': item.people_count,
             'people_count_unknown': item.people_count_unknown,
             'is_main': item.is_main,
             'start_time': item.start_time or '',
@@ -609,10 +612,10 @@ def apply_order_filters(orders, search, status, date_from=None, date_to=None):
     end = parse_date_filter(date_to)
 
     if start:
-        orders = orders.filter(date__gte=start)
+        orders = orders.filter(Q(date__gte=start) | Q(date__isnull=True))
 
     if end:
-        orders = orders.filter(date__lte=end)
+        orders = orders.filter(Q(date__lte=end) | Q(date__isnull=True))
 
     return orders
 
@@ -728,7 +731,13 @@ class OrdersView(View):
             duration_value = int(duration_raw) if duration_raw.isdigit() and int(duration_raw) > 0 else 1
 
             payment_method_raw = request.POST.get('payment_method', '').strip()
-            payment_method_value = payment_method_raw if payment_method_raw in dict(Order.PAYMENT_CHOICES) else ''
+            allowed_methods = dict(Order.PAYMENT_CHOICES)
+            payment_method_value = ','.join(
+                code for code in dict.fromkeys(
+                    part.strip() for part in payment_method_raw.replace(';', ',').split(',')
+                )
+                if code in allowed_methods
+            )
 
             order = Order.objects.create(
                 name=name,
@@ -965,11 +974,14 @@ class OrderDetailView(View):
                 'name_is_manual': order.name_is_manual,
                 'client_id': order.client.id,
                 'client_name': order.client.full_name,
+                'client': order.client.full_name,
                 'client_contact': order.client.get_contact_display(),
                 'city_id': order.city.id if order.city else None,
                 'city_name': order.city.name if order.city else '',
                 'date': format_date(order.date),
                 'date_display': format_date_short(order.date),
+                'date_iso': order.date.isoformat() if order.date else '',
+                'has_date': bool(order.date),
                 'start_datetime': format_datetime(order.start_datetime),
                 'start_time': order.start_time_text or format_time_value(order.start_datetime),
                 'end_datetime': format_datetime(order.end_datetime),
@@ -1007,6 +1019,7 @@ class OrderDetailView(View):
                 'adaptation_comment': order.adaptation_comment or '',
                 'manager_id': order.manager.id if order.manager else None,
                 'manager_name': order.manager.display_name if order.manager else '',
+                'manager': order.manager.display_name if order.manager else '',
                 'manager_ids': [item.id for item in order.managers.all()],
                 'managers': [
                     {'id': item.id, 'name': item.display_name} for item in order.managers.all()
@@ -1035,6 +1048,11 @@ class OrderDetailView(View):
                 'expenses': [serialize_expense(item) for item in order.expenses.select_related('created_by', 'decided_by')],
                 'checklist': serialize_checklist(order, employee.can_edit_checklists(), employee.can_build_checklists()),
                 'can_see_rates': can_see_rates,
+                'is_incomplete': order.is_incomplete(),
+                'missing_fields': order.get_missing_fields(),
+                'content_changed': bool(order.content_changed_at),
+                'content_changed_at': order.content_changed_at.isoformat() if order.content_changed_at else None,
+                'updated_at': order.updated_at.isoformat() if order.updated_at else None,
             }
 
             if not can_view_cost:
@@ -1352,7 +1370,13 @@ class OrderUpdateView(View):
                 if 'cost_is_manual' in request.POST:
                     order.cost_is_manual = request.POST.get('cost_is_manual') == '1'
 
-            order.payment_method = request.POST.get('payment_method', '').strip()
+            __allowed_methods = dict(Order.PAYMENT_CHOICES)
+            order.payment_method = ','.join(
+                code for code in dict.fromkeys(
+                    part.strip() for part in request.POST.get('payment_method', '').replace(';', ',').split(',')
+                )
+                if code in __allowed_methods
+            )
 
             previous_status = order.status
             order.status = request.POST.get('status', 'request')
@@ -1690,7 +1714,8 @@ class OrderUpdateView(View):
                 }
             })
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            logger.exception('Order update failed for order %s', order_id)
+            return JsonResponse({'error': f'Ошибка при сохранении заказа: {e}'}, status=500)
 
 
 class OrderExpenseView(View):
@@ -1785,8 +1810,31 @@ class OrderDeleteView(View):
 
         try:
             order = get_object_or_404(Order, id=order_id)
-            order.delete()
-            return JsonResponse({'success': True})
+
+            hard_delete = False
+
+            try:
+                payload = json.loads(request.body.decode('utf-8') or '{}')
+            except (ValueError, UnicodeDecodeError):
+                payload = {}
+
+            if isinstance(payload, dict):
+                hard_delete = bool(payload.get('hard'))
+
+            if hard_delete or order.status == 'cancelled':
+                order.delete()
+                return JsonResponse({'success': True, 'deleted': True})
+
+            previous_status = order.status
+            order.status = 'cancelled'
+            order.save(update_fields=['status'])
+
+            try:
+                sync_order_balance(order, previous_status, employee)
+            except Exception:
+                pass
+
+            return JsonResponse({'success': True, 'archived': True})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
@@ -1802,7 +1850,7 @@ class OrderListView(View):
         except:
             return JsonResponse({'error': 'Профиль не найден'}, status=404)
 
-        orders = order_queryset().order_by('-date', '-created_at')
+        orders = order_queryset().exclude(status='cancelled').order_by('-date', '-created_at')
 
         search, status = parse_order_filters(request)
         orders = apply_order_filters(

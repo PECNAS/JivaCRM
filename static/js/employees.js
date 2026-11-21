@@ -1,39 +1,41 @@
 (function() {
     let currentEmployeeId = null;
-    let currentArtistCard = null;
     let allServices = [];
-    let isEditMode = false;
-    let formSnapshot = null;
+    let empData = null;
+    let empMode = 'edit';
+    let empDirty = false;
+    let empPendingDocs = [];
 
     const tableBody = document.getElementById('employeesTableBody');
     const searchInput = document.getElementById('searchInput');
     const roleFilter = document.getElementById('roleFilter');
     const modal = document.getElementById('employeeModal');
-    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const cardView = document.getElementById('empCardView');
     const addEmployeeBtn = document.getElementById('addEmployeeBtn');
-    const addModal = document.getElementById('addEmployeeModal');
-    const addModalCloseBtn = document.getElementById('addModalCloseBtn');
-    const addModalCancelBtn = document.getElementById('addModalCancelBtn');
-    const addForm = document.getElementById('addEmployeeForm');
-    const editForm = document.getElementById('editEmployeeForm');
-    const editCancelBtn = document.getElementById('editCancelBtn');
-    const editEmployeeBtn = document.getElementById('editEmployeeBtn');
-    const deleteEmployeeBtn = document.getElementById('deleteEmployeeBtn');
-    const viewMode = document.getElementById('viewMode');
-    const editMode = document.getElementById('editMode');
-    const employeeEditFooter = document.getElementById('employeeEditFooter');
-    const editSubmitBtn = document.getElementById('editSubmitBtn');
-    const addSubmitBtn = document.getElementById('addSubmitBtn');
-    const artistCardSubmitBtn = document.getElementById('artistCardSubmitBtn');
-    const notificationContainer = document.getElementById('notificationContainer');
+    const empSaveBtn = document.getElementById('empSaveBtn');
+    const empCloseBtn = document.getElementById('empCloseBtn');
+    const empDeactivateBtn = document.getElementById('empDeactivateBtn');
+    const empCreatedText = document.getElementById('empCreatedText');
+    const empDocFile = document.getElementById('empDocFile');
+    const rolesTemplate = document.getElementById('empRolesTemplate');
 
     const artistCardModal = document.getElementById('artistCardModal');
     const artistCardModalCloseBtn = document.getElementById('artistCardModalCloseBtn');
     const artistCardCancelBtn = document.getElementById('artistCardCancelBtn');
     const artistCardForm = document.getElementById('artistCardForm');
-    const editArtistCardBtn = document.getElementById('editArtistCardBtn');
-    const artistCardView = document.getElementById('artistCardView');
     const showsMultiSelect = document.getElementById('showsMultiSelect');
+
+    const roleLabels = {};
+
+    function loadRoleLabels() {
+        if (!rolesTemplate) return;
+
+        rolesTemplate.content.querySelectorAll('[data-role]').forEach(function(node) {
+            roleLabels[node.dataset.role] = node.dataset.label;
+        });
+    }
+
+    loadRoleLabels();
 
     function getCSRFToken() {
         const cookieValue = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
@@ -44,14 +46,22 @@
     }
 
     function showToast(message) {
+        if (window.UI && window.UI.showToast) {
+            window.UI.showToast(message);
+            return;
+        }
+
         const container = document.getElementById('toastContainer');
+
+        if (!container) return;
+
         const toast = document.createElement('div');
         toast.className = 'toast';
         toast.textContent = message;
         container.appendChild(toast);
+
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transform = 'translateY(10px)';
             setTimeout(() => { if (toast.parentNode) toast.remove(); }, 300);
         }, 2000);
     }
@@ -63,45 +73,347 @@
         return div.innerHTML;
     }
 
-    window.UI.attachAllPhoneMasks(document);
+    function getPath(path) {
+        const parts = String(path).split('.');
+        let value = empData;
 
-    function setPhoneField(id, value) {
-        window.UI.setPhoneValue(document.getElementById(id), value || '');
-    }
-
-    function switchTab(tabName) {
-        const tabBtns = document.querySelectorAll('.modal-tab-btn');
-        const tabContents = document.querySelectorAll('.modal-tab-content');
-        tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
-        tabContents.forEach(c => c.classList.toggle('active', c.dataset.content === tabName));
-    }
-
-    document.querySelectorAll('.modal-tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            switchTab(this.dataset.tab);
+        parts.forEach(function(part) {
+            value = value == null ? '' : value[part];
         });
-    });
 
-    function renderEmployees() {
-        loadEmployees(true);
+        return value == null ? '' : value;
     }
 
-    function attachRowEvents() {
-        tableBody.querySelectorAll('tr[data-employee-id]').forEach(row => {
-            row.addEventListener('click', function() {
-                const id = parseInt(row.getAttribute('data-employee-id'));
-                openEmployeeModal(id);
-            });
-        });
+    function setPath(path, value) {
+        const parts = String(path).split('.');
+
+        if (!empData[parts[0]]) empData[parts[0]] = {};
+
+        let holder = empData;
+
+        for (let i = 0; i < parts.length - 1; i += 1) {
+            if (!holder[parts[i]]) holder[parts[i]] = {};
+            holder = holder[parts[i]];
+        }
+
+        holder[parts[parts.length - 1]] = value;
+    }
+
+    const MASKS = {
+        phone: function(v) {
+            const digits = String(v || '').replace(/\D/g, '');
+            return digits ? window.UI.formatPhone(digits) : '';
+        },
+        series: function(v) {
+            const digits = String(v || '').replace(/\D/g, '').slice(0, 4);
+            return digits.length > 2 ? digits.slice(0, 2) + ' ' + digits.slice(2) : digits;
+        },
+        code: function(v) {
+            const digits = String(v || '').replace(/\D/g, '').slice(0, 6);
+            return digits.length > 3 ? digits.slice(0, 3) + '-' + digits.slice(3) : digits;
+        },
+        date: function(v) {
+            const digits = String(v || '').replace(/\D/g, '').slice(0, 8);
+            let out = digits.slice(0, 2);
+            if (digits.length > 2) out += '.' + digits.slice(2, 4);
+            if (digits.length > 4) out += '.' + digits.slice(4, 8);
+            return out;
+        },
+        number: function(v) {
+            return String(v || '').replace(/\D/g, '').slice(0, 6);
+        },
+        inn: function(v) {
+            return String(v || '').replace(/\D/g, '').slice(0, 12);
+        },
+        snils: function(v) {
+            const d = String(v || '').replace(/\D/g, '').slice(0, 11);
+            let out = d.slice(0, 3);
+            if (d.length > 3) out += '-' + d.slice(3, 6);
+            if (d.length > 6) out += '-' + d.slice(6, 9);
+            if (d.length > 9) out += ' ' + d.slice(9, 11);
+            return out;
+        }
+    };
+
+    const MASK_BY_PATH = {
+        phone: 'phone',
+        inn: 'inn',
+        snils: 'snils',
+        'passport.series': 'series',
+        'passport.number': 'number',
+        'passport.code': 'code',
+        'passport.issuedAt': 'date',
+        'foreign.series': 'series',
+        'foreign.number': 'number',
+        'foreign.code': 'code',
+        'foreign.issuedAt': 'date',
+        'artist.weight': 'number',
+        'artist.height': 'number',
+        'artist.shoe': 'number'
+    };
+
+    const WIDE_KEYS = {
+        name: true,
+        address: true,
+        comment: true,
+        'artist.comment': true,
+        'passport.issuedBy': true,
+        'foreign.issuedBy': true
+    };
+
+    const REQUIRED_KEYS = {
+        name: 'ФИО',
+        login: 'Логин',
+        password: 'Пароль'
+    };
+
+    function autoGrow(el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }
+
+    function renderValue(path, display, extraClass) {
+        const raw = getPath(path);
+        const text = display != null ? display : raw;
+        const empty = String(text).trim() === '';
+
+        return '<span class="p-row__v' + (empty ? ' is-empty' : '') + ' m-editable ' + (extraClass || '')
+            + '" data-edit="' + escapeHtml(path) + '">'
+            + (empty ? '<span class="p-empty">—</span>' : escapeHtml(text))
+            + '</span>';
+    }
+
+    function renderRow(label, path, display) {
+        return '<div class="p-row"><span class="p-row__k">' + escapeHtml(label) + '</span>'
+            + renderValue(path, display)
+            + '</div>';
+    }
+
+    function renderPassportCard(title, key) {
+        const holder = empData[key] || {};
+        const numberText = [holder.series, holder.number].filter(Boolean).join(' ');
+
+        return '<div class="p-card">'
+            + '<div class="sec">' + escapeHtml(title) + '</div>'
+            + '<div class="p-pass">'
+            + '<span class="p-pass__num">' + renderValue(key + '.number', numberText, 'p-pass__num-link') + '</span>'
+            + '<span class="p-pass__code">' + renderValue(key + '.code') + '</span>'
+            + '<span class="p-pass__by">' + renderValue(key + '.issuedBy') + '</span>'
+            + '<span class="p-pass__date">' + renderValue(key + '.issuedAt') + '</span>'
+            + '</div></div>';
+    }
+
+    function renderRoleChips() {
+        if (!rolesTemplate) return '';
+
+        const active = (empData.roles || []).slice();
+
+        return Array.from(rolesTemplate.content.querySelectorAll('[data-role]')).map(function(node) {
+            const on = active.indexOf(node.dataset.role) !== -1;
+
+            return '<span class="chip chip--role' + (on ? ' is-on' : '') + '" data-role="'
+                + escapeHtml(node.dataset.role) + '">' + escapeHtml(node.dataset.label) + '</span>';
+        }).join('');
+    }
+
+    function renderSkills() {
+        const skills = (empData.artist && empData.artist.skills) || [];
+
+        if (!skills.length) return '<span class="p-empty">—</span>';
+
+        return skills.map(function(name) {
+            return '<span class="chip">' + escapeHtml(name)
+                + '<button type="button" class="chip__x" data-skill-remove="' + escapeHtml(name) + '">×</button>'
+                + '</span>';
+        }).join('');
+    }
+
+    function renderDocs() {
+        const docs = empPendingDocs || [];
+
+        if (!docs.length) return '';
+
+        return docs.map(function(doc, index) {
+            return '<span class="p-doc" data-doc-index="' + index + '">'
+                + '<span class="p-doc__type">' + escapeHtml(doc.typeLabel) + '</span>'
+                + (doc.url
+                    ? '<a class="p-doc__file" href="' + escapeHtml(doc.url) + '" target="_blank" rel="noopener">' + escapeHtml(doc.file) + '</a>'
+                    : '<span class="p-doc__file">' + escapeHtml(doc.file) + '</span>')
+                + '<span class="p-doc__size">' + escapeHtml(doc.size) + '</span>'
+                + '<button type="button" class="p-doc__x" data-doc-remove="' + index + '" title="Удалить">'
+                + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+                + '</button>'
+                + '</span>';
+        }).join('');
+    }
+
+    function isArtist() {
+        return (empData.roles || []).indexOf('artist') !== -1;
+    }
+
+    function renderCard() {
+        if (!cardView || !empData) return;
+
+        const activeField = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.edit : null;
+        const scrollTop = cardView.querySelector('.p-body') ? cardView.querySelector('.p-body').scrollTop : 0;
+
+        let html = '';
+
+        html += '<div class="p-head">'
+            + '<div class="p-head__main">'
+            + '<div class="p-head__name m-editable" data-edit="name">' + escapeHtml(empData.name || 'Новый сотрудник') + '</div>'
+            + '<div class="p-head__sub">'
+            + renderValue('nickname')
+            + '<span class="p-dot"></span>'
+            + renderValue('login')
+            + '<button type="button" class="chip ' + (empData.active !== false ? 'chip--ok' : 'chip--off') + '" id="activeBtn">'
+            + (empData.active !== false ? 'Активен' : 'Неактивен') + '</button>'
+            + '</div>'
+            + '</div>'
+            + '<div class="p-head__roles" id="roleBox">' + renderRoleChips() + '</div>'
+            + '<button type="button" class="icon-btn" data-close title="Закрыть">'
+            + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+            + '</button>'
+            + '</div>';
+
+        html += '<div class="p-body">';
+
+        html += '<div class="p-col">';
+        html += '<div class="p-card">'
+            + '<div class="sec">Контакты</div>'
+            + renderRow('Телефон', 'phone')
+            + renderRow('Телеграм', 'telegram')
+            + renderRow('Инстаграм', 'instagram')
+            + renderRow('РЖД бонус', 'rzd')
+            + renderRow('Адрес', 'address')
+            + '</div>';
+
+        html += '<div class="p-card">'
+            + '<div class="sec">Доступ</div>'
+            + renderRow('Логин', 'login')
+            + renderRow('Пароль', 'password', empData.password || '')
+            + '</div>';
+
+        html += '<div class="p-card">'
+            + '<div class="sec">Идентификация</div>'
+            + renderRow('ИНН', 'inn')
+            + renderRow('СНИЛС', 'snils')
+            + '</div>';
+        html += '</div>';
+
+        html += '<div class="p-col">';
+        html += renderPassportCard('Паспорт РФ', 'passport');
+        html += renderPassportCard('Загранпаспорт', 'foreign');
+
+        if (isArtist()) {
+            html += '<div class="p-card">'
+                + '<div class="sec">Карточка артиста</div>'
+                + '<div class="p-params">'
+                + '<div class="p-param"><span class="p-param__k">Вес</span>' + renderValue('artist.weight') + '</div>'
+                + '<div class="p-param"><span class="p-param__k">Рост</span>' + renderValue('artist.height') + '</div>'
+                + '<div class="p-param"><span class="p-param__k">Обувь</span>' + renderValue('artist.shoe') + '</div>'
+                + '</div>'
+                + '<div class="p-skills" id="skillBox">' + renderSkills() + '</div>'
+                + renderRow('Комментарий', 'artist.comment')
+                + '</div>';
+        }
+
+        html += '</div></div>';
+
+        html += '<div class="p-foot">'
+            + '<div class="p-docs"><span class="sec">Документы</span>'
+            + '<div class="p-docs__list" id="docList">' + renderDocs() + '</div>'
+            + '<button type="button" class="p-add" id="docAdd">'
+            + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Загрузить</button>'
+            + '</div>'
+            + '</div>';
+
+        cardView.innerHTML = html;
+
+        const body = cardView.querySelector('.p-body');
+
+        if (body) body.scrollTop = scrollTop;
+
+        if (activeField) {
+            const node = cardView.querySelector('[data-edit="' + activeField + '"]');
+
+            if (node) startEdit(node, true);
+        }
+    }
+
+    function emptyEmployee() {
+        return {
+            id: null,
+            name: '',
+            nickname: '',
+            login: '',
+            password: '',
+            roles: [],
+            phone: '',
+            telegram: '',
+            instagram: '',
+            rzd: '',
+            address: '',
+            inn: '',
+            snils: '',
+            active: true,
+            passport: { series: '', number: '', issuedBy: '', issuedAt: '', code: '' },
+            foreign: { series: '', number: '', issuedBy: '', issuedAt: '', code: '' },
+            artist: { weight: '', height: '', shoe: '', skills: [], comment: '' },
+            created: '',
+        };
+    }
+
+    function employeeFromData(data) {
+        return {
+            id: data.id,
+            name: data.full_name || '',
+            nickname: data.nickname || '',
+            login: data.username || '',
+            password: '',
+            roles: (data.role_codes && data.role_codes.length ? data.role_codes : [data.role]).filter(Boolean),
+            phone: data.phone || '',
+            telegram: data.telegram || '',
+            instagram: data.instagram || '',
+            rzd: data.rzd_bonus_number || '',
+            address: data.passport_registration || '',
+            inn: data.passport_inn || '',
+            snils: data.passport_snils || '',
+            active: !!data.is_active,
+            passport: {
+                series: data.passport_series || '',
+                number: data.passport_number || '',
+                issuedBy: data.passport_issued_by || '',
+                issuedAt: data.passport_issued_date ? data.passport_issued_date.split('-').reverse().join('.') : '',
+                code: data.passport_department_code || '',
+            },
+            foreign: {
+                series: data.international_passport_series || '',
+                number: data.international_passport_number || '',
+                issuedBy: '',
+                issuedAt: '',
+                code: '',
+            },
+            artist: {
+                weight: data.artist_card ? (data.artist_card.weight || '') : '',
+                height: data.artist_card ? (data.artist_card.height || '') : '',
+                shoe: data.artist_card ? (data.artist_card.shoe_size || '') : '',
+                skills: data.artist_card && data.artist_card.skills_text
+                    ? String(data.artist_card.skills_text).split(',').map(s => s.trim()).filter(Boolean)
+                    : [],
+                comment: data.artist_card ? (data.artist_card.comment || '') : '',
+            },
+            created: data.date_joined ? 'Создан ' + data.date_joined : '',
+        };
     }
 
     function openEmployeeModal(employeeId) {
         currentEmployeeId = employeeId;
-        viewMode.style.display = 'block';
-        editMode.style.display = 'none';
-        if (employeeEditFooter) employeeEditFooter.style.display = 'none';
+        empMode = 'edit';
+        empDirty = false;
+        empPendingDocs = [];
 
-        fetch(`/employees/${employeeId}/`)
+        fetch('/employees/' + employeeId + '/')
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
@@ -109,55 +421,22 @@
                     return;
                 }
 
-                document.getElementById('modalEmployeeName').textContent = data.display_name || data.full_name;
-                renderEmployeeDocuments(data.documents || []);
-                document.getElementById('viewFullName').textContent = data.full_name + (data.nickname ? ' · ' + data.nickname : '');
-                document.getElementById('viewUsername').textContent = data.username;
-                document.getElementById('viewRole').textContent = data.role_display || data.role_label || '';
-                document.getElementById('viewPhone').textContent = data.phone || '—';
-                document.getElementById('viewTelegram').textContent = data.telegram || '—';
-                document.getElementById('viewStatus').textContent = data.is_active ? 'Активен' : 'Неактивен';
-                document.getElementById('viewDateJoined').textContent = data.date_joined || '—';
-                document.getElementById('viewLastLogin').textContent = data.last_login || '—';
+                empData = employeeFromData(data);
+                empPendingDocs = (data.documents || []).map(function(item) {
+                    return {
+                        id: item.id,
+                        kind: item.kind,
+                        typeLabel: item.kind_display,
+                        file: (item.url || '').split('/').pop(),
+                        size: item.uploaded_at,
+                        url: item.url,
+                    };
+                });
 
-                document.getElementById('viewPassportSeries').textContent = data.passport_series || '—';
-                document.getElementById('viewPassportNumber').textContent = data.passport_number || '—';
-                document.getElementById('viewPassportIssuedBy').textContent = data.passport_issued_by || '—';
-                document.getElementById('viewPassportIssuedDate').textContent = data.passport_issued_date || '—';
-                document.getElementById('viewPassportDepartmentCode').textContent = data.passport_department_code || '—';
-                document.getElementById('viewPassportRegistration').textContent = data.passport_registration || '—';
-                document.getElementById('viewPassportInn').textContent = data.passport_inn || '—';
-                document.getElementById('viewPassportSnils').textContent = data.passport_snils || '—';
+                empCreatedText.textContent = empData.created || '';
+                empDeactivateBtn.style.display = '';
 
-                const artistCardTab = document.getElementById('artistCardTab');
-                if (data.is_artist) {
-                    if (artistCardTab) artistCardTab.style.display = 'inline-flex';
-                    currentArtistCard = data.artist_card;
-                    renderArtistCardView(data.artist_card);
-                } else {
-                    if (artistCardTab) artistCardTab.style.display = 'none';
-                    currentArtistCard = null;
-                }
-
-                document.getElementById('editUsername').value = data.username;
-                document.getElementById('editPassword').value = '';
-                document.getElementById('editFullName').value = data.full_name;
-                const editNickname = document.getElementById('editNickname');
-                if (editNickname) editNickname.value = data.nickname || '';
-                setRoleCheckboxes(data.role_codes || [data.role]);
-                setPhoneField('editPhone', data.phone);
-                document.getElementById('editTelegram').value = data.telegram || '';
-                document.getElementById('editIsActive').checked = data.is_active;
-                document.getElementById('editPassportSeries').value = data.passport_series || '';
-                document.getElementById('editPassportNumber').value = data.passport_number || '';
-                document.getElementById('editPassportIssuedBy').value = data.passport_issued_by || '';
-                document.getElementById('editPassportIssuedDate').value = data.passport_issued_date || '';
-                document.getElementById('editPassportDepartmentCode').value = data.passport_department_code || '';
-                document.getElementById('editPassportRegistration').value = data.passport_registration || '';
-                document.getElementById('editPassportInn').value = data.passport_inn || '';
-                document.getElementById('editPassportSnils').value = data.passport_snils || '';
-
-                switchTab('main');
+                renderCard();
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
             })
@@ -167,228 +446,368 @@
             });
     }
 
-    function renderArtistCardView(card) {
-        if (!artistCardView) return;
-        if (!card || (!card.weight && !card.height && !card.shoe_size && !card.skills_text && !card.comment && (!card.known_shows || card.known_shows.length === 0))) {
-            artistCardView.innerHTML = '<p class="artist-card-empty">Карточка артиста не заполнена</p>';
-            return;
-        }
+    function openAddEmployee() {
+        currentEmployeeId = null;
+        empMode = 'create';
+        empDirty = false;
+        empPendingDocs = [];
+        empData = emptyEmployee();
+        empData.roles = ['artist'];
 
-        let showsHtml = '—';
-        if (card.known_shows && card.known_shows.length > 0) {
-            showsHtml = card.known_shows.map(s => escapeHtml(s.name)).join(', ');
-        }
+        empCreatedText.textContent = '';
+        empDeactivateBtn.style.display = 'none';
 
-        artistCardView.innerHTML = `
-            <div class="artist-card-details">
-                <div class="detail-row">
-                    <span class="detail-label">Вес:</span>
-                    <span class="detail-value">${escapeHtml(card.weight || '—')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Рост:</span>
-                    <span class="detail-value">${escapeHtml(card.height || '—')}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Размер обуви:</span>
-                    <span class="detail-value">${escapeHtml(card.shoe_size || '—')}</span>
-                </div>
-                <div class="detail-row detail-row--full" style="grid-column: 1 / -1;">
-                    <span class="detail-label">Навыки:</span>
-                    <span class="detail-value">${escapeHtml(card.skills_text || '—')}</span>
-                </div>
-                <div class="detail-row detail-row--full" style="grid-column: 1 / -1;">
-                    <span class="detail-label">Комментарий:</span>
-                    <span class="detail-value">${escapeHtml(card.comment || '—')}</span>
-                </div>
-                <div class="detail-row detail-row--full" style="grid-column: 1 / -1;">
-                    <span class="detail-label">Знание шоу:</span>
-                    <span class="detail-value">${showsHtml}</span>
-                </div>
-            </div>
-        `;
+        renderCard();
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 
-    function closeModal() {
+    function closeEmployeeModal() {
         modal.classList.remove('active');
         document.body.style.overflow = '';
         currentEmployeeId = null;
-        currentArtistCard = null;
-        viewMode.style.display = 'block';
-        editMode.style.display = 'none';
-        if (employeeEditFooter) employeeEditFooter.style.display = 'none';
-        isEditMode = false;
-        formSnapshot = null;
+        empData = null;
+        empDirty = false;
+        empPendingDocs = [];
     }
 
-    function isEmployeeFormDirty() {
-        if (!isEditMode) return false;
-        return window.UI.isDirtyFromSnapshot(editForm, formSnapshot);
-    }
+    function requestCloseEmployeeModal() {
+        const proceed = function() {
+            closeEmployeeModal();
 
-    function requestCloseModal() {
-        if (!isEmployeeFormDirty()) {
-            closeModal();
+            if (empMode === 'create') addEmployeeBtn.focus();
+        };
+
+        if (!empDirty) {
+            proceed();
             return;
         }
 
         window.UI.confirm({
-            title: 'Завершить редактирование?',
-            text: 'Вы действительно хотите завершить редактирование? Изменения не сохранятся.',
-            okText: 'Завершить',
-            cancelText: 'Остаться',
-            danger: true
-        }).then(confirmed => {
-            if (confirmed) closeModal();
-        });
-    }
-
-    function requestCloseAddModal() {
-        if (window.UI.isEmptyForm(addForm)) {
-            closeAddModal();
-            return;
-        }
-
-        window.UI.confirm({
-            title: 'Завершить редактирование?',
-            text: 'Вы действительно хотите закрыть окно? Введённые данные не сохранятся.',
+            title: 'Закрыть карточку?',
+            text: 'Изменения не сохранены. Вы действительно хотите закрыть?',
             okText: 'Закрыть',
             cancelText: 'Остаться',
             danger: true
-        }).then(confirmed => {
-            if (confirmed) closeAddModal();
+        }).then(function(confirmed) {
+            if (confirmed) proceed();
         });
     }
 
-    function openEditMode() {
-        isEditMode = true;
-        viewMode.style.display = 'none';
-        editMode.style.display = 'block';
-        if (employeeEditFooter) employeeEditFooter.style.display = '';
-        formSnapshot = window.UI.snapshot(editForm);
-    }
+    function startSkillEdit() {
+        const box = document.getElementById('skillBox');
 
-    function cancelEdit() {
-        isEditMode = false;
-        viewMode.style.display = 'block';
-        editMode.style.display = 'none';
-        if (employeeEditFooter) employeeEditFooter.style.display = 'none';
-    }
+        if (!box || box.querySelector('.p-input')) return;
 
-    function openAddModal() {
-        addModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        addForm.reset();
-        document.getElementById('addIsActive').checked = true;
-        document.getElementById('addPhone').value = '';
-    }
+        const input = document.createElement('input');
+        input.className = 'p-input p-input--chip';
+        input.placeholder = 'навык';
+        box.appendChild(input);
+        input.focus();
 
-    function closeAddModal() {
-        addModal.classList.remove('active');
-        document.body.style.overflow = '';
-    }
+        let done = false;
 
-    if (modalCloseBtn) {
-        modalCloseBtn.addEventListener('click', requestCloseModal);
-    }
-    if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) requestCloseModal();
+        function finish(save) {
+            if (done) return;
+            done = true;
+
+            const value = input.value.trim();
+
+            if (save && value && empData.artist.skills.indexOf(value) === -1) {
+                empData.artist.skills.push(value);
+                empDirty = true;
+            }
+
+            renderCard();
+        }
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                finish(false);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                finish(true);
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(function() {
+                if (input.value.trim()) finish(true);
+                else finish(false);
+            }, 60);
         });
     }
 
-    const closeEmployeeBtn = document.getElementById('closeEmployeeBtn');
+    function startEdit(target, silent) {
+        if (!target || target.querySelector('input, textarea')) return;
 
-    if (closeEmployeeBtn) {
-        closeEmployeeBtn.addEventListener('click', requestCloseModal);
-    }
+        const path = target.dataset.edit;
+        const raw = String(getPath(path) || '');
+        const wide = WIDE_KEYS[path] || raw.length > 34;
+        const maskName = MASK_BY_PATH[path];
+        const mask = maskName ? MASKS[maskName] : null;
 
-    if (editEmployeeBtn) {
-        editEmployeeBtn.addEventListener('click', openEditMode);
-    }
-    if (editCancelBtn) {
-        editCancelBtn.addEventListener('click', cancelEdit);
-    }
+        const input = document.createElement(wide ? 'textarea' : 'input');
+        input.className = 'p-input' + (wide ? ' p-input--area' : '');
+        input.value = raw;
+        input.dataset.edit = path;
 
-    if (editSubmitBtn) {
-        editSubmitBtn.addEventListener('click', function() {
-            if (editForm) editForm.requestSubmit();
-        });
-    }
+        if (wide) input.rows = 2;
 
-    if (addSubmitBtn) {
-        addSubmitBtn.addEventListener('click', function() {
-            if (addForm) addForm.requestSubmit();
-        });
-    }
+        const holder = document.createElement('span');
+        holder.className = 'p-editbox' + (wide ? ' p-editbox--wide' : '');
+        holder.appendChild(input);
 
-    if (artistCardSubmitBtn) {
-        artistCardSubmitBtn.addEventListener('click', function() {
-            if (artistCardForm) artistCardForm.requestSubmit();
-        });
-    }
+        target.innerHTML = '';
+        target.appendChild(holder);
+        target.classList.add('is-editing');
+        target.classList.remove('is-empty');
 
-    if (editForm) {
-        editForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+        if (!silent) input.focus();
 
-            const data = {
-                username: document.getElementById('editUsername').value.trim(),
-                password: document.getElementById('editPassword').value.trim(),
-                full_name: document.getElementById('editFullName').value.trim(),
-                nickname: document.getElementById('editNickname') ? document.getElementById('editNickname').value.trim() : '',
-                roles: collectRoles(editForm).join(','),
-                phone: document.getElementById('editPhone').value.trim(),
-                telegram: document.getElementById('editTelegram').value.trim(),
-                is_active: document.getElementById('editIsActive').checked ? 'on' : 'off',
-                passport_series: document.getElementById('editPassportSeries').value.trim(),
-                passport_number: document.getElementById('editPassportNumber').value.trim(),
-                passport_issued_by: document.getElementById('editPassportIssuedBy').value.trim(),
-                passport_issued_date: document.getElementById('editPassportIssuedDate').value,
-                passport_department_code: document.getElementById('editPassportDepartmentCode').value.trim(),
-                passport_registration: document.getElementById('editPassportRegistration').value.trim(),
-                passport_inn: document.getElementById('editPassportInn').value.trim(),
-                passport_snils: document.getElementById('editPassportSnils').value.trim(),
-                rzd_bonus_number: document.getElementById('editRzdBonus') ? document.getElementById('editRzdBonus').value.trim() : '',
-                instagram: document.getElementById('editInstagram') ? document.getElementById('editInstagram').value.trim() : '',
-                international_passport_series: document.getElementById('editIntPassportSeries') ? document.getElementById('editIntPassportSeries').value.trim() : '',
-                international_passport_number: document.getElementById('editIntPassportNumber') ? document.getElementById('editIntPassportNumber').value.trim() : '',
-            };
+        const end = input.value.length;
+        input.setSelectionRange(end, end);
 
-            if (!data.username || !data.full_name) {
-                showToast('Заполните обязательные поля');
+        if (wide) autoGrow(input);
+
+        let done = false;
+
+        function finish(save) {
+            if (done) return;
+            done = true;
+
+            if (!save) {
+                renderCard();
                 return;
             }
 
-            fetch(`/employees/${currentEmployeeId}/update/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: new URLSearchParams(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showToast(data.error);
-                    return;
-                }
-                if (data.success) {
-                    showToast('Данные сотрудника успешно обновлены');
-                    cancelEdit();
-                    renderEmployees();
-                    openEmployeeModal(currentEmployeeId);
-                }
-            })
-            .catch(error => {
-                showToast('Ошибка при обновлении сотрудника');
-                console.error(error);
-            });
+            let value = mask ? mask(input.value) : input.value;
+            value = String(value).trim();
+
+            if (value === raw) {
+                renderCard();
+                return;
+            }
+
+            setPath(path, value);
+            empDirty = true;
+
+            if (path === 'role' || path.indexOf('roles') === 0) {
+                /* noop */
+            }
+
+            if (path === 'name' && value) {
+                const row = document.querySelector('tr[data-employee-id="' + currentEmployeeId + '"] [data-row-name]');
+                if (row) row.textContent = value;
+            }
+
+            renderCard();
+        }
+
+        input.addEventListener('input', function() {
+            if (wide) autoGrow(input);
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                finish(false);
+                return;
+            }
+
+            if (e.key !== 'Enter') return;
+            if (wide && !e.ctrlKey) return;
+
+            e.preventDefault();
+            finish(true);
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(function() { finish(true); }, 60);
         });
     }
 
-    function deactivateCurrentEmployee(sourceButton) {
+    function collectRoles() {
+        return (empData.roles || []).slice();
+    }
+
+    function toggleRole(code) {
+        const list = (empData.roles || []).slice();
+        const index = list.indexOf(code);
+
+        if (index === -1) {
+            list.push(code);
+        } else {
+            if (list.length === 1) {
+                showToast('Должна быть выбрана хотя бы одна роль');
+                return;
+            }
+
+            list.splice(index, 1);
+        }
+
+        empData.roles = list;
+        empDirty = true;
+        renderCard();
+    }
+
+    function buildPayload() {
+        const passwordField = getPath('password');
+
+        return {
+            username: String(getPath('login') || '').trim(),
+            password: String(passwordField || '').trim(),
+            full_name: String(getPath('name') || '').trim(),
+            nickname: String(getPath('nickname') || '').trim(),
+            roles: collectRoles().join(','),
+            phone: String(getPath('phone') || '').trim(),
+            telegram: String(getPath('telegram') || '').trim(),
+            is_active: empData.active !== false ? 'on' : 'off',
+            passport_series: String(getPath('passport.series') || '').trim(),
+            passport_number: String(getPath('passport.number') || '').trim(),
+            passport_issued_by: String(getPath('passport.issuedBy') || '').trim(),
+            passport_issued_date: isoDate(getPath('passport.issuedAt')),
+            passport_department_code: String(getPath('passport.code') || '').trim(),
+            passport_registration: String(getPath('address') || '').trim(),
+            passport_inn: String(getPath('inn') || '').trim(),
+            passport_snils: String(getPath('snils') || '').trim(),
+            rzd_bonus_number: String(getPath('rzd') || '').trim(),
+            instagram: String(getPath('instagram') || '').trim(),
+            international_passport_series: String(getPath('foreign.series') || '').trim(),
+            international_passport_number: String(getPath('foreign.number') || '').trim(),
+        };
+    }
+
+    function isoDate(value) {
+        const match = String(value || '').trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+
+        if (!match) return '';
+
+        return match[3] + '-' + match[2] + '-' + match[1];
+    }
+
+    function validatePayload(payload) {
+        if (!payload.full_name) {
+            showToast('Укажите ФИО сотрудника');
+            return false;
+        }
+
+        if (empMode === 'create' && !payload.username) {
+            showToast('Укажите логин');
+            return false;
+        }
+
+        if (empMode === 'create' && !payload.password) {
+            showToast('Укажите пароль');
+            return false;
+        }
+
+        if (!payload.roles) {
+            showToast('Выберите хотя бы одну роль');
+            return false;
+        }
+
+        return true;
+    }
+
+    function saveEmployee() {
+        if (!empData) return;
+
+        const payload = buildPayload();
+
+        if (!validatePayload(payload)) return;
+
+        const isCreate = empMode === 'create';
+        const url = isCreate ? '/employees/' : '/employees/' + currentEmployeeId + '/update/';
+
+        if (empSaveBtn) window.UI.setButtonBusy(empSaveBtn, true, 'Сохранение...');
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: new URLSearchParams(payload)
+        })
+        .then(response => response.json().then(body => ({ status: response.status, body: body })))
+        .then(function(result) {
+            const data = result.body;
+
+            if (data.error) {
+                showToast(data.error);
+                return;
+            }
+
+            if (!data.success) return;
+
+            const employeeId = (data.employee && data.employee.id) || currentEmployeeId;
+
+            empDirty = false;
+
+            const saveArtistCard = isArtist() && empData.artist
+                ? fetch('/employees/' + employeeId + '/artist-card/update/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: new URLSearchParams({
+                        weight: String(empData.artist.weight || '').trim(),
+                        height: String(empData.artist.height || '').trim(),
+                        shoe_size: String(empData.artist.shoe || '').trim(),
+                        skills_text: (empData.artist.skills || []).join(', '),
+                        comment: String(empData.artist.comment || '').trim(),
+                    })
+                }).catch(function() { return null; })
+                : Promise.resolve(null);
+
+            return saveArtistCard
+                .then(function() { return uploadPendingDocuments(employeeId); })
+                .then(function() {
+                    showToast(isCreate ? 'Сотрудник создан' : 'Данные сохранены');
+
+                    if (isCreate) {
+                        closeEmployeeModal();
+                    } else {
+                        closeEmployeeModal();
+                    }
+
+                    loadEmployees(true);
+                });
+        })
+        .catch(function(error) {
+            showToast(isCreate ? 'Ошибка при создании сотрудника' : 'Ошибка сохранения');
+            console.error(error);
+        })
+        .finally(function() {
+            if (empSaveBtn) window.UI.setButtonBusy(empSaveBtn, false);
+        });
+    }
+
+    function uploadPendingDocuments(employeeId) {
+        const pending = (empPendingDocs || []).filter(function(doc) { return doc.fileRef; });
+
+        if (!pending.length) return Promise.resolve();
+
+        return pending.reduce(function(chain, doc) {
+            return chain.then(function() {
+                const formData = new FormData();
+                formData.append('file', doc.fileRef);
+                formData.append('kind', doc.kind || 'other');
+                formData.append('title', doc.typeLabel || '');
+
+                return fetch('/employees/' + employeeId + '/documents/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCSRFToken() },
+                    body: formData,
+                }).catch(function() { return null; });
+            });
+        }, Promise.resolve());
+    }
+
+    function deactivateCurrentEmployee() {
         if (!currentEmployeeId) return;
 
         window.UI.confirm({
@@ -397,15 +816,15 @@
             okText: 'Деактивировать',
             cancelText: 'Отмена',
             danger: true
-        }).then(confirmed => {
+        }).then(function(confirmed) {
             if (!confirmed) return;
 
-            fetch(`/employees/${currentEmployeeId}/delete/`, {
+            fetch('/employees/' + currentEmployeeId + '/delete/', {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCSRFToken() }
             })
             .then(response => response.json())
-            .then(data => {
+            .then(function(data) {
                 if (data.error) {
                     showToast(data.error);
                     return;
@@ -413,223 +832,208 @@
 
                 if (data.success) {
                     showToast('Сотрудник деактивирован');
-                    closeModal();
-                    renderEmployees();
+                    closeEmployeeModal();
+                    loadEmployees(true);
                 }
             })
-            .catch(error => {
+            .catch(function(error) {
                 showToast('Ошибка при деактивации сотрудника');
                 console.error(error);
             });
         });
     }
 
-    if (deleteEmployeeBtn) {
-        deleteEmployeeBtn.addEventListener('click', function() {
-            deactivateCurrentEmployee(this);
+    function removeDocument(index) {
+        const doc = (empPendingDocs || [])[index];
+
+        if (!doc) return;
+
+        if (doc.id && currentEmployeeId) {
+            fetch('/employees/' + currentEmployeeId + '/documents/' + doc.id + '/delete/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCSRFToken() },
+            })
+            .then(response => response.json())
+            .then(function(data) {
+                if (data.error) {
+                    showToast(data.error);
+                    return;
+                }
+
+                empPendingDocs.splice(index, 1);
+                renderCard();
+            })
+            .catch(function() { showToast('Не удалось удалить документ'); });
+
+            return;
+        }
+
+        empPendingDocs.splice(index, 1);
+        renderCard();
+    }
+
+    function pickDocuments() {
+        if (!empDocFile) return;
+
+        empDocFile.value = '';
+        empDocFile.click();
+    }
+
+    if (empDocFile) {
+        empDocFile.addEventListener('change', function() {
+            const files = Array.prototype.slice.call(empDocFile.files || []);
+
+            if (!files.length) return;
+
+            files.forEach(function(file) {
+                empPendingDocs.push({
+                    id: null,
+                    kind: 'other',
+                    typeLabel: 'Прочее',
+                    file: file.name,
+                    size: (file.size / 1048576).toFixed(1).replace('.', ',') + ' МБ',
+                    fileRef: file,
+                });
+            });
+
+            empDirty = true;
+            renderCard();
         });
     }
 
-    const editDeactivateBtn = document.getElementById('editDeactivateBtn');
+    function bindCardEvents() {
+        if (!cardView) return;
 
-    if (editDeactivateBtn) {
-        editDeactivateBtn.addEventListener('click', function() {
-            deactivateCurrentEmployee(this);
-        });
-    }
+        cardView.addEventListener('click', function(e) {
+            if (e.target.closest('input, textarea')) return;
 
-    if (addEmployeeBtn) {
-        addEmployeeBtn.addEventListener('click', openAddModal);
-    }
-    if (addModalCloseBtn) {
-        addModalCloseBtn.addEventListener('click', closeAddModal);
-    }
-    if (addModalCancelBtn) {
-        addModalCancelBtn.addEventListener('click', closeAddModal);
-    }
-    if (addModal) {
-        addModal.addEventListener('click', function(e) {
-            if (e.target === this) closeAddModal();
-        });
-    }
-
-    if (addForm) {
-        addForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const data = {
-                username: document.getElementById('addUsername').value.trim(),
-                password: document.getElementById('addPassword').value.trim(),
-                full_name: document.getElementById('addFullName').value.trim(),
-                nickname: document.getElementById('addNickname') ? document.getElementById('addNickname').value.trim() : '',
-                roles: collectRoles(addForm).join(','),
-                phone: document.getElementById('addPhone').value.trim(),
-                telegram: document.getElementById('addTelegram').value.trim(),
-                is_active: document.getElementById('addIsActive').checked ? 'on' : 'off',
-                passport_series: document.getElementById('addPassportSeries').value.trim(),
-                passport_number: document.getElementById('addPassportNumber').value.trim(),
-                passport_issued_by: document.getElementById('addPassportIssuedBy').value.trim(),
-                passport_issued_date: document.getElementById('addPassportIssuedDate').value,
-                passport_department_code: document.getElementById('addPassportDepartmentCode').value.trim(),
-                passport_registration: document.getElementById('addPassportRegistration').value.trim(),
-                passport_inn: document.getElementById('addPassportInn').value.trim(),
-                passport_snils: document.getElementById('addPassportSnils').value.trim(),
-                rzd_bonus_number: document.getElementById('addRzdBonus') ? document.getElementById('addRzdBonus').value.trim() : '',
-                instagram: document.getElementById('addInstagram') ? document.getElementById('addInstagram').value.trim() : '',
-                international_passport_series: document.getElementById('addIntPassportSeries') ? document.getElementById('addIntPassportSeries').value.trim() : '',
-                international_passport_number: document.getElementById('addIntPassportNumber') ? document.getElementById('addIntPassportNumber').value.trim() : '',
-            };
-
-            if (!data.username || !data.password || !data.full_name) {
-                showToast('Заполните обязательные поля');
+            if (e.target.closest('[data-close]')) {
+                requestCloseEmployeeModal();
                 return;
             }
 
-            fetch('/employees/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: new URLSearchParams(data)
-            })
-            .then(response => response.json())
-            .then(res => {
-                if (res.error) {
-                    showToast(res.error);
-                    return;
-                }
-                if (res.success) {
-                    closeAddModal();
-                    renderEmployees();
-                    if (res.employee.is_artist) {
-                        showArtistCardNotification(res.employee.id, res.employee.full_name);
-                    } else {
-                        showToast(`Сотрудник "${res.employee.full_name}" успешно создан`);
-                    }
-                }
-            })
-            .catch(error => {
-                showToast('Ошибка при добавлении сотрудника');
-                console.error(error);
+            if (e.target.closest('#activeBtn')) {
+                empData.active = empData.active === false;
+                empDirty = true;
+                renderCard();
+                return;
+            }
+
+            const roleChip = e.target.closest('.chip--role');
+
+            if (roleChip) {
+                toggleRole(roleChip.dataset.role);
+                return;
+            }
+
+            if (e.target.closest('#docAdd')) {
+                pickDocuments();
+                return;
+            }
+
+            const docRemove = e.target.closest('[data-doc-remove]');
+
+            if (docRemove) {
+                removeDocument(Number(docRemove.dataset.docRemove));
+                return;
+            }
+
+            const skillRemove = e.target.closest('[data-skill-remove]');
+
+            if (skillRemove) {
+                const name = skillRemove.dataset.skillRemove;
+
+                empData.artist.skills = (empData.artist.skills || []).filter(function(item) {
+                    return item !== name;
+                });
+
+                empDirty = true;
+                renderCard();
+                return;
+            }
+
+            if (e.target.closest('#skillBox')) {
+                startSkillEdit();
+                return;
+            }
+
+            const target = e.target.closest('[data-edit]');
+
+            if (target) startEdit(target);
+        });
+    }
+
+    bindCardEvents();
+
+    if (empSaveBtn) empSaveBtn.addEventListener('click', saveEmployee);
+    if (empCloseBtn) empCloseBtn.addEventListener('click', requestCloseEmployeeModal);
+    if (empDeactivateBtn) empDeactivateBtn.addEventListener('click', deactivateCurrentEmployee);
+    if (addEmployeeBtn) addEmployeeBtn.addEventListener('click', openAddEmployee);
+
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) requestCloseEmployeeModal();
+        });
+    }
+
+    function attachRowEvents() {
+        tableBody.querySelectorAll('tr[data-employee-id]').forEach(row => {
+            row.addEventListener('click', function(e) {
+                if (e.button !== 0) return;
+
+                const id = parseInt(row.getAttribute('data-employee-id'));
+                openEmployeeModal(id);
+            });
+
+            row.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+
+                const id = parseInt(row.getAttribute('data-employee-id'));
+                openEmployeeModal(id);
             });
         });
     }
 
-    function showArtistCardNotification(employeeId, employeeName) {
-        const notification = document.createElement('div');
-        notification.className = 'notification';
-        notification.innerHTML = `
-            <div class="notification__content">
-                <div class="notification__text">
-                    Сотрудник "<strong>${escapeHtml(employeeName)}</strong>" успешно создан.<br>
-                    Хотите отредактировать карточку артиста сейчас?
-                </div>
-                <div class="notification__actions">
-                    <button class="notification__btn" data-action="edit-artist-card">
-                        Редактировать
-                    </button>
-                    <button class="notification__btn notification__btn--outline" data-action="dismiss">
-                        Закрыть
-                    </button>
-                </div>
-            </div>
-            <div class="notification__progress"></div>
-        `;
-
-        const progressBar = notification.querySelector('.notification__progress');
-        const duration = 5000;
-        const startTime = Date.now();
-
-        function updateProgress() {
-            const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, 1 - elapsed / duration);
-            progressBar.style.transform = `scaleX(${remaining})`;
-            if (remaining > 0) {
-                requestAnimationFrame(updateProgress);
-            }
-        }
-
-        requestAnimationFrame(updateProgress);
-
-        const timeoutId = setTimeout(() => {
-            removeNotification(notification);
-        }, duration);
-
-        notification.querySelector('[data-action="edit-artist-card"]').addEventListener('click', function() {
-            clearTimeout(timeoutId);
-            removeNotification(notification);
-            openEmployeeModal(employeeId);
-            setTimeout(() => {
-                if (currentEmployeeId === employeeId) {
-                    openArtistCardModal(employeeId);
-                }
-            }, 500);
-        });
-
-        notification.querySelector('[data-action="dismiss"]').addEventListener('click', function() {
-            clearTimeout(timeoutId);
-            removeNotification(notification);
-        });
-
-        notificationContainer.appendChild(notification);
-    }
-
-    function removeNotification(notification) {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(30px)';
-        notification.style.transition = 'all 0.3s ease';
-        setTimeout(() => {
-            if (notification.parentNode) notification.remove();
-        }, 300);
-    }
-
-    function loadServices() {
-        fetch('/artist-card/services/')
-            .then(r => r.json())
-            .then(data => {
-                if (data.services) {
-                    allServices = data.services;
-                }
-            })
-            .catch(err => console.error('Ошибка загрузки услуг:', err));
-    }
-
     function renderShowsCheckboxes(selectedIds) {
         if (!showsMultiSelect) return;
-        if (allServices.length === 0) {
-            showsMultiSelect.innerHTML = '<span style="color: #7a7267; font-size: 0.85rem; padding: 0.5rem;">Нет доступных услуг</span>';
+
+        if (!allServices.length) {
+            showsMultiSelect.innerHTML = '<span class="artist-card-empty">Нет доступных услуг</span>';
             return;
         }
 
         const selectedSet = new Set(selectedIds || []);
 
-        showsMultiSelect.innerHTML = allServices.map(s => {
-            const isChecked = selectedSet.has(s.id);
-            return `
-                <label class="show-checkbox-label ${isChecked ? 'checked' : ''}">
-                    <input type="checkbox" value="${s.id}" ${isChecked ? 'checked' : ''}>
-                    ${escapeHtml(s.name)}
-                </label>
-            `;
+        showsMultiSelect.innerHTML = allServices.map(function(s) {
+            const checked = selectedSet.has(s.id);
+
+            return '<label class="show-checkbox-label' + (checked ? ' checked' : '') + '">'
+                + '<input type="checkbox" value="' + s.id + '"' + (checked ? ' checked' : '') + '>'
+                + escapeHtml(s.name)
+                + '</label>';
         }).join('');
 
-        showsMultiSelect.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        showsMultiSelect.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
             cb.addEventListener('change', function() {
                 this.closest('.show-checkbox-label').classList.toggle('checked', this.checked);
             });
         });
     }
 
+    function closeArtistCardModal() {
+        if (artistCardModal) artistCardModal.classList.remove('active');
+    }
+
     function openArtistCardModal(employeeId) {
-        fetch(`/employees/${employeeId}/artist-card/`)
+        fetch('/employees/' + employeeId + '/artist-card/')
             .then(r => r.json())
-            .then(data => {
+            .then(function(data) {
                 if (data.error) {
                     showToast(data.error);
                     return;
                 }
-                const card = data.artist_card;
+
+                const card = data.artist_card || {};
 
                 document.getElementById('artistWeight').value = card.weight || '';
                 document.getElementById('artistHeight').value = card.height || '';
@@ -637,37 +1041,18 @@
                 document.getElementById('artistSkillsText').value = card.skills_text || '';
                 document.getElementById('artistComment').value = card.comment || '';
 
-                const selectedIds = (card.known_shows || []).map(s => s.id);
-                renderShowsCheckboxes(selectedIds);
-
+                renderShowsCheckboxes((card.known_shows || []).map(s => s.id));
                 artistCardModal.classList.add('active');
             })
-            .catch(err => {
+            .catch(function(error) {
                 showToast('Ошибка загрузки карточки артиста');
-                console.error(err);
+                console.error(error);
             });
     }
 
-    function closeArtistCardModal() {
-        if (artistCardModal) {
-            artistCardModal.classList.remove('active');
-        }
-    }
+    if (artistCardModalCloseBtn) artistCardModalCloseBtn.addEventListener('click', closeArtistCardModal);
+    if (artistCardCancelBtn) artistCardCancelBtn.addEventListener('click', closeArtistCardModal);
 
-    if (editArtistCardBtn) {
-        editArtistCardBtn.addEventListener('click', function() {
-            if (currentEmployeeId) {
-                openArtistCardModal(currentEmployeeId);
-            }
-        });
-    }
-
-    if (artistCardModalCloseBtn) {
-        artistCardModalCloseBtn.addEventListener('click', closeArtistCardModal);
-    }
-    if (artistCardCancelBtn) {
-        artistCardCancelBtn.addEventListener('click', closeArtistCardModal);
-    }
     if (artistCardModal) {
         artistCardModal.addEventListener('click', function(e) {
             if (e.target === this) closeArtistCardModal();
@@ -681,63 +1066,52 @@
             if (!currentEmployeeId) return;
 
             const selectedShows = [];
-            showsMultiSelect.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+
+            showsMultiSelect.querySelectorAll('input[type="checkbox"]:checked').forEach(function(cb) {
                 selectedShows.push(cb.value);
             });
 
-            const data = {
-                weight: document.getElementById('artistWeight').value.trim(),
-                height: document.getElementById('artistHeight').value.trim(),
-                shoe_size: document.getElementById('artistShoeSize').value.trim(),
-                skills_text: document.getElementById('artistSkillsText').value.trim(),
-                comment: document.getElementById('artistComment').value.trim(),
-                known_shows: selectedShows.join(','),
-            };
-
-            fetch(`/employees/${currentEmployeeId}/artist-card/update/`, {
+            fetch('/employees/' + currentEmployeeId + '/artist-card/update/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-CSRFToken': getCSRFToken()
                 },
-                body: new URLSearchParams(data)
+                body: new URLSearchParams({
+                    weight: document.getElementById('artistWeight').value.trim(),
+                    height: document.getElementById('artistHeight').value.trim(),
+                    shoe_size: document.getElementById('artistShoeSize').value.trim(),
+                    skills_text: document.getElementById('artistSkillsText').value.trim(),
+                    comment: document.getElementById('artistComment').value.trim(),
+                    known_shows: selectedShows.join(','),
+                })
             })
             .then(r => r.json())
-            .then(res => {
+            .then(function(res) {
                 if (res.error) {
                     showToast(res.error);
                     return;
                 }
+
                 if (res.success) {
                     showToast('Карточка артиста сохранена');
-                    currentArtistCard = res.artist_card;
-                    renderArtistCardView(res.artist_card);
                     closeArtistCardModal();
                 }
             })
-            .catch(err => {
+            .catch(function(error) {
                 showToast('Ошибка сохранения карточки');
-                console.error(err);
+                console.error(error);
             });
         });
     }
 
-
-    function setRoleCheckboxes(codes) {
-        document.querySelectorAll('input[name="roles"]').forEach(function (box) {
-            box.checked = codes.indexOf(box.value) !== -1;
-        });
-    }
-
-    function collectRoles(scope) {
-        const boxes = scope.querySelectorAll('input[name="roles"]:checked');
-        const codes = [];
-
-        boxes.forEach(function (box) {
-            codes.push(box.value);
-        });
-
-        return codes;
+    function loadServices() {
+        fetch('/artist-card/services/')
+            .then(r => r.json())
+            .then(function(data) {
+                if (data.services) allServices = data.services;
+            })
+            .catch(function(error) { console.error(error); });
     }
 
     const EMPLOYEES_PAGE = 50;
@@ -745,101 +1119,6 @@
 
     const loadMoreBox = document.getElementById('employeesLoadMore');
     const loadMoreBtn = document.getElementById('employeesLoadMoreBtn');
-
-    function renderEmployeeDocuments(documents) {
-        const list = document.getElementById('employeeDocumentsList');
-
-        if (!list) return;
-
-        if (!documents || !documents.length) {
-            list.innerHTML = '<div class="employee-document__empty">Документы не загружены</div>';
-            return;
-        }
-
-        list.innerHTML = documents.map(item => `
-            <div class="employee-document">
-                <div class="employee-document__meta">
-                    <span class="employee-document__kind">${escapeHtml(item.kind_display)}${item.title ? ' · ' + escapeHtml(item.title) : ''}</span>
-                    <span class="employee-document__date">${escapeHtml(item.uploaded_at)}</span>
-                </div>
-                <div class="employee-document__actions">
-                    <a class="employee-document__link" href="${item.url}" target="_blank" rel="noopener">Открыть</a>
-                    <button type="button" class="order-payment__remove" data-document-delete="${item.id}">Удалить</button>
-                </div>
-            </div>
-        `).join('');
-
-        list.querySelectorAll('[data-document-delete]').forEach(button => {
-            button.addEventListener('click', function () {
-                const documentId = this.getAttribute('data-document-delete');
-
-                fetch(`/employees/${currentEmployeeId}/documents/${documentId}/delete/`, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCSRFToken() },
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        showToast(data.error);
-                        return;
-                    }
-
-                    loadEmployeeDocuments();
-                })
-                .catch(() => showToast('Не удалось удалить документ'));
-            });
-        });
-    }
-
-    function loadEmployeeDocuments() {
-        if (!currentEmployeeId) return;
-
-        fetch(`/employees/${currentEmployeeId}/documents/`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) renderEmployeeDocuments(data.documents);
-            })
-            .catch(() => {});
-    }
-
-    function uploadEmployeeDocument() {
-        const fileInput = document.getElementById('employeeDocumentFile');
-
-        if (!currentEmployeeId || !fileInput || !fileInput.files.length) {
-            showToast('Выберите файл');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        formData.append('kind', document.getElementById('employeeDocumentKind').value);
-        formData.append('title', document.getElementById('employeeDocumentTitle').value.trim());
-
-        fetch(`/employees/${currentEmployeeId}/documents/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken() },
-            body: formData,
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                showToast(data.error);
-                return;
-            }
-
-            fileInput.value = '';
-            document.getElementById('employeeDocumentTitle').value = '';
-            renderEmployeeDocuments(data.documents);
-            showToast('Документ загружен');
-        })
-        .catch(() => showToast('Не удалось загрузить документ'));
-    }
-
-    const employeeDocumentUploadBtn = document.getElementById('employeeDocumentUploadBtn');
-
-    if (employeeDocumentUploadBtn) {
-        employeeDocumentUploadBtn.addEventListener('click', uploadEmployeeDocument);
-    }
 
     function updateRowNumbers() {
         tableBody.querySelectorAll('tr[data-employee-id]').forEach(function(row, index) {
@@ -850,25 +1129,18 @@
     }
 
     function employeeRow(emp) {
-        return `
-            <tr data-employee-id="${emp.id}">
-                <td class="employees-table__index"></td>
-                <td>
-                    <div class="employee-name-cell">
-                        <span class="employee-name-cell__main">${escapeHtml(emp.display_name || emp.full_name)}</span>
-                        <span class="employee-name-cell__sub">${escapeHtml(emp.full_name)}</span>
-                    </div>
-                </td>
-                <td>${escapeHtml(emp.username)}</td>
-                <td>${escapeHtml(emp.roles_label || emp.role_display || '')}</td>
-                <td>${escapeHtml(emp.phone || '—')}</td>
-                <td>
-                    <span class="status-badge status-badge--${emp.is_active ? 'active' : 'inactive'}">
-                        ${emp.is_active ? 'Активен' : 'Неактивен'}
-                    </span>
-                </td>
-            </tr>
-        `;
+        return '<tr data-employee-id="' + emp.id + '">'
+            + '<td class="employees-table__index"></td>'
+            + '<td>'
+            + '<div class="employee-name-cell">'
+            + '<span class="employee-name-cell__main" data-row-name>' + escapeHtml(emp.display_name || emp.full_name) + '</span>'
+            + '<span class="employee-name-cell__sub">' + escapeHtml(emp.full_name) + '</span>'
+            + '</div>'
+            + '</td>'
+            + '<td>' + escapeHtml(emp.username) + '</td>'
+            + '<td>' + escapeHtml(emp.roles_label || emp.role_display || '') + '</td>'
+            + '<td>' + escapeHtml(emp.phone || '—') + '</td>'
+            + '</tr>';
     }
 
     function loadEmployees(reset) {
@@ -878,7 +1150,7 @@
 
         if (reset) {
             employeesOffset = 0;
-            tableBody.innerHTML = '<tr><td colspan="6" class="load-more__empty">Загрузка...</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" class="load-more__empty">Загрузка...</td></tr>';
         }
 
         if (search) params.set('search', search);
@@ -888,21 +1160,19 @@
 
         if (loadMoreBtn) loadMoreBtn.disabled = true;
 
-        fetch(`/employees/list/?${params.toString()}`)
+        fetch('/employees/list/?' + params.toString())
             .then(response => response.json())
-            .then(data => {
+            .then(function(data) {
                 if (loadMoreBtn) loadMoreBtn.disabled = false;
 
                 if (data.error) {
-                    window.UI.showToast(data.error);
+                    showToast(data.error);
                     return;
                 }
 
                 const rows = data.employees || [];
 
-                if (reset) {
-                    tableBody.innerHTML = '';
-                }
+                if (reset) tableBody.innerHTML = '';
 
                 if (!reset && !rows.length) {
                     if (loadMoreBox) loadMoreBox.classList.add('load-more--done');
@@ -910,13 +1180,12 @@
                 }
 
                 if (reset && !rows.length) {
-                    tableBody.innerHTML = '<tr><td colspan="6" class="load-more__empty">Сотрудники не найдены</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="5" class="load-more__empty">Сотрудники не найдены</td></tr>';
                 } else {
                     tableBody.insertAdjacentHTML('beforeend', rows.map(employeeRow).join(''));
                 }
 
                 employeesOffset += rows.length;
-
                 updateRowNumbers();
 
                 if (loadMoreBox) {
@@ -925,35 +1194,31 @@
 
                 attachRowEvents();
             })
-            .catch(error => {
+            .catch(function(error) {
                 if (loadMoreBtn) loadMoreBtn.disabled = false;
-                console.error('Ошибка загрузки сотрудников:', error);
+                console.error(error);
             });
     }
 
     if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', function() {
-            loadEmployees(false);
-        });
+        loadMoreBtn.addEventListener('click', function() { loadEmployees(false); });
     }
 
     let searchTimeout;
+
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => loadEmployees(true), 400);
+            searchTimeout = setTimeout(function() { loadEmployees(true); }, 400);
         });
     }
 
     if (roleFilter) {
-        roleFilter.addEventListener('change', function() {
-            loadEmployees(true);
-        });
+        roleFilter.addEventListener('change', function() { loadEmployees(true); });
     }
 
     if (artistCardModal) window.UI.registerModal(artistCardModal, closeArtistCardModal);
-    if (modal) window.UI.registerModal(modal, requestCloseModal);
-    if (addModal) window.UI.registerModal(addModal, requestCloseAddModal);
+    if (modal) window.UI.registerModal(modal, requestCloseEmployeeModal);
 
     loadServices();
     attachRowEvents();

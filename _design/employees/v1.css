@@ -1,0 +1,397 @@
+.p-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 0.85rem 1rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  background: #16130f;
+}
+
+.p-head__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.p-head__name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.p-head__sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.p-head__nick {
+  color: var(--text-2);
+}
+
+.p-head__login {
+  color: var(--dim);
+}
+
+.p-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.p-head__roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+  padding-top: 0.15rem;
+}
+
+.p-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.p-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.p-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}
+
+.p-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.p-card {
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.5rem 0.65rem 0.55rem;
+}
+
+.p-card .sec {
+  margin-bottom: 0.3rem;
+}
+
+.p-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.1rem 0;
+}
+
+.m-editable {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.02rem 0.2rem;
+  margin: 0 -0.2rem;
+  border-radius: 4px;
+  cursor: text;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.m-editable:hover {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(240, 168, 104, 0.28);
+}
+
+.is-empty:hover {
+  background: rgba(240, 168, 104, 0.16);
+}
+
+.p-row__v.is-empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.1rem;
+  min-width: 1.6rem;
+}
+
+.is-editing {
+  background: transparent;
+  box-shadow: none;
+  display: block;
+}
+
+.p-editbox {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.p-editbox--wide {
+  display: block;
+  width: 100%;
+}
+
+.p-input {
+  width: 100%;
+  min-width: 140px;
+  background: #17140f;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  outline: none;
+  line-height: 1.4;
+}
+
+.p-input--area {
+  resize: none;
+  overflow: hidden;
+  min-height: 2.4rem;
+}
+
+.p-input--chip {
+  min-width: 90px;
+  width: 100px;
+  font-size: 0.72rem;
+  border-radius: 40px;
+  padding: 0.03rem 0.45rem;
+  border-color: var(--border-strong);
+}
+
+.p-head__name.m-editable {
+  margin-bottom: 0.06rem;
+}
+
+.p-head__sub .m-editable {
+  font-size: 0.74rem;
+}
+
+.p-pass .m-editable {
+  margin: 0 -0.15rem;
+  padding: 0.02rem 0.15rem;
+}
+
+.p-pass__by.m-editable {
+  width: 100%;
+}
+
+.p-doc__cap.m-editable {
+  font-size: 0.7rem;
+}
+
+.p-docs__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.p-doc__x {
+  border: none;
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+  padding: 0 0.05rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.p-doc__x:hover {
+  color: var(--danger-text);
+}
+
+.p-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 40px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.p-add:hover {
+  color: var(--accent);
+  border-color: rgba(240, 168, 104, 0.6);
+  background: var(--accent-soft);
+}
+
+.chip__x {
+  padding: 0 0.05rem;
+  font-size: 0.8rem;
+}
+
+#activeBtn {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.p-skills {
+  min-height: 1.2rem;
+}
+
+.p-row__k {
+  font-size: 0.7rem;
+  color: var(--dim);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.p-row__v {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.p-empty {
+  color: var(--dim);
+}
+
+.p-pass {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.06rem 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.p-pass__num {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.p-pass__code {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.p-pass__by {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.p-pass__date {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  color: var(--dim);
+}
+
+.p-params {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.p-param {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.16rem 0.4rem;
+  background: var(--panel);
+}
+
+.p-param__k {
+  font-size: 0.66rem;
+  color: var(--dim);
+}
+
+.p-param__v {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.p-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+  margin-bottom: 0.35rem;
+}
+
+.p-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+
+.p-docs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}.p-doc {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.p-doc__type {
+  color: var(--accent);
+}
+
+.p-doc__cap {
+  color: var(--text-2);
+}
+
+.p-doc__file {
+  color: var(--muted);
+}
+
+.p-doc__size {
+  color: var(--dim);
+  font-size: 0.64rem;
+}
+
+.p-foot__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .p-body {
+    grid-template-columns: 1fr;
+  }
+
+  .p-head {
+    flex-wrap: wrap;
+  }
+}

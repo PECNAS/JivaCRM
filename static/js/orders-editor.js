@@ -1175,6 +1175,12 @@
         extraManagerIds = (data.manager_ids || [])
             .map(item => String(item))
             .filter(item => String(item) !== String(data.manager_id || ''));
+
+        if (!data.manager_id && !extraManagerIds.length) {
+            const currentId = document.body.dataset.employeeId;
+
+            if (currentId) extraManagerIds = [String(currentId)];
+        }
         editOrderPaymentMethod.value = data.payment_method || '';
 
         const managerGroup = document.getElementById('editOrderManagerGroup');
@@ -1499,7 +1505,16 @@
                     ).join('');
                     editOrderManager.innerHTML = '<option value="">Выберите менеджера</option>' + managerOptions;
                     if (currentOrderData) {
-                        editOrderManager.value = currentOrderData.manager_id || '';
+                        const managerId = currentOrderData.manager_id || document.body.dataset.employeeId || '';
+                        editOrderManager.value = managerId;
+
+                        if (!managerId) {
+                            const currentId = document.body.dataset.employeeId;
+
+                            if (currentId && !extraManagerIds.some(item => String(item) === String(currentId))) {
+                                extraManagerIds.push(String(currentId));
+                            }
+                        }
                     }
                     renderExtraManagers();
                     renderShowsTab();
@@ -3063,24 +3078,32 @@
             if (!currentOrderId) return;
 
             window.UI.confirm({
-                title: 'Удалить заказ?',
-                text: 'Заказ будет удалён из расписания и списка заказов. Действие необратимо.',
+                title: 'Удалить заказ из календаря',
+                text: 'Также удалить из истории агентства',
                 okText: 'Удалить',
                 cancelText: 'Отмена',
-                danger: true
-            }).then(confirmed => {
-                if (!confirmed) return;
+                danger: true,
+                checkLabel: 'Удалить из агентства',
+                checkDefault: false
+            }).then(function(result) {
+                if (!result) return;
+
+                const hardDelete = !!result.checked;
 
                 fetch(`/orders/${currentOrderId}/delete/`, {
                     method: 'POST',
-                    headers: { 'X-CSRFToken': getCSRFToken() }
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ hard: hardDelete })
                 })
                 .then(r => r.json())
                 .then(data => {
                     if (data.error) { showToast(data.error); return; }
 
                     if (data.success) {
-                        showToast('Заказ удалён');
+                        showToast(hardDelete ? 'Заказ удалён' : 'Заказ отменён');
                         close();
 
                         if (window.refreshSchedule) {

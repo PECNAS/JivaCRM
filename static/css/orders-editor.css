@@ -231,6 +231,29 @@
   padding: 0.6rem 1.5rem;
 }
 
+.editor-footer__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #9e9487;
+  font-size: 0.78rem;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.editor-footer__check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #e05252;
+  cursor: pointer;
+  margin: 0;
+}
+
+.editor-footer__check:hover {
+  color: #ddd4c7;
+}
+
 .create-client-form,
 .create-order-form {
   display: flex;

@@ -4,10 +4,12 @@
 {% block title %}Клиенты{% endblock %}
 
 {% block css %}
+<link rel="stylesheet" href="{% static 'css/create-order.css' %}">
 <link rel="stylesheet" href="{% static 'css/clients.css' %}">
 {% endblock %}
 
 {% block content %}
+{{ calendar_colors|json_script:"calendarColorsData" }}
 <div class="clients-layout">
     <aside class="clients-sidebar js-sidebar">
         <h1 class="clients-title">Клиенты</h1>
@@ -20,7 +22,15 @@
             Добавить клиента
         </button>
         <div class="clients-filters">
-            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, агентству, телеге или телефону" value="{{ search_query }}">
+            <div class="search-box">
+                <input type="text" class="search-input" id="searchInput" placeholder="Поиск по ФИО, агентству, телеге или телефону" value="{{ search_query }}">
+                <button type="button" class="search-box__clear" id="searchClearBtn" aria-label="Очистить поиск">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
             <select class="filter-select" id="ratingFilter">
                 <option value="all" {% if rating_filter == 'all' %}selected{% endif %}>Все рейтинги</option>
                 <option value="high" {% if rating_filter == 'high' %}selected{% endif %}>Высокий</option>
@@ -49,7 +59,6 @@
                     <span class="sort-indicator" id="agencySortIndicator"></span>
                 </th>
                 <th>Города</th>
-                <th>Рейтинг</th>
                 <th class="clients-table__sortable" id="requestsSortBtn" role="button" tabindex="0" aria-sort="none">
                     Запросы
                     <span class="sort-indicator" id="requestsSortIndicator"></span>
@@ -62,7 +71,7 @@
         </thead>
         <tbody id="clientsTableBody">
             {% for client in clients %}
-            <tr data-client-id="{{ client.id }}">
+            <tr data-client-id="{{ client.id }}" class="clients-table__row--{{ client.rating }}">
                 <td class="clients-table__index">{{ forloop.counter }}</td>
                 <td class="clients-table__name">{{ client.full_name }}</td>
                 <td class="clients-table__phone">{{ client.phone|default:"—" }}</td>
@@ -71,19 +80,14 @@
                     <a href="https://t.me/{{ client.telegram_username|cut:'@' }}" target="_blank" rel="noopener">@{{ client.telegram_username|cut:'@' }}</a>
                     {% else %}—{% endif %}
                 </td>
-                <td class="clients-table__agency">{{ client.agency.name|default:"—" }}</td>
+                <td class="clients-table__agency"{% if client.agency and client.agency.aliases.all %} title="Вариации: {% for alias in client.agency.aliases.all %}{{ alias.name }}{% if not forloop.last %}, {% endif %}{% endfor %}"{% endif %}>{{ client.agency.name|default:"—" }}</td>
                 <td class="clients-table__cities" title="{{ client.get_cities_display }}">{{ client.get_cities_display|default:"—" }}</td>
-                <td>
-                    <span class="rating-badge rating-badge--{{ client.rating }}">
-                        {{ client.get_rating_display }}
-                    </span>
-                </td>
                 <td class="clients-table__num">{{ client.requests_count|default:0 }}</td>
                 <td class="clients-table__num">{{ client.orders_count|default:0 }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="9" style="text-align:center; padding: 2rem; color: #7a7267;">
+                <td colspan="8" style="text-align:center; padding: 2rem; color: #7a7267;">
                     Клиенты не найдены
                 </td>
             </tr>
@@ -99,246 +103,211 @@
 </div>
 
 <div class="modal-overlay" id="clientModal">
-    <div class="modal modal--client">
-        <div class="modal__header">
-            <h2 class="modal__title" id="modalClientName">Клиент</h2>
+    <div class="modal modal--v6">
+        <div class="m-head">
+            <div class="m-head__title m-editable" id="modalClientName" data-edit="name">Клиент</div>
             <button class="modal__close" id="modalCloseBtn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
             </button>
         </div>
-        <div class="modal__body">
-            <div id="viewMode">
-                <div class="client-details">
-                    <div class="detail-row">
-                        <span class="detail-label">ФИО:</span>
-                        <span class="detail-value" id="viewFullName">—</span>
+        <div class="m-body">
+            <div class="m-main">
+                <div class="m-group">
+                    <div class="m-group__title">Контакты</div>
+                    <div class="m-row">
+                        <span class="m-key">Телефон</span>
+                        <span class="m-cell"><span class="m-val m-editable" data-edit="phone" id="v6Phone">—</span></span>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Телефон:</span>
-                        <span class="detail-value" id="viewPhone">—</span>
+                    <div class="m-row">
+                        <span class="m-key">Телеграм</span>
+                        <span class="m-cell"><span class="m-val m-editable" data-edit="telegram" id="v6Telegram">—</span></span>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Тип:</span>
-                        <span class="detail-value" id="viewClientType">—</span>
+                    <div class="m-row">
+                        <span class="m-key">Инстаграм</span>
+                        <span class="m-cell"><span class="m-val m-editable" data-edit="instagram" id="v6Instagram">—</span></span>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Агентство:</span>
-                        <span class="detail-value" id="viewAgency">—</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Рейтинг:</span>
-                        <span class="detail-value" id="viewRating">—</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Email:</span>
-                        <span class="detail-value" id="viewEmail">—</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Телеграм:</span>
-                        <span class="detail-value detail-value--link" id="viewTelegram">—</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Города:</span>
-                        <span class="detail-value" id="viewCity">—</span>
-                    </div>
-                    <div class="detail-row detail-row--wide">
-                        <span class="detail-label">Комментарий:</span>
-                        <span class="detail-value" id="viewComment">—</span>
+                    <div class="m-row">
+                        <span class="m-key">Email</span>
+                        <span class="m-cell"><span class="m-val m-editable" data-edit="email" id="v6Email">—</span></span>
                     </div>
                 </div>
-                <div class="client-orders">
-                    <h3 class="orders-title">Заказы клиента</h3>
-                    <div class="orders-list" id="viewOrdersList">
-                        <p class="orders-empty">Нет заказов</p>
+
+                <div class="m-group">
+                    <div class="m-group__title">Клиент</div>
+                    <div class="m-row m-row--type">
+                        <span class="m-key">Тип клиента</span>
+                        <span class="m-cell">
+                            <span class="switch" id="v6TypeSwitch">
+                                <button type="button" class="switch__btn" data-type="unknown">—</button>
+                                <button type="button" class="switch__btn is-on" data-type="organizer">Орг</button>
+                                <button type="button" class="switch__btn" data-type="agency">Агентство</button>
+                            </span>
+                        </span>
+                    </div>
+                    <div class="m-row" id="v6AgencyRow" style="display:none;">
+                        <span class="m-key">Агентство</span>
+                        <span class="m-cell"><span class="m-val m-editable" data-edit="agency" id="v6Agency">—</span></span>
+                    </div>
+                    <div class="m-row" id="v6AliasRow" style="display:none;">
+                        <span class="m-key">Вариации</span>
+                        <span class="m-cell">
+                            <span class="m-val m-editable chips-view" data-edit="agencyAliases" id="v6AgencyAliases">—</span>
+                        </span>
+                    </div>
+                    <div class="m-row">
+                        <span class="m-key">Города</span>
+                        <span class="m-cell">
+                            <span class="m-val m-editable chips-view" data-edit="cities" id="v6Cities">—</span>
+                        </span>
+                    </div>
+                    <div class="m-row m-row--type">
+                        <span class="m-key">Рейтинг</span>
+                        <span class="m-cell">
+                            <span class="switch" id="v6RatingSwitch">
+                                <button type="button" class="switch__btn" data-rating="low">Низкий</button>
+                                <button type="button" class="switch__btn is-on" data-rating="medium">Средний</button>
+                                <button type="button" class="switch__btn" data-rating="high">Высокий</button>
+                            </span>
+                        </span>
                     </div>
                 </div>
-                <div class="modal__footer modal-footer-actions" id="clientViewFooter">
-                    <div class="modal-footer-actions__left">
-                        <button class="btn btn-danger btn-sm" id="deleteClientBtn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                            </svg>
-                            Удалить
-                        </button>
-                    </div>
-                    <div class="modal-footer-actions__right">
-                        <button class="btn btn-outline" id="clientViewCloseBtn">Закрыть</button>
-                        <button class="btn btn-primary" id="editClientBtn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 20h9"/>
-                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                            </svg>
-                            Редактировать
-                        </button>
-                    </div>
+
+                <div class="m-group">
+                    <div class="m-group__title">Комментарий</div>
+                    <div class="m-note m-editable" data-edit="comment" id="v6Comment">—</div>
+                </div>
+
+                <div class="m-actions">
+                    <button type="button" class="btn btn-danger btn-sm" id="deleteClientBtn">Удалить</button>
+                    <button type="button" class="btn btn-primary btn-sm m-save" id="v6SaveBtn">Сохранить</button>
                 </div>
             </div>
-            <div id="editMode" style="display:none;">
-                <form id="editClientForm" class="add-client-form add-client-form--grid add-client-form--edit">
-                    <div class="form-group">
-                        <label class="form-label" for="editFullName">Имя *</label>
-                        <input type="text" class="form-input" id="editFullName" placeholder="Иванов Иван Иванович" required>
-                    </div>
-                    <div class="form-group add-client-form__pair">
-                        <div>
-                            <label class="form-label" for="editPhone">Телефон</label>
-                            <input type="tel" class="form-input" id="editPhone" placeholder="+7 (999) 123-45-67" autocomplete="off">
-                        </div>
-                        <div>
-                            <label class="form-label" for="editTelegram">Телеграм</label>
-                            <input type="text" class="form-input" id="editTelegram" placeholder="@username" autocomplete="off">
-                        </div>
-                        <span class="form-hint">Телефон или телеграм — обязательно хотя бы одно</span>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editEmail">Email</label>
-                        <input type="email" class="form-input" id="editEmail" placeholder="client@example.ru">
-                    </div>
-                    <div class="add-client-form__row">
-                        <div class="form-group add-client-form__col">
-                            <label class="form-label" for="editClientType">Тип клиента *</label>
-                            <select class="form-select" id="editClientType" required>
-                                <option value="organizer">Организатор</option>
-                                <option value="agency">Агентство</option>
-<option value="unknown">—</option>
-                            </select>
-                        </div>
-                        <div class="form-group add-client-form__col" id="editAgencyGroup">
-                            <label class="form-label" for="editAgencySearch">Агентство *</label>
-                            <input type="text" class="form-input" id="editAgencySearch" placeholder="Начните вводить название" autocomplete="off">
-                            <select class="form-select" id="editAgency" style="display:none;">
-                                <option value="">Не выбрано</option>
-                                {% for agency in agencies %}
-                                <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group form-group--wide">
-                        <label class="form-label">Города</label>
-                        <div class="city-selector" id="editCitySelector"></div>
-                        <input type="hidden" id="editCityNames" name="city_names">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="editRating">Рейтинг *</label>
-                        <select class="form-select" id="editRating" required>
-                            <option value="high">Высокий</option>
-                            <option value="medium">Средний</option>
-                            <option value="low">Низкий</option>
-                        </select>
-                    </div>
-                    <div class="form-group form-group--wide">
-                        <label class="form-label" for="editComment">Комментарий</label>
-                        <textarea class="form-textarea" id="editComment" rows="2"></textarea>
-                    </div>
-                    <div class="modal-footer-actions add-client-form__actions--wide">
-                        <div class="modal-footer-actions__left">
-                            <button type="button" class="btn btn-danger btn-sm" id="editDeleteBtn">Удалить</button>
-                        </div>
-                        <div class="modal-footer-actions__right">
-                            <button type="button" class="btn btn-outline" id="editCancelBtn">Отмена</button>
-                            <button type="submit" class="btn btn-primary">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                    <polyline points="17 21 17 13 7 13 7 21"/>
-                                    <polyline points="7 3 7 8 15 8"/>
-                                </svg>
-                                Сохранить
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
+
+            <aside class="m-side">
+                <div class="m-metrics">
+                    <div class="m-metric"><span>Заказов</span><b id="v6OrdersCount">0</b></div>
+                    <div class="m-metric"><span>Запросов</span><b id="v6RequestsCount">0</b></div>
+                    <div class="m-metric"><span>Последний заказ</span><b id="v6LastOrder">—</b></div>
+                    <div class="m-metric"><span>Оборот за год</span><b class="m-metric__money" id="v6Turnover">0.00₽</b></div>
+                </div>
+                <div class="m-stream">
+                    <div class="m-stream__head"><span>История</span><span class="dim" id="v6StreamCount">0 заказов</span></div>
+                    <div class="m-stream__list" id="viewOrdersList"></div>
+                </div>
+            </aside>
         </div>
+        <div class="m-foot" id="v6Foot">Создан —</div>
     </div>
 </div>
 
 <div class="modal-overlay" id="addClientModal">
-    <div class="modal modal--add">
-        <div class="modal__header">
-            <h2 class="modal__title">Добавление клиента</h2>
+    <div class="modal modal--v6 modal--add">
+        <div class="m-head">
+            <div class="m-head__title">Добавление клиента</div>
             <button class="modal__close" id="addModalCloseBtn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
             </button>
         </div>
-        <div class="modal__body">
-            <form id="addClientForm" class="add-client-form add-client-form--grid">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label class="form-label" for="addFullName">Имя *</label>
-                    <input type="text" class="form-input" id="addFullName" placeholder="Иванов Иван Иванович" required>
-                </div>
-                <div class="form-group add-client-form__pair">
-                    <div>
-                        <label class="form-label" for="addPhone">Телефон</label>
-                        <input type="tel" class="form-input" id="addPhone" placeholder="+7 (999) 123-45-67" autocomplete="off">
+        <div class="m-body m-body--single">
+            <div class="m-main">
+                <form id="addClientForm" class="m-form">
+                    {% csrf_token %}
+                    <div class="m-group">
+                        <div class="m-group__title">Контакты</div>
+                        <div class="m-row">
+                            <span class="m-key">Имя</span>
+                            <span class="m-cell"><input type="text" class="m-input" id="addFullName" placeholder="Иванов Иван Иванович" required></span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-key">Телефон</span>
+                            <span class="m-cell"><input type="tel" class="m-input" id="addPhone" placeholder="+7 (999) 123-45-67" autocomplete="off"></span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-key">Телеграм</span>
+                            <span class="m-cell"><input type="text" class="m-input" id="addTelegram" placeholder="@username" autocomplete="off"></span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-key">Инстаграм</span>
+                            <span class="m-cell"><input type="text" class="m-input" id="addInstagram" placeholder="@username" autocomplete="off"></span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-key">Email</span>
+                            <span class="m-cell"><input type="email" class="m-input" id="addEmail" placeholder="client@example.ru"></span>
+                        </div>
                     </div>
-                    <div>
-                        <label class="form-label" for="addTelegram">Телеграм</label>
-                        <input type="text" class="form-input" id="addTelegram" placeholder="@username" autocomplete="off">
+
+                    <div class="m-group">
+                        <div class="m-group__title">Клиент</div>
+                        <div class="m-row m-row--type">
+                            <span class="m-key">Тип клиента</span>
+                            <span class="m-cell">
+                                <span class="switch" id="addClientType">
+                                    <button type="button" class="switch__btn" data-type="unknown">—</button>
+                                    <button type="button" class="switch__btn is-on" data-type="organizer">Орг</button>
+                                    <button type="button" class="switch__btn" data-type="agency">Агентство</button>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="m-row" id="addAgencyGroup" style="display:none;">
+                            <span class="m-key">Агентство</span>
+                            <span class="m-cell">
+                                <input type="text" class="m-input" id="addAgencySearch" placeholder="Начните вводить название" autocomplete="off">
+                                <select class="form-select" id="addAgency" style="display:none;">
+                                    <option value="">Не выбрано</option>
+                                    {% for agency in agencies %}
+                                    <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </span>
+                        </div>
+                        <div class="m-row" id="addAliasGroup" style="display:none;">
+                            <span class="m-key">Вариации</span>
+                            <span class="m-cell">
+                                <span class="chips" id="addAliasChips">
+                                    <input type="text" class="chip-input" id="addAliasInput" placeholder="Добавить" autocomplete="off" disabled>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-key">Города</span>
+                            <span class="m-cell">
+                                <span class="chips" id="addCitySelector">
+                                    <input type="text" class="chip-input" id="addCitySearch" placeholder="Начните вводить город" autocomplete="off">
+                                </span>
+                                <input type="hidden" id="addCityNames" name="city_names">
+                            </span>
+                        </div>
+                        <div class="m-row m-row--type">
+                            <span class="m-key">Рейтинг</span>
+                            <span class="m-cell">
+                                <span class="switch" id="addRating">
+                                    <button type="button" class="switch__btn" data-rating="low">Низкий</button>
+                                    <button type="button" class="switch__btn is-on" data-rating="medium">Средний</button>
+                                    <button type="button" class="switch__btn" data-rating="high">Высокий</button>
+                                </span>
+                            </span>
+                        </div>
                     </div>
-                    <span class="form-hint">Телефон или телеграм — обязательно хотя бы одно</span>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addEmail">Email</label>
-                    <input type="email" class="form-input" id="addEmail" placeholder="client@example.ru">
-                </div>
-                <div class="add-client-form__row">
-                    <div class="form-group add-client-form__col">
-                        <label class="form-label" for="addClientType">Тип клиента *</label>
-                        <select class="form-select" id="addClientType" required>
-                            <option value="organizer">Организатор</option>
-                            <option value="agency">Агентство</option>
-<option value="unknown">—</option>
-                        </select>
+
+                    <div class="m-group">
+                        <div class="m-group__title">Комментарий</div>
+                        <div class="m-note-wrap">
+                            <textarea class="m-input m-input--area" id="addComment" rows="2" placeholder="Детали по клиенту"></textarea>
+                        </div>
                     </div>
-                    <div class="form-group add-client-form__col" id="addAgencyGroup">
-                        <label class="form-label" for="addAgencySearch">Агентство *</label>
-                        <input type="text" class="form-input" id="addAgencySearch" placeholder="Начните вводить название" autocomplete="off">
-                        <select class="form-select" id="addAgency" style="display:none;">
-                            <option value="">Не выбрано</option>
-                            {% for agency in agencies %}
-                            <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
-                            {% endfor %}
-                        </select>
+
+                    <div class="m-actions m-actions--form">
+                        <button type="button" class="btn btn-outline btn-sm" id="addModalCancelBtn">Отмена</button>
+                        <button type="submit" class="btn btn-primary btn-sm" id="addModalSubmitBtn">Добавить</button>
                     </div>
-                </div>
-                <div class="form-group form-group--wide">
-                    <label class="form-label">Города</label>
-                    <div class="city-selector" id="addCitySelector"></div>
-                    <input type="hidden" id="addCityNames" name="city_names">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="addRating">Рейтинг *</label>
-                    <select class="form-select" id="addRating" required>
-                        <option value="high">Высокий</option>
-                        <option value="medium" selected>Средний</option>
-                        <option value="low">Низкий</option>
-                    </select>
-                </div>
-                <div class="form-group form-group--wide">
-                    <label class="form-label" for="addComment">Комментарий</label>
-                    <textarea class="form-textarea" id="addComment" rows="2"></textarea>
-                </div>
-                <div class="form-actions form-actions--wide">
-                    <button type="button" class="btn btn-outline" id="addModalCancelBtn">Отмена</button>
-                    <button type="submit" class="btn btn-primary" id="addModalSubmitBtn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="16"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                        </svg>
-                        Добавить
-                    </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -361,78 +330,25 @@
                     <line x1="12" y1="9" x2="12" y2="13"/>
                     <line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
-                <span>В базе есть клиент с похожими данными. Выберите запись слева, затем решите: удалить выбранного, создать нового или отменить.</span>
+                <span>В базе уже есть клиент с похожими данными. Его можно дозаполнить. Либо удалить старого и создать нового</span>
             </div>
             <div class="duplicate-columns">
-                <div class="duplicate-column">
+                <div class="duplicate-column duplicate-column--matches">
                     <h3 class="duplicate-column__title">Найденные клиенты</h3>
                     <div class="duplicate-matches" id="duplicateMatchesList"></div>
                 </div>
-                <div class="duplicate-column">
-                    <h3 class="duplicate-column__title">Новый клиент</h3>
-                    <form id="duplicateClientForm" class="add-client-form duplicate-form">
-                        {% csrf_token %}
-                        <input type="hidden" id="dupMatchedClientId">
-                        <div class="duplicate-form__grid">
-                            <div class="form-group">
-                                <label class="form-label" for="dupFullName">ФИО *</label>
-                                <input type="text" class="form-input" id="dupFullName" placeholder="Иванов Иван Иванович" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="dupPhone">Телефон</label>
-                                <input type="tel" class="form-input" id="dupPhone" placeholder="+7 (999) 123-45-67">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="dupClientType">Тип клиента *</label>
-                                <select class="form-select" id="dupClientType" required>
-                                    <option value="organizer">Организатор</option>
-                                    <option value="agency">Агентство</option>
-<option value="unknown">—</option>
-                                </select>
-                            </div>
-                            <div class="form-group" id="dupAgencyGroup" style="display:none;">
-                                <label class="form-label" for="dupAgencySearch">Агентство</label>
-                                <input type="text" class="form-input" id="dupAgencySearch" placeholder="Начните вводить название" autocomplete="off">
-                                <select class="form-select" id="dupAgency" style="display:none;">
-                                    <option value="">Не выбрано</option>
-                                    {% for agency in agencies %}
-                                    <option value="{{ agency.id }}" data-name="{{ agency.name }}">{{ agency.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="dupTelegram">Телеграм</label>
-                                <input type="text" class="form-input" id="dupTelegram" placeholder="@username">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="dupEmail">Email</label>
-                                <input type="email" class="form-input" id="dupEmail" placeholder="client@example.ru">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="dupRating">Рейтинг *</label>
-                                <select class="form-select" id="dupRating" required>
-                                    <option value="high">Высокий</option>
-                                    <option value="medium" selected>Средний</option>
-                                    <option value="low">Низкий</option>
-                                </select>
-                            </div>
-                            <div class="form-group form-group--wide">
-                                <label class="form-label">Города</label>
-                                <div class="city-selector" id="dupCitySelector"></div>
-                                <input type="hidden" id="dupCityNames" name="city_names">
-                            </div>
-                            <div class="form-group form-group--wide">
-                                <label class="form-label" for="dupComment">Комментарий</label>
-                                <textarea class="form-textarea" id="dupComment" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </form>
+                <div class="duplicate-column duplicate-column--new">
+                    <h3 class="duplicate-column__title">Клиент, который создаётся сейчас</h3>
+                    <div class="duplicate-card" id="duplicateCard">
+                        <div class="duplicate-card__empty">Данные нового клиента не заполнены</div>
+                    </div>
                 </div>
             </div>
-            <div class="form-actions duplicate-actions">
-                <button type="button" class="btn btn-primary" id="dupCreateBtn">Создать</button>
-                <button type="button" class="btn btn-danger" id="dupDeleteOldBtn">Удалить</button>
-                <button type="button" class="btn btn-outline" id="dupCancelBtn">Отмена</button>
+            <div class="duplicate-actions">
+                <div class="duplicate-actions__right">
+                    <button type="button" class="btn btn-outline" id="dupBackBtn">Назад</button>
+                    <button type="button" class="btn btn-primary" id="dupCreateBtn">Создать</button>
+                </div>
             </div>
         </div>
     </div>
