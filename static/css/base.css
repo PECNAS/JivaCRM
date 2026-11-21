@@ -195,6 +195,7 @@ table {
   backdrop-filter: blur(4px);
   min-height: var(--navbar-height, 64px);
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .navbar__container {
@@ -231,6 +232,130 @@ table {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.brand--newyear .brand__icon {
+  position: relative;
+  isolation: isolate;
+}
+
+.brand--newyear .brand__icon::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  width: 22px;
+  height: 8px;
+  margin-left: -16px;
+  z-index: 2;
+  border-radius: 11px 11px 3px 3px;
+  background: linear-gradient(180deg, #f26060 0%, #d92b2b 55%, #b81c1c 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  transform: rotate(-16deg);
+  pointer-events: none;
+}
+
+.brand--newyear .brand__icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -1px;
+  width: 6px;
+  height: 6px;
+  margin-left: 3px;
+  z-index: 3;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #e8e4db 70%, #bdb6a9 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.brand--newyear .brand__name {
+  position: relative;
+}
+
+.brand--newyear .brand__name::after {
+  content: '';
+  position: absolute;
+  left: -0.05em;
+  right: -0.06em;
+  bottom: -0.1em;
+  height: 0.36em;
+  pointer-events: none;
+  filter: drop-shadow(0 -1px 1px rgba(11, 11, 11, 0.35));
+  z-index: 2;
+  background-color: #ffffff !important;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, #ffffff 55%) !important;
+  border-radius: 0.4em 0.3em 0.1em 0.1em / 0.5em 0.5em 0.06em 0.06em;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 20 L0 12 Q6 3 14 6 Q22 0 32 5 Q42 0 52 5 Q62 0 72 5 Q82 0 92 5 Q97 3 100 8 L100 20 Z' fill='%23fff'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0 20 L0 12 Q6 3 14 6 Q22 0 32 5 Q42 0 52 5 Q62 0 72 5 Q82 0 92 5 Q97 3 100 8 L100 20 Z' fill='%23fff'/%3E%3C/svg%3E");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.brand--newyear .brand__name::before {
+  content: '';
+  position: absolute;
+  left: 12%;
+  width: 0.5em;
+  bottom: 0.02em;
+  height: 0.06em;
+  pointer-events: none;
+  border-radius: 50%;
+  background: #ffffff;
+  z-index: 3;
+  opacity: 0.75;
+}
+
+.snowfall {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.snowfall--paused .snowflake {
+  animation-play-state: paused;
+}
+
+.snowflake {
+  position: absolute;
+  top: -14px;
+  width: var(--size, 5px);
+  height: var(--size, 5px);
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0.75) 60%, rgba(255, 255, 255, 0) 100%);
+  opacity: var(--opacity, 0.5);
+  animation-name: snowFall;
+  animation-duration: var(--fall, 24s);
+  animation-delay: var(--delay, 0s);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+@keyframes snowFall {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(var(--drift, 20px), 50vh, 0);
+  }
+
+  100% {
+    transform: translate3d(0, calc(100vh + 20px), 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snowfall {
+    display: none;
+  }
 }
 
 .navbar__menu {
@@ -477,6 +602,22 @@ table {
   .navbar__brand .brand__icon {
     width: 22px;
     height: 22px;
+  }
+
+  .navbar__brand .brand__icon::before {
+    left: 50%;
+    top: -3px;
+    width: 17px;
+    height: 8px;
+    margin-left: -11px;
+  }
+
+  .navbar__brand .brand__icon::after {
+    left: 50%;
+    top: -6px;
+    width: 5px;
+    height: 5px;
+    margin-left: 3px;
   }
 
   .navbar__actions {

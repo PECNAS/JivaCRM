@@ -23,9 +23,9 @@
 <body data-role="{{ user.employee_profile.primary_role|default:'' }}" data-employee-id="{{ user.employee_profile.id|default:'' }}" data-employee-name="{{ user.employee_profile.display_name|default:'' }}" data-can-manage-orders="{{ user.employee_profile.can_manage_orders|yesno:'1,0' }}" data-can-edit-checklists="{{ user.employee_profile.can_edit_checklists|yesno:'1,0' }}" data-can-manage-feedback="{{ user.employee_profile.can_manage_feedback|yesno:'1,0' }}">
     <header class="navbar">
         <div class="container navbar__container">
-            <a href="{% url 'schedule' %}" class="navbar__brand">
+            <a href="{% url 'schedule' %}" class="navbar__brand brand--newyear">
                 <span class="brand__icon"></span>
-                <span class="brand__name">JIVA·HUB</span>
+                <span class="brand__name" data-text="JIVA·HUB">JIVA·HUB</span>
             </a>
             <nav class="navbar__menu" id="mainMenu">
                 <ul class="menu__list">
@@ -108,6 +108,8 @@
             {% block content %}{% endblock %}
         </div>
     </main>
+
+    <div class="snowfall" id="snowfall" aria-hidden="true"></div>
 
     <script src="{% static 'js/ui.js' %}"></script>
     <script src="{% static 'js/base.js' %}"></script>

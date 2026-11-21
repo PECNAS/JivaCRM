@@ -143,4 +143,33 @@
       field.select();
     }
   });
+
+  const snowfallBox = document.getElementById('snowfall');
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (snowfallBox && !reduceMotion) {
+    const FLAKE_COUNT = 14;
+
+    function makeFlake() {
+      const flake = document.createElement('span');
+
+      flake.className = 'snowflake';
+      flake.style.left = (Math.random() * 100).toFixed(2) + '%';
+      flake.style.setProperty('--size', (3 + Math.random() * 4).toFixed(1) + 'px');
+      flake.style.setProperty('--drift', (Math.random() * 80 - 40).toFixed(0) + 'px');
+      flake.style.setProperty('--fall', (18 + Math.random() * 14).toFixed(1) + 's');
+      flake.style.setProperty('--delay', (Math.random() * 18).toFixed(1) + 's');
+      flake.style.setProperty('--opacity', (0.25 + Math.random() * 0.45).toFixed(2));
+
+      snowfallBox.appendChild(flake);
+    }
+
+    for (let i = 0; i < FLAKE_COUNT; i += 1) {
+      makeFlake();
+    }
+
+    document.addEventListener('visibilitychange', function() {
+      snowfallBox.classList.toggle('snowfall--paused', document.hidden);
+    });
+  }
 })();
