@@ -361,6 +361,9 @@ class Employee(models.Model):
     instagram = models.CharField('Инстаграм', max_length=100, blank=True)
     international_passport_series = models.CharField('Серия загранпаспорта', max_length=20, blank=True)
     international_passport_number = models.CharField('Номер загранпаспорта', max_length=20, blank=True)
+    international_passport_issued_by = models.CharField('Кем выдан загранпаспорт', max_length=500, blank=True)
+    international_passport_issued_date = models.DateField('Дата выдачи загранпаспорта', null=True, blank=True)
+    international_passport_department_code = models.CharField('Код подразделения загранпаспорта', max_length=20, blank=True)
 
     passport_series = models.CharField('Серия паспорта', max_length=20, blank=True)
     passport_number = models.CharField('Номер паспорта', max_length=20, blank=True)

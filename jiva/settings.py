@@ -24,6 +24,15 @@ mimetypes.add_type("text/javscript", ".js", True)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+# Каталог с постоянными данными (на сервере монтируется в /data)
+DATA_DIR = Path(os.getenv('DATA_DIR') or '/data')
+
+if not DATA_DIR.is_dir():
+    DATA_DIR = BASE_DIR / 'data'
+
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
@@ -143,7 +152,9 @@ else:
     STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = str(DATA_DIR / 'media')
+
+os.makedirs(MEDIA_ROOT, exist_ok=True)
 
 
 # Email

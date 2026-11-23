@@ -133,6 +133,9 @@ def serialize_employee(employee_obj, with_card=False):
         'instagram': employee_obj.instagram or '',
         'international_passport_series': employee_obj.international_passport_series or '',
         'international_passport_number': employee_obj.international_passport_number or '',
+        'international_passport_issued_by': employee_obj.international_passport_issued_by or '',
+        'international_passport_issued_date': employee_obj.international_passport_issued_date.strftime('%Y-%m-%d') if employee_obj.international_passport_issued_date else '',
+        'international_passport_department_code': employee_obj.international_passport_department_code or '',
         'passport_series': employee_obj.passport_series or '',
         'passport_number': employee_obj.passport_number or '',
         'passport_issued_by': employee_obj.passport_issued_by or '',
@@ -335,6 +338,9 @@ class EmployeesView(View):
             instagram = request.POST.get('instagram', '').strip()
             international_passport_series = request.POST.get('international_passport_series', '').strip()[:20]
             international_passport_number = request.POST.get('international_passport_number', '').strip()[:20]
+            international_passport_issued_by = request.POST.get('international_passport_issued_by', '').strip()[:500]
+            international_passport_issued_date = parse_request_date(request.POST.get('international_passport_issued_date'))
+            international_passport_department_code = request.POST.get('international_passport_department_code', '').strip()[:20]
             rate = parse_rate(request.POST.get('rate'))
             comment = request.POST.get('comment', '').strip()
 
@@ -387,6 +393,9 @@ class EmployeesView(View):
                 instagram=instagram,
                 international_passport_series=international_passport_series,
                 international_passport_number=international_passport_number,
+                international_passport_issued_by=international_passport_issued_by,
+                international_passport_issued_date=international_passport_issued_date,
+                international_passport_department_code=international_passport_department_code,
                 rate=rate,
                 comment=comment,
             )
@@ -463,6 +472,9 @@ class EmployeeUpdateView(View):
             instagram = request.POST.get('instagram', '').strip()
             international_passport_series = request.POST.get('international_passport_series', '').strip()[:20]
             international_passport_number = request.POST.get('international_passport_number', '').strip()[:20]
+            international_passport_issued_by = request.POST.get('international_passport_issued_by', '').strip()[:500]
+            international_passport_issued_date = parse_request_date(request.POST.get('international_passport_issued_date'))
+            international_passport_department_code = request.POST.get('international_passport_department_code', '').strip()[:20]
             rate = parse_rate(request.POST.get('rate'))
             comment = request.POST.get('comment', '').strip()
 
@@ -513,6 +525,9 @@ class EmployeeUpdateView(View):
             employee_obj.instagram = instagram
             employee_obj.international_passport_series = international_passport_series
             employee_obj.international_passport_number = international_passport_number
+            employee_obj.international_passport_issued_by = international_passport_issued_by
+            employee_obj.international_passport_issued_date = international_passport_issued_date
+            employee_obj.international_passport_department_code = international_passport_department_code
             employee_obj.rate = rate
             employee_obj.comment = comment
             employee_obj.save()

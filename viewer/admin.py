@@ -155,7 +155,9 @@ class EmployeeAdmin(admin.ModelAdmin):
         }),
         ('Дополнительно', {
             'fields': ('rzd_bonus_number', 'instagram', 'rate', 'comment',
-                       'international_passport_series', 'international_passport_number')
+                       'international_passport_series', 'international_passport_number',
+                       'international_passport_issued_by', 'international_passport_issued_date',
+                       'international_passport_department_code')
         }),
         ('Паспортные данные', {
             'fields': ('passport_series', 'passport_number', 'passport_issued_by',

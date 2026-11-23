@@ -623,9 +623,9 @@
             foreign: {
                 series: data.international_passport_series || '',
                 number: data.international_passport_number || '',
-                issuedBy: '',
-                issuedAt: '',
-                code: '',
+                issuedBy: data.international_passport_issued_by || '',
+                issuedAt: data.international_passport_issued_date ? data.international_passport_issued_date.split('-').reverse().join('.') : '',
+                code: data.international_passport_department_code || '',
             },
             artist: {
                 weight: data.artist_card ? (data.artist_card.weight || '') : '',
@@ -1007,6 +1007,9 @@
             instagram: String(getPath('instagram') || '').trim(),
             international_passport_series: String(getPath('foreign.series') || '').trim(),
             international_passport_number: String(getPath('foreign.number') || '').trim(),
+            international_passport_issued_by: String(getPath('foreign.issuedBy') || '').trim(),
+            international_passport_issued_date: isoDate(getPath('foreign.issuedAt')),
+            international_passport_department_code: String(getPath('foreign.code') || '').trim(),
             rate: String(normalizeRate(getPath('rate'))),
             comment: String(getPath('comment') || '').trim(),
             rate_rules: JSON.stringify((empData.rateRules || []).map(function(rule) {
