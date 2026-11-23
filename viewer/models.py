@@ -359,10 +359,10 @@ class Employee(models.Model):
 
     rzd_bonus_number = models.CharField('Номер РЖД бонус', max_length=50, blank=True)
     instagram = models.CharField('Инстаграм', max_length=100, blank=True)
-    international_passport_series = models.CharField('Серия загранпаспорта', max_length=10, blank=True)
+    international_passport_series = models.CharField('Серия загранпаспорта', max_length=20, blank=True)
     international_passport_number = models.CharField('Номер загранпаспорта', max_length=20, blank=True)
 
-    passport_series = models.CharField('Серия паспорта', max_length=10, blank=True)
+    passport_series = models.CharField('Серия паспорта', max_length=20, blank=True)
     passport_number = models.CharField('Номер паспорта', max_length=20, blank=True)
     passport_issued_by = models.CharField('Кем выдан', max_length=500, blank=True)
     passport_issued_date = models.DateField('Дата выдачи', null=True, blank=True)
@@ -370,6 +370,9 @@ class Employee(models.Model):
     passport_registration = models.CharField('Адрес регистрации', max_length=500, blank=True)
     passport_inn = models.CharField('ИНН', max_length=20, blank=True)
     passport_snils = models.CharField('СНИЛС', max_length=20, blank=True)
+
+    rate = models.DecimalField('Ставка', max_digits=12, decimal_places=2, default=0, blank=True)
+    comment = models.TextField('Комментарий', blank=True)
 
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
@@ -442,7 +445,7 @@ class Employee(models.Model):
         return any(code in available for code in codes)
 
     def is_artist(self):
-        return self.primary_role() in ARTIST_ROLES
+        return any(code in ARTIST_ROLES for code in self.role_codes())
 
     def is_top(self):
         return self.primary_role() in TOP_ROLES
@@ -557,6 +560,25 @@ class ArtistCard(models.Model):
 
     def __str__(self):
         return f'Карточка артиста - {self.employee.full_name}'
+
+
+class ArtistCardRateRule(models.Model):
+    """Исключение по шоу: надбавка к оплате артиста за конкретные услуги."""
+
+    card = models.ForeignKey(ArtistCard, on_delete=models.CASCADE, related_name='rate_rules', verbose_name='Карточка артиста')
+    services = models.ManyToManyField('Service', related_name='artist_rate_rules', verbose_name='Услуги', blank=True)
+    extra_rate = models.DecimalField('Доп. ставка', max_digits=12, decimal_places=2, default=0)
+    order_index = models.PositiveIntegerField('Порядок', default=0)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Исключение карточки артиста'
+        verbose_name_plural = 'Исключения карточки артиста'
+        ordering = ['order_index', 'id']
+
+    def __str__(self):
+        return f'{self.card.employee.full_name}: {self.extra_rate}'
 
 
 class TransportTicket(models.Model):

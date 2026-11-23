@@ -13,7 +13,6 @@
     const cardView = document.getElementById('empCardView');
     const addEmployeeBtn = document.getElementById('addEmployeeBtn');
     const empSaveBtn = document.getElementById('empSaveBtn');
-    const empCloseBtn = document.getElementById('empCloseBtn');
     const empDeactivateBtn = document.getElementById('empDeactivateBtn');
     const empCreatedText = document.getElementById('empCreatedText');
     const empDocFile = document.getElementById('empDocFile');
@@ -184,7 +183,8 @@
     }
 
     function renderRow(label, path, display) {
-        return '<div class="p-row"><span class="p-row__k">' + escapeHtml(label) + '</span>'
+        return '<div class="p-row"><span class="p-row__k">'
+            + escapeHtml(label) + '</span>'
             + renderValue(path, display)
             + '</div>';
     }
@@ -193,13 +193,20 @@
         const holder = empData[key] || {};
         const numberText = [holder.series, holder.number].filter(Boolean).join(' ');
 
+        function passRow(label, path, className, display) {
+            return '<div class="p-pass__row">'
+                + '<span class="p-pass__label">' + escapeHtml(label) + '</span>'
+                + '<span class="p-pass__v ' + className + '">' + renderValue(path, display) + '</span>'
+                + '</div>';
+        }
+
         return '<div class="p-card">'
             + '<div class="sec">' + escapeHtml(title) + '</div>'
             + '<div class="p-pass">'
-            + '<span class="p-pass__num">' + renderValue(key + '.number', numberText, 'p-pass__num-link') + '</span>'
-            + '<span class="p-pass__code">' + renderValue(key + '.code') + '</span>'
-            + '<span class="p-pass__by">' + renderValue(key + '.issuedBy') + '</span>'
-            + '<span class="p-pass__date">' + renderValue(key + '.issuedAt') + '</span>'
+            + passRow('Серия и номер', key + '.number', 'p-pass__num', numberText)
+            + passRow('Код подразделения', key + '.code', 'p-pass__code')
+            + passRow('Кем выдан', key + '.issuedBy', 'p-pass__by')
+            + passRow('Дата выдачи', key + '.issuedAt', 'p-pass__date')
             + '</div></div>';
     }
 
@@ -234,17 +241,91 @@
         if (!docs.length) return '';
 
         return docs.map(function(doc, index) {
+            const label = doc.name || doc.file;
+
             return '<span class="p-doc" data-doc-index="' + index + '">'
                 + '<span class="p-doc__type">' + escapeHtml(doc.typeLabel) + '</span>'
                 + (doc.url
-                    ? '<a class="p-doc__file" href="' + escapeHtml(doc.url) + '" target="_blank" rel="noopener">' + escapeHtml(doc.file) + '</a>'
-                    : '<span class="p-doc__file">' + escapeHtml(doc.file) + '</span>')
+                    ? '<a class="p-doc__file" href="' + escapeHtml(doc.url) + '" target="_blank" rel="noopener">' + escapeHtml(label) + '</a>'
+                    : '<span class="p-doc__file">' + escapeHtml(label) + '</span>')
                 + '<span class="p-doc__size">' + escapeHtml(doc.size) + '</span>'
                 + '<button type="button" class="p-doc__x" data-doc-remove="' + index + '" title="Удалить">'
                 + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
                 + '</button>'
                 + '</span>';
         }).join('');
+    }
+
+    function formatRate(value) {
+        const raw = String(value === undefined || value === null ? '' : value).replace(/\s/g, '').replace(',', '.');
+        const number = parseFloat(raw);
+
+        if (!raw || isNaN(number) || number <= 0) return '0 ₽';
+
+        return String(Math.round(number)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+    }
+
+    function rateEditValue(value) {
+        const raw = String(value === undefined || value === null ? '' : value).replace(/\s/g, '').replace('₽', '').replace(',', '.');
+        const number = parseFloat(raw);
+
+        if (!raw || isNaN(number) || number <= 0) return '0';
+
+        return String(Math.round(number));
+    }
+
+    function renderRateRules() {
+        const rules = empData.rateRules || [];
+
+        if (!rules.length) {
+            return '<div class="p-empty p-rules__empty">Правил нет</div>';
+        }
+
+        return rules.map(function(rule, index) {
+            const chips = (rule.services || []).map(function(service) {
+                return '<span class="chip chip--accent p-rule__chip" title="' + escapeHtml(service.name) + '" data-rule-chip="' + index + '" data-service-id="' + escapeHtml(String(service.id)) + '">'
+                    + escapeHtml(service.name)
+                    + '<button type="button" class="chip__x" data-rule-chip-remove="1" aria-label="Убрать услугу">&times;</button>'
+                    + '</span>';
+            }).join('');
+
+            return '<div class="p-rule" data-rule-index="' + index + '">'
+                + '<div class="p-rule__head">'
+                + '<span class="p-rule__title">Исключение ' + (index + 1) + '</span>'
+                + '<button type="button" class="p-rule__remove" title="Удалить правило">&times;</button>'
+                + '</div>'
+                + '<div class="p-rule__row">'
+                + '<span class="p-rule__k" data-rule-focus="' + index + '">Исключения</span>'
+                + '<div class="p-rule__chips chips" data-rule-chips="' + index + '">'
+                + chips
+                + '<input type="text" class="p-input p-input--chip p-rule__input" placeholder="Добавить услугу" autocomplete="off">'
+                + '<div class="city-selector__dropdown p-rule__dropdown"></div>'
+                + '</div>'
+                + '</div>'
+                + '<div class="p-rule__row">'
+                + '<span class="p-rule__k" data-rule-rate-k="' + index + '">Доп. ставка, ₽</span>'
+                + '<span class="p-rule__v m-editable p-rule__rate" data-rule-rate="' + index + '">'
+                + (rule.extraRate && rule.extraRate !== '0' ? formatRate(rule.extraRate) : '—')
+                + '</span>'
+                + '</div>'
+                + '</div>';
+        }).join('');
+    }
+
+    function addRateRule() {
+        if (!empData.rateRules) empData.rateRules = [];
+
+        empData.rateRules.push({ services: [], extraRate: '0' });
+        empDirty = true;
+        renderCard();
+    }
+
+    function removeRateRule(index) {
+        if (!empData.rateRules) return;
+
+        empData.rateRules.splice(index, 1);
+        empDirty = true;
+        renderCard();
     }
 
     function isArtist() {
@@ -264,15 +345,11 @@
             + '<div class="p-head__name m-editable" data-edit="name">' + escapeHtml(empData.name || 'Новый сотрудник') + '</div>'
             + '<div class="p-head__sub">'
             + renderValue('nickname')
-            + '<span class="p-dot"></span>'
-            + renderValue('login')
-            + '<button type="button" class="chip ' + (empData.active !== false ? 'chip--ok' : 'chip--off') + '" id="activeBtn">'
-            + (empData.active !== false ? 'Активен' : 'Неактивен') + '</button>'
             + '</div>'
             + '</div>'
             + '<div class="p-head__roles" id="roleBox">' + renderRoleChips() + '</div>'
-            + '<button type="button" class="icon-btn" data-close title="Закрыть">'
-            + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+            + '<button type="button" class="modal__close p-close" data-close title="Закрыть" aria-label="Закрыть">'
+            + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
             + '</button>'
             + '</div>';
 
@@ -295,6 +372,11 @@
             + '</div>';
 
         html += '<div class="p-card">'
+            + '<div class="sec">Комментарий</div>'
+            + '<div class="p-note m-editable" data-edit="comment">' + escapeHtml(empData.comment || '—') + '</div>'
+            + '</div>';
+
+        html += '<div class="p-card">'
             + '<div class="sec">Идентификация</div>'
             + renderRow('ИНН', 'inn')
             + renderRow('СНИЛС', 'snils')
@@ -305,6 +387,11 @@
         html += renderPassportCard('Паспорт РФ', 'passport');
         html += renderPassportCard('Загранпаспорт', 'foreign');
 
+        html += '<div class="p-card">'
+            + '<div class="sec">Ставка</div>'
+            + renderRow('Размер', 'rate', formatRate(empData.rate))
+            + '</div>';
+
         if (isArtist()) {
             html += '<div class="p-card">'
                 + '<div class="sec">Карточка артиста</div>'
@@ -314,9 +401,15 @@
                 + '<div class="p-param"><span class="p-param__k">Обувь</span>' + renderValue('artist.shoe') + '</div>'
                 + '</div>'
                 + '<div class="p-skills" id="skillBox">' + renderSkills() + '</div>'
-                + renderRow('Комментарий', 'artist.comment')
                 + '</div>';
         }
+
+        html += '<div class="p-card">'
+            + '<div class="sec">Исключения</div>'
+            + '<div class="p-rules" id="ruleList">' + renderRateRules() + '</div>'
+            + '<button type="button" class="p-add" id="ruleAdd">'
+            + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Добавить правило</button>'
+            + '</div>';
 
         html += '</div></div>';
 
@@ -339,6 +432,118 @@
 
             if (node) startEdit(node, true);
         }
+
+        cardView.querySelectorAll('[data-rule-chips]').forEach(function(box) {
+            mountRuleServicePicker(box, Number(box.dataset.ruleChips));
+        });
+    }
+
+    function closeAllEdits() {
+        const nodes = cardView ? cardView.querySelectorAll('.is-editing') : [];
+
+        let had = false;
+
+        nodes.forEach(function(node) {
+            const input = node.querySelector('input, textarea');
+
+            if (!input) return;
+
+            had = true;
+            input.dataset.skipCommit = '1';
+            input.blur();
+        });
+
+        if (had) renderCard();
+
+        return had;
+    }
+
+    function startEdit(target, silent) {
+        if (!target || target.querySelector('input, textarea')) return;
+
+        const path = target.dataset.edit;
+        const raw = path === 'rate' ? rateEditValue(getPath(path)) : String(getPath(path) || '');
+        const wide = WIDE_KEYS[path] || raw.length > 34;
+        const maskName = MASK_BY_PATH[path];
+        const mask = maskName ? MASKS[maskName] : null;
+
+        const input = document.createElement(wide ? 'textarea' : 'input');
+        input.className = 'p-input' + (wide ? ' p-input--area' : '');
+        input.value = raw;
+        input.dataset.edit = path;
+
+        if (wide) input.rows = 2;
+
+        const holder = document.createElement('span');
+        holder.className = 'p-editbox' + (wide ? ' p-editbox--wide' : '');
+        holder.appendChild(input);
+
+        const originalNodes = Array.prototype.slice.call(target.childNodes);
+        const originalClasses = target.className;
+
+        target.__revert = function() {
+            target.innerHTML = '';
+            originalNodes.forEach(function(node) {
+                target.appendChild(node);
+            });
+            target.className = originalClasses;
+        };
+
+        target.innerHTML = '';
+        target.appendChild(holder);
+        target.classList.add('is-editing');
+        target.classList.remove('is-empty');
+
+        if (!silent) input.focus();
+
+        const end = input.value.length;
+        input.setSelectionRange(end, end);
+
+        if (wide) autoGrow(input);
+
+        input.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+        });
+
+        let done = false;
+
+        function finish(save) {
+            if (done) return;
+            done = true;
+
+            let value = mask ? mask(input.value) : input.value;
+            value = String(value).trim();
+
+            if (save && value !== raw) {
+                setPath(path, value);
+                empDirty = true;
+
+                if (path === 'name' && value) {
+                    const row = document.querySelector('tr[data-employee-id="' + currentEmployeeId + '"] [data-row-name]');
+                    if (row) row.textContent = value;
+                }
+            }
+
+            renderCard();
+        }
+
+        input.addEventListener('input', function() {
+            if (wide) autoGrow(input);
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.key === 'Enter') {
+                if (e.isComposing || e.keyCode === 229) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                input.blur();
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(function() { finish(true); }, 60);
+        });
     }
 
     function emptyEmployee() {
@@ -356,6 +561,9 @@
             address: '',
             inn: '',
             snils: '',
+            rate: '0',
+            comment: '',
+            rateRules: [],
             active: true,
             passport: { series: '', number: '', issuedBy: '', issuedAt: '', code: '' },
             foreign: { series: '', number: '', issuedBy: '', issuedAt: '', code: '' },
@@ -379,6 +587,18 @@
             address: data.passport_registration || '',
             inn: data.passport_inn || '',
             snils: data.passport_snils || '',
+            rate: data.rate ? String(Math.round(Number(data.rate))) : '0',
+            comment: data.comment || '',
+            rateRules: data.artist_card && Array.isArray(data.artist_card.rate_rules)
+                ? data.artist_card.rate_rules.map(function(rule) {
+                    return {
+                        services: (rule.services || []).map(function(service) {
+                            return { id: service.id, name: service.name };
+                        }),
+                        extraRate: String(Math.round(Number(rule.extra_rate || 0))),
+                    };
+                })
+                : [],
             active: !!data.is_active,
             passport: {
                 series: data.passport_series || '',
@@ -427,14 +647,15 @@
                         id: item.id,
                         kind: item.kind,
                         typeLabel: item.kind_display,
+                        name: item.name || item.title || '',
                         file: (item.url || '').split('/').pop(),
                         size: item.uploaded_at,
-                        url: item.url,
+                        url: '/employees/' + data.id + '/documents/' + item.id + '/file/',
                     };
                 });
 
                 empCreatedText.textContent = empData.created || '';
-                empDeactivateBtn.style.display = '';
+                empDeactivateBtn.disabled = false;
 
                 renderCard();
                 modal.classList.add('active');
@@ -455,7 +676,7 @@
         empData.roles = ['artist'];
 
         empCreatedText.textContent = '';
-        empDeactivateBtn.style.display = 'none';
+        empDeactivateBtn.disabled = true;
 
         renderCard();
         modal.classList.add('active');
@@ -522,105 +743,11 @@
         }
 
         input.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' || e.key === 'Enter') {
                 e.preventDefault();
-                finish(false);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                finish(true);
+                e.stopPropagation();
+                input.blur();
             }
-        });
-
-        input.addEventListener('blur', function() {
-            setTimeout(function() {
-                if (input.value.trim()) finish(true);
-                else finish(false);
-            }, 60);
-        });
-    }
-
-    function startEdit(target, silent) {
-        if (!target || target.querySelector('input, textarea')) return;
-
-        const path = target.dataset.edit;
-        const raw = String(getPath(path) || '');
-        const wide = WIDE_KEYS[path] || raw.length > 34;
-        const maskName = MASK_BY_PATH[path];
-        const mask = maskName ? MASKS[maskName] : null;
-
-        const input = document.createElement(wide ? 'textarea' : 'input');
-        input.className = 'p-input' + (wide ? ' p-input--area' : '');
-        input.value = raw;
-        input.dataset.edit = path;
-
-        if (wide) input.rows = 2;
-
-        const holder = document.createElement('span');
-        holder.className = 'p-editbox' + (wide ? ' p-editbox--wide' : '');
-        holder.appendChild(input);
-
-        target.innerHTML = '';
-        target.appendChild(holder);
-        target.classList.add('is-editing');
-        target.classList.remove('is-empty');
-
-        if (!silent) input.focus();
-
-        const end = input.value.length;
-        input.setSelectionRange(end, end);
-
-        if (wide) autoGrow(input);
-
-        let done = false;
-
-        function finish(save) {
-            if (done) return;
-            done = true;
-
-            if (!save) {
-                renderCard();
-                return;
-            }
-
-            let value = mask ? mask(input.value) : input.value;
-            value = String(value).trim();
-
-            if (value === raw) {
-                renderCard();
-                return;
-            }
-
-            setPath(path, value);
-            empDirty = true;
-
-            if (path === 'role' || path.indexOf('roles') === 0) {
-                /* noop */
-            }
-
-            if (path === 'name' && value) {
-                const row = document.querySelector('tr[data-employee-id="' + currentEmployeeId + '"] [data-row-name]');
-                if (row) row.textContent = value;
-            }
-
-            renderCard();
-        }
-
-        input.addEventListener('input', function() {
-            if (wide) autoGrow(input);
-        });
-
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                finish(false);
-                return;
-            }
-
-            if (e.key !== 'Enter') return;
-            if (wide && !e.ctrlKey) return;
-
-            e.preventDefault();
-            finish(true);
         });
 
         input.addEventListener('blur', function() {
@@ -628,8 +755,199 @@
         });
     }
 
+    function getShowOptions() {
+        return (allServices || []).map(function(service) {
+            return { id: service.id, label: service.name };
+        });
+    }
+
     function collectRoles() {
         return (empData.roles || []).slice();
+    }
+
+    function createServicePicker(input, dropdown, onPick, items) {
+        let index = -1;
+
+        function close() {
+            dropdown.classList.remove('open');
+            dropdown.innerHTML = '';
+            index = -1;
+        }
+
+        function render() {
+            const query = String(input.value || '').trim().toLowerCase();
+            const matches = (items || []).filter(function(item) {
+                return !query || String(item.label || '').toLowerCase().indexOf(query) !== -1;
+            }).slice(0, 40);
+
+            dropdown.innerHTML = '';
+            index = -1;
+
+            if (!matches.length) {
+                close();
+                return;
+            }
+
+            matches.forEach(function(item) {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.className = 'city-selector__option';
+                option.textContent = item.label;
+
+                option.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    close();
+                    onPick(item);
+                });
+
+                dropdown.appendChild(option);
+            });
+
+            dropdown.classList.add('open');
+        }
+
+        function highlight() {
+            dropdown.querySelectorAll('.city-selector__option').forEach(function(node, position) {
+                node.classList.toggle('active', position === index);
+            });
+        }
+
+        input.addEventListener('focus', render);
+        input.addEventListener('input', render);
+        input.addEventListener('click', render);
+
+        input.addEventListener('keydown', function(e) {
+            const nodes = Array.prototype.slice.call(dropdown.querySelectorAll('.city-selector__option'));
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                close();
+                return;
+            }
+
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                if (!nodes.length) return;
+
+                e.preventDefault();
+                index += e.key === 'ArrowDown' ? 1 : -1;
+
+                if (index < 0) index = nodes.length - 1;
+                if (index >= nodes.length) index = 0;
+
+                highlight();
+                return;
+            }
+
+            if (e.key !== 'Enter') return;
+
+            if (nodes.length) {
+                e.preventDefault();
+                nodes[index >= 0 ? index : 0].dispatchEvent(new MouseEvent('mousedown'));
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(function() {
+                if (!dropdown.contains(document.activeElement)) close();
+            }, 120);
+        });
+
+        return { close: close, render: render };
+    }
+
+    function mountRuleServicePicker(box, ruleIndex) {
+        const input = box.querySelector('.p-rule__input');
+        const dropdown = box.querySelector('.p-rule__dropdown');
+
+        if (!input || !dropdown) return;
+
+        function toggle(service) {
+            const rule = (empData.rateRules || [])[ruleIndex];
+
+            if (!rule) return;
+
+            const list = rule.services || [];
+            const exists = list.some(function(item) { return String(item.id) === String(service.id); });
+
+            rule.services = exists
+                ? list.filter(function(item) { return String(item.id) !== String(service.id); })
+                : list.concat([{ id: service.id, name: service.name }]);
+
+            empDirty = true;
+            renderCard();
+        }
+
+        const items = (allServices || []).map(function(service) {
+            return { id: service.id, label: service.name };
+        });
+
+        createServicePicker(input, dropdown, toggle, items);
+    }
+
+    function startRuleRateEdit(node, index) {
+        const rule = (empData.rateRules || [])[index];
+
+        if (!rule || node.querySelector('input')) return;
+
+        const input = document.createElement('input');
+        input.className = 'p-input p-rule__rate-input';
+        input.value = String(rule.extraRate && rule.extraRate !== '0' ? rule.extraRate : '');
+        input.dataset.ruleRateInput = String(index);
+        input.placeholder = '0';
+        input.inputMode = 'numeric';
+
+        const originalText = node.textContent;
+        const originalClass = node.className;
+
+        node.textContent = '';
+        node.appendChild(input);
+        node.classList.remove('is-empty');
+        input.focus();
+        input.select();
+
+        let done = false;
+
+        function revert() {
+            node.innerHTML = '';
+            node.appendChild(document.createTextNode(originalText));
+            node.className = originalClass;
+        }
+
+        function finish(save) {
+            if (done) return;
+            done = true;
+
+            if (!save) {
+                revert();
+                return;
+            }
+
+            const value = normalizeRate(input.value);
+
+            if (value !== String(rule.extraRate || '0')) {
+                rule.extraRate = value;
+                empDirty = true;
+            }
+
+            renderCard();
+        }
+
+        input.addEventListener('input', function() {
+            input.value = input.value.replace(/[^\d\s]/g, '');
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                input.blur();
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            setTimeout(function() { finish(true); }, 60);
+        });
     }
 
     function toggleRole(code) {
@@ -676,7 +994,28 @@
             instagram: String(getPath('instagram') || '').trim(),
             international_passport_series: String(getPath('foreign.series') || '').trim(),
             international_passport_number: String(getPath('foreign.number') || '').trim(),
+            rate: String(normalizeRate(getPath('rate'))),
+            comment: String(getPath('comment') || '').trim(),
+            rate_rules: JSON.stringify((empData.rateRules || []).map(function(rule) {
+                return {
+                    services: (rule.services || []).map(function(item) { return item.id; }),
+                    extra_rate: String(normalizeRate(rule.extraRate)),
+                };
+            })),
         };
+    }
+
+    function normalizeRate(value) {
+        const raw = String(value === undefined || value === null ? '' : value)
+            .replace(/\s/g, '')
+            .replace(/[^\d.,]/g, '')
+            .replace(',', '.');
+
+        const number = parseFloat(raw);
+
+        if (!raw || isNaN(number) || !isFinite(number) || number <= 0) return '0';
+
+        return String(Math.round(number));
     }
 
     function isoDate(value) {
@@ -759,6 +1098,12 @@
                         shoe_size: String(empData.artist.shoe || '').trim(),
                         skills_text: (empData.artist.skills || []).join(', '),
                         comment: String(empData.artist.comment || '').trim(),
+                        rate_rules: JSON.stringify((empData.rateRules || []).map(function(rule) {
+                            return {
+                                services: (rule.services || []).map(function(item) { return item.id; }),
+                                extra_rate: String(normalizeRate(rule.extraRate)),
+                            };
+                        })),
                     })
                 }).catch(function() { return null; })
                 : Promise.resolve(null);
@@ -796,8 +1141,7 @@
                 const formData = new FormData();
                 formData.append('file', doc.fileRef);
                 formData.append('kind', doc.kind || 'other');
-                formData.append('title', doc.typeLabel || '');
-
+                formData.append('title', doc.name || doc.file || '');
                 return fetch('/employees/' + employeeId + '/documents/', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': getCSRFToken() },
@@ -811,9 +1155,9 @@
         if (!currentEmployeeId) return;
 
         window.UI.confirm({
-            title: 'Деактивировать сотрудника?',
+            title: 'Удалить сотрудника?',
             text: 'Сотрудник перестанет отображаться во всех списках и не будет доступен для назначения. В уже существующих заказах он останется.',
-            okText: 'Деактивировать',
+            okText: 'Удалить',
             cancelText: 'Отмена',
             danger: true
         }).then(function(confirmed) {
@@ -890,6 +1234,7 @@
                     id: null,
                     kind: 'other',
                     typeLabel: 'Прочее',
+                    name: file.name,
                     file: file.name,
                     size: (file.size / 1048576).toFixed(1).replace('.', ',') + ' МБ',
                     fileRef: file,
@@ -906,16 +1251,8 @@
 
         cardView.addEventListener('click', function(e) {
             if (e.target.closest('input, textarea')) return;
-
             if (e.target.closest('[data-close]')) {
                 requestCloseEmployeeModal();
-                return;
-            }
-
-            if (e.target.closest('#activeBtn')) {
-                empData.active = empData.active === false;
-                empDirty = true;
-                renderCard();
                 return;
             }
 
@@ -957,22 +1294,106 @@
                 return;
             }
 
+            if (e.target.closest('#ruleAdd')) {
+                addRateRule();
+                return;
+            }
+
+            const ruleRemove = e.target.closest('.p-rule__remove');
+
+            if (ruleRemove) {
+                const ruleNode = ruleRemove.closest('[data-rule-index]');
+
+                if (ruleNode) removeRateRule(Number(ruleNode.dataset.ruleIndex));
+                return;
+            }
+
+            const chipRemove = e.target.closest('[data-rule-chip-remove]');
+
+            if (chipRemove) {
+                const chip = chipRemove.closest('[data-rule-chip]');
+                const rule = empData.rateRules ? empData.rateRules[Number(chip.dataset.ruleChip)] : null;
+
+                if (chip && rule) {
+                    rule.services = (rule.services || []).filter(function(item) {
+                        return String(item.id) !== String(chip.dataset.serviceId);
+                    });
+
+                    empDirty = true;
+                    renderCard();
+                }
+
+                return;
+            }
+
+            const ruleChips = e.target.closest('[data-rule-chips]');
+
+            if (ruleChips) {
+                const input = ruleChips.querySelector('.p-rule__input');
+
+                if (input) input.focus();
+                return;
+            }
+
+            const ruleFocus = e.target.closest('[data-rule-focus]');
+
+            if (ruleFocus) {
+                const ruleNode = e.target.closest('.p-rule');
+                const box = ruleNode ? ruleNode.querySelector('.p-rule__input') : null;
+
+                if (box) box.focus();
+                return;
+            }
+
+            const ruleRateKey = e.target.closest('[data-rule-rate-k]');
+
+            if (ruleRateKey) {
+                const ruleNode = e.target.closest('.p-rule');
+                const node = ruleNode ? ruleNode.querySelector('[data-rule-rate]') : null;
+
+                if (node) startRuleRateEdit(node, Number(ruleRateKey.dataset.ruleRateK));
+                return;
+            }
+
+            const ruleRate = e.target.closest('[data-rule-rate]');
+
+            if (ruleRate) {
+                startRuleRateEdit(ruleRate, Number(ruleRate.dataset.ruleRate));
+                return;
+            }
+
             const target = e.target.closest('[data-edit]');
 
-            if (target) startEdit(target);
+            if (target) {
+                const field = e.target.closest('.p-row__k[data-edit], .p-pass__label[data-edit]');
+
+                if (field) {
+                    const valueNode = field.parentElement
+                        ? field.parentElement.querySelector('[data-edit="' + field.dataset.edit + '"].m-editable')
+                        : null;
+
+                    if (valueNode) {
+                        startEdit(valueNode);
+                        return;
+                    }
+                }
+
+                startEdit(target);
+            }
         });
     }
 
     bindCardEvents();
 
     if (empSaveBtn) empSaveBtn.addEventListener('click', saveEmployee);
-    if (empCloseBtn) empCloseBtn.addEventListener('click', requestCloseEmployeeModal);
     if (empDeactivateBtn) empDeactivateBtn.addEventListener('click', deactivateCurrentEmployee);
     if (addEmployeeBtn) addEmployeeBtn.addEventListener('click', openAddEmployee);
 
     if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) requestCloseEmployeeModal();
+        window.UI.registerModal(modal, function() {
+            if (closeAllEdits()) return;
+
+            requestCloseEmployeeModal();
         });
     }
 
@@ -1140,6 +1561,7 @@
             + '<td>' + escapeHtml(emp.username) + '</td>'
             + '<td>' + escapeHtml(emp.roles_label || emp.role_display || '') + '</td>'
             + '<td>' + escapeHtml(emp.phone || '—') + '</td>'
+            + '<td class="employees-table__rate">' + escapeHtml(formatRate(emp.rate)) + '</td>'
             + '</tr>';
     }
 
@@ -1150,7 +1572,7 @@
 
         if (reset) {
             employeesOffset = 0;
-            tableBody.innerHTML = '<tr><td colspan="5" class="load-more__empty">Загрузка...</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" class="load-more__empty">Загрузка...</td></tr>';
         }
 
         if (search) params.set('search', search);
@@ -1180,7 +1602,7 @@
                 }
 
                 if (reset && !rows.length) {
-                    tableBody.innerHTML = '<tr><td colspan="5" class="load-more__empty">Сотрудники не найдены</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="6" class="load-more__empty">Сотрудники не найдены</td></tr>';
                 } else {
                     tableBody.insertAdjacentHTML('beforeend', rows.map(employeeRow).join(''));
                 }
@@ -1218,7 +1640,6 @@
     }
 
     if (artistCardModal) window.UI.registerModal(artistCardModal, closeArtistCardModal);
-    if (modal) window.UI.registerModal(modal, requestCloseEmployeeModal);
 
     loadServices();
     attachRowEvents();

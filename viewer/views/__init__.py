@@ -6,7 +6,7 @@ from .clients import (
 )
 from .employees import (
     EmployeesView, EmployeeDetailView, EmployeeUpdateView, EmployeeDeleteView, EmployeeListView,
-    EmployeeDocumentsView, EmployeeDocumentDeleteView,
+    EmployeeDocumentsView, EmployeeDocumentDeleteView, EmployeeDocumentFileView,
     ArtistCardDetailView, ArtistCardUpdateView, ServicesForArtistCardView,
 )
 from .orders import (

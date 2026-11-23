@@ -5,7 +5,7 @@ from .views import (
     ClientDeleteMatchedView, AgencyCreateView, CityCatalogView, AgencyCatalogView,
     AgencyAliasView, AgencyManagerView, AgencyManagerListView,
     EmployeesView, EmployeeDetailView, EmployeeUpdateView, EmployeeDeleteView, EmployeeListView,
-    EmployeeDocumentsView, EmployeeDocumentDeleteView,
+    EmployeeDocumentsView, EmployeeDocumentDeleteView, EmployeeDocumentFileView,
     ArtistCardDetailView, ArtistCardUpdateView, ServicesForArtistCardView,
     OrdersView, OrderDetailView, OrderUpdateView, OrderDeleteView, OrderListView, OrderCopyView,
     OrderPaymentView, OrderChecklistView, OrderFeedbackView, OrderFeedbackStatusView,
@@ -75,6 +75,7 @@ urlpatterns = [
     path('employees/<int:employee_id>/artist-card/update/', ArtistCardUpdateView.as_view(), name='artist_card_update'),
     path('employees/<int:employee_id>/documents/', EmployeeDocumentsView.as_view(), name='employee_documents'),
     path('employees/<int:employee_id>/documents/<int:document_id>/delete/', EmployeeDocumentDeleteView.as_view(), name='employee_document_delete'),
+    path('employees/<int:employee_id>/documents/<int:document_id>/file/', EmployeeDocumentFileView.as_view(), name='employee_document_file'),
     path('artist-card/services/', ServicesForArtistCardView.as_view(), name='artist_card_services'),
 
     path('orders/', OrdersView.as_view(), name='orders'),

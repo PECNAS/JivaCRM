@@ -1,12 +1,17 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views import View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.contrib import messages
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
+import json
+import mimetypes
+import re
+from urllib.parse import quote
 from ..models import (
-    Employee, Role, Service, ArtistCard, EmployeeDocument, OrderEmployee, resolve_availability,
+    Employee, Role, Service, ArtistCard, ArtistCardRateRule, EmployeeDocument, OrderEmployee, resolve_availability,
     ROLE_CHOICES, ROLE_LABELS, ROLE_ARTIST, ROLE_SENIOR_ADMIN, ARTIST_ROLES, normalize_text,
 )
 from .helpers import role_label, role_labels_text, format_date_short
@@ -44,6 +49,23 @@ def parse_request_date(value):
         return datetime.strptime(str(value).strip(), '%Y-%m-%d').date()
     except (TypeError, ValueError):
         return None
+
+
+def parse_rate(value):
+    text = str(value or '').strip().replace(' ', '').replace('₽', '').replace(',', '.')
+
+    if not text:
+        return Decimal('0')
+
+    try:
+        number = Decimal(text)
+    except (InvalidOperation, ValueError):
+        return Decimal('0')
+
+    if not number.is_finite() or number < 0:
+        return Decimal('0')
+
+    return number.quantize(Decimal('0.01'))
 
 
 def parse_roles(request):
@@ -119,6 +141,8 @@ def serialize_employee(employee_obj, with_card=False):
         'passport_registration': employee_obj.passport_registration or '',
         'passport_inn': employee_obj.passport_inn or '',
         'passport_snils': employee_obj.passport_snils or '',
+        'rate': f'{employee_obj.rate:.2f}' if employee_obj.rate is not None else '0.00',
+        'comment': employee_obj.comment or '',
     }
 
     if with_card:
@@ -139,12 +163,15 @@ def serialize_employee_documents(employee_obj):
     documents = []
 
     for item in employee_obj.documents.all():
+        title = item.title or ''
+
         documents.append({
             'id': item.id,
             'kind': item.kind,
             'kind_display': item.get_kind_display(),
             'url': item.file.url if item.file else '',
-            'title': item.title or '',
+            'name': title or (item.file.name.rsplit('/', 1)[-1] if item.file else ''),
+            'title': title,
             'uploaded_at': item.created_at.strftime('%d.%m.%Y'),
         })
 
@@ -162,7 +189,64 @@ def serialize_artist_card(card):
         'skills_text': card.skills_text or '',
         'comment': card.comment or '',
         'known_shows': [{'id': s.id, 'name': s.name} for s in card.known_shows.all()],
+        'rate_rules': [
+            {
+                'id': rule.id,
+                'services': [{'id': s.id, 'name': s.name} for s in rule.services.all()],
+                'extra_rate': f'{rule.extra_rate:.0f}',
+            }
+            for rule in card.rate_rules.prefetch_related('services')
+        ],
     }
+
+
+def save_artist_rate_rules(card, raw):
+    text = str(raw or '').strip()
+
+    if not text:
+        return
+
+    try:
+        items = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        return
+
+    if not isinstance(items, list):
+        return
+
+    card.rate_rules.all().delete()
+
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+
+        raw_services = item.get('services') or []
+        service_ids = []
+
+        for value in raw_services:
+            text_value = str(value).strip()
+
+            if text_value.isdigit():
+                service_ids.append(int(text_value))
+
+        raw_rate = str(item.get('extra_rate') or '').strip().replace(' ', '').replace(',', '.')
+
+        try:
+            extra_rate = Decimal(raw_rate) if raw_rate else Decimal('0')
+        except (InvalidOperation, ValueError):
+            extra_rate = Decimal('0')
+
+        if not extra_rate.is_finite() or extra_rate < 0:
+            extra_rate = Decimal('0')
+
+        rule = ArtistCardRateRule.objects.create(
+            card=card,
+            extra_rate=extra_rate.quantize(Decimal('0.01')),
+            order_index=index,
+        )
+
+        if service_ids:
+            rule.services.set(Service.objects.filter(id__in=service_ids, type='service'))
 
 
 class EmployeesView(View):
@@ -238,7 +322,7 @@ class EmployeesView(View):
             if not request.POST.getlist('roles') and not request.POST.get('roles', '').strip():
                 return JsonResponse({'error': 'Выберите хотя бы одну роль'}, status=400)
 
-            passport_series = request.POST.get('passport_series', '').strip()
+            passport_series = request.POST.get('passport_series', '').strip()[:20]
             passport_number = request.POST.get('passport_number', '').strip()
             passport_issued_by = request.POST.get('passport_issued_by', '').strip()
             passport_issued_date = request.POST.get('passport_issued_date', '').strip()
@@ -249,8 +333,10 @@ class EmployeesView(View):
 
             rzd_bonus_number = request.POST.get('rzd_bonus_number', '').strip()
             instagram = request.POST.get('instagram', '').strip()
-            international_passport_series = request.POST.get('international_passport_series', '').strip()
+            international_passport_series = request.POST.get('international_passport_series', '').strip()[:20]
             international_passport_number = request.POST.get('international_passport_number', '').strip()
+            rate = parse_rate(request.POST.get('rate'))
+            comment = request.POST.get('comment', '').strip()
 
             if not username:
                 return JsonResponse({'error': 'Логин обязателен для заполнения'}, status=400)
@@ -301,6 +387,8 @@ class EmployeesView(View):
                 instagram=instagram,
                 international_passport_series=international_passport_series,
                 international_passport_number=international_passport_number,
+                rate=rate,
+                comment=comment,
             )
 
             sync_employee_roles(employee_obj, role_codes)
@@ -362,7 +450,7 @@ class EmployeeUpdateView(View):
             if not request.POST.getlist('roles') and not request.POST.get('roles', '').strip():
                 return JsonResponse({'error': 'Выберите хотя бы одну роль'}, status=400)
 
-            passport_series = request.POST.get('passport_series', '').strip()
+            passport_series = request.POST.get('passport_series', '').strip()[:20]
             passport_number = request.POST.get('passport_number', '').strip()
             passport_issued_by = request.POST.get('passport_issued_by', '').strip()
             passport_issued_date = request.POST.get('passport_issued_date', '').strip()
@@ -373,8 +461,10 @@ class EmployeeUpdateView(View):
 
             rzd_bonus_number = request.POST.get('rzd_bonus_number', '').strip()
             instagram = request.POST.get('instagram', '').strip()
-            international_passport_series = request.POST.get('international_passport_series', '').strip()
+            international_passport_series = request.POST.get('international_passport_series', '').strip()[:20]
             international_passport_number = request.POST.get('international_passport_number', '').strip()
+            rate = parse_rate(request.POST.get('rate'))
+            comment = request.POST.get('comment', '').strip()
 
             if not username:
                 return JsonResponse({'error': 'Логин обязателен для заполнения'}, status=400)
@@ -423,6 +513,8 @@ class EmployeeUpdateView(View):
             employee_obj.instagram = instagram
             employee_obj.international_passport_series = international_passport_series
             employee_obj.international_passport_number = international_passport_number
+            employee_obj.rate = rate
+            employee_obj.comment = comment
             employee_obj.save()
 
             sync_employee_roles(employee_obj, role_codes)
@@ -525,6 +617,7 @@ class EmployeeListView(View):
                 'role_codes': emp.role_codes(),
                 'roles_label': role_labels_text(emp.role_codes()),
                 'phone': normalize_phone_display(emp.phone),
+                'rate': f'{emp.rate:.2f}' if emp.rate is not None else '0.00',
                 'is_active': emp.is_active,
             })
 
@@ -603,6 +696,8 @@ class ArtistCardUpdateView(View):
                 card.known_shows.set(Service.objects.filter(id__in=ids))
             else:
                 card.known_shows.clear()
+
+            save_artist_rate_rules(card, request.POST.get('rate_rules', ''))
 
             return JsonResponse({
                 'success': True,
@@ -696,10 +791,18 @@ class EmployeeDocumentsView(View):
         if kind not in dict(EmployeeDocument.KINDS):
             kind = EmployeeDocument.KIND_OTHER
 
+        original_name = (upload.name or '').replace('\\', '/').rsplit('/', 1)[-1]
+        extension = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
+        title = request.POST.get('title', '').strip() or original_name
+        title = title.replace('\\', '/').rsplit('/', 1)[-1]
+
+        safe_stem = re.sub(r'[^\w\-]+', '_', original_name.rsplit('.', 1)[0], flags=re.UNICODE).strip('_')[:80] or 'document'
+        upload.name = f'{safe_stem}.{extension}' if extension else safe_stem
+
         EmployeeDocument.objects.create(
             employee=employee_obj,
             kind=kind,
-            title=request.POST.get('title', '').strip(),
+            title=title,
             file=upload,
             uploaded_by=current_employee,
         )
@@ -708,6 +811,47 @@ class EmployeeDocumentsView(View):
             'success': True,
             'documents': serialize_employee_documents(employee_obj),
         })
+
+
+class EmployeeDocumentFileView(View):
+    def get(self, request, employee_id, document_id):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Не авторизован'}, status=401)
+
+        current_employee = getattr(request.user, 'employee_profile', None)
+
+        if current_employee is None:
+            return JsonResponse({'error': 'Профиль не найден'}, status=404)
+
+        if current_employee.id != int(employee_id) and not current_employee.can_manage_employees():
+            return JsonResponse({'error': 'У вас недостаточно прав'}, status=403)
+
+        document = EmployeeDocument.objects.filter(id=document_id, employee_id=employee_id).first()
+
+        if document is None or not document.file:
+            return JsonResponse({'error': 'Документ не найден'}, status=404)
+
+        try:
+            handle = document.file.open('rb')
+        except (FileNotFoundError, OSError):
+            return JsonResponse({'error': 'Файл не найден на диске'}, status=404)
+
+        content = handle.read()
+        handle.close()
+
+        extension = document.file.name.rsplit('.', 1)[-1].lower() if '.' in document.file.name else ''
+        content_type = mimetypes.guess_type('file.' + extension)[0] or 'application/octet-stream'
+
+        filename = document.title.strip() or document.file.name.rsplit('/', 1)[-1]
+
+        if '.' not in filename and extension:
+            filename = f'{filename}.{extension}'
+
+        response = HttpResponse(content, content_type=content_type)
+        response['Content-Disposition'] = "inline; filename*=UTF-8''" + quote(filename)
+        response['Cache-Control'] = 'private, max-age=600'
+
+        return response
 
 
 class EmployeeDocumentDeleteView(View):

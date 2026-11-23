@@ -43,6 +43,7 @@
                 <th>Логин</th>
                 <th>Роль</th>
                 <th>Телефон</th>
+                <th>Ставка, ₽</th>
             </tr>
         </thead>
         <tbody id="employeesTableBody">
@@ -58,10 +59,11 @@
                 <td>{{ emp.user.username }}</td>
                 <td>{{ emp.roles_text }}</td>
                 <td>{{ emp.phone|default:"—" }}</td>
+                <td class="employees-table__rate">{% if emp.rate %}{{ emp.rate|floatformat:0 }} ₽{% else %}0 ₽{% endif %}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" style="text-align:center; padding: 2rem; color: #7a7267;">
+                <td colspan="6" style="text-align:center; padding: 2rem; color: #7a7267;">
                     Сотрудники не найдены
                 </td>
             </tr>
@@ -83,11 +85,10 @@
         </div>
         <footer class="modal__foot emp-foot">
             <div class="emp-foot__left">
-                <button type="button" class="btn btn-danger btn-sm" id="empDeactivateBtn">Деактивировать</button>
                 <span class="emp-foot__created" id="empCreatedText"></span>
             </div>
             <div class="emp-foot__right">
-                <button type="button" class="btn btn-ghost" id="empCloseBtn">Закрыть</button>
+                <button type="button" class="btn btn-danger btn-sm" id="empDeactivateBtn">Удалить</button>
                 <button type="button" class="btn btn-primary" id="empSaveBtn">Сохранить</button>
             </div>
         </footer>

@@ -4,7 +4,7 @@ from .models import (
     OrderEstimate, OrderEmployee, OrderPayment, OrderFeedback,
     ChecklistTemplate, ChecklistItem, OrderShowTemplate,
     Service, ServiceStaffRow, ArtistSchedule,
-    City, CityGroup, ArtistCard, CalendarColor, PriceRisePeriod,
+    City, CityGroup, ArtistCard, ArtistCardRateRule, CalendarColor, PriceRisePeriod,
     MoneyAccrual, MoneyPayout, OrderExpense, OrderReadMark, NarrowChat, OrderContact,
     OrderChangeLog, CalendarEvent,
 )
@@ -142,7 +142,7 @@ class EmployeeDocumentInline(admin.TabularInline):
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ['id', 'full_name', 'nickname', 'user', 'role', 'phone', 'is_active']
+    list_display = ['id', 'full_name', 'nickname', 'user', 'role', 'phone', 'rate', 'is_active']
     list_filter = ['role', 'is_active', 'skills', 'roles']
     search_fields = ['full_name', 'nickname', 'user__username', 'phone', 'telegram_username']
     raw_id_fields = ['user']
@@ -154,7 +154,8 @@ class EmployeeAdmin(admin.ModelAdmin):
             'fields': ('user', 'full_name', 'nickname', 'role', 'roles', 'phone', 'telegram_username', 'skills', 'is_active')
         }),
         ('Дополнительно', {
-            'fields': ('rzd_bonus_number', 'instagram', 'international_passport_series', 'international_passport_number')
+            'fields': ('rzd_bonus_number', 'instagram', 'rate', 'comment',
+                       'international_passport_series', 'international_passport_number')
         }),
         ('Паспортные данные', {
             'fields': ('passport_series', 'passport_number', 'passport_issued_by',
@@ -181,6 +182,14 @@ class ArtistCardAdmin(admin.ModelAdmin):
     list_display = ['id', 'employee', 'weight', 'height', 'shoe_size']
     search_fields = ['employee__full_name']
     filter_horizontal = ['known_shows']
+
+
+@admin.register(ArtistCardRateRule)
+class ArtistCardRateRuleAdmin(admin.ModelAdmin):
+    list_display = ['id', 'card', 'extra_rate', 'order_index']
+    search_fields = ['card__employee__full_name']
+    filter_horizontal = ['services']
+    raw_id_fields = ['card']
 
 
 @admin.register(Client)
