@@ -323,7 +323,7 @@ class EmployeesView(View):
                 return JsonResponse({'error': 'Выберите хотя бы одну роль'}, status=400)
 
             passport_series = request.POST.get('passport_series', '').strip()[:20]
-            passport_number = request.POST.get('passport_number', '').strip()
+            passport_number = request.POST.get('passport_number', '').strip()[:20]
             passport_issued_by = request.POST.get('passport_issued_by', '').strip()
             passport_issued_date = request.POST.get('passport_issued_date', '').strip()
             passport_department_code = request.POST.get('passport_department_code', '').strip()
@@ -334,7 +334,7 @@ class EmployeesView(View):
             rzd_bonus_number = request.POST.get('rzd_bonus_number', '').strip()
             instagram = request.POST.get('instagram', '').strip()
             international_passport_series = request.POST.get('international_passport_series', '').strip()[:20]
-            international_passport_number = request.POST.get('international_passport_number', '').strip()
+            international_passport_number = request.POST.get('international_passport_number', '').strip()[:20]
             rate = parse_rate(request.POST.get('rate'))
             comment = request.POST.get('comment', '').strip()
 
@@ -451,7 +451,7 @@ class EmployeeUpdateView(View):
                 return JsonResponse({'error': 'Выберите хотя бы одну роль'}, status=400)
 
             passport_series = request.POST.get('passport_series', '').strip()[:20]
-            passport_number = request.POST.get('passport_number', '').strip()
+            passport_number = request.POST.get('passport_number', '').strip()[:20]
             passport_issued_by = request.POST.get('passport_issued_by', '').strip()
             passport_issued_date = request.POST.get('passport_issued_date', '').strip()
             passport_department_code = request.POST.get('passport_department_code', '').strip()
@@ -462,7 +462,7 @@ class EmployeeUpdateView(View):
             rzd_bonus_number = request.POST.get('rzd_bonus_number', '').strip()
             instagram = request.POST.get('instagram', '').strip()
             international_passport_series = request.POST.get('international_passport_series', '').strip()[:20]
-            international_passport_number = request.POST.get('international_passport_number', '').strip()
+            international_passport_number = request.POST.get('international_passport_number', '').strip()[:20]
             rate = parse_rate(request.POST.get('rate'))
             comment = request.POST.get('comment', '').strip()
 

@@ -121,6 +121,19 @@
         number: function(v) {
             return String(v || '').replace(/\D/g, '').slice(0, 6);
         },
+        passportNumber: function(v) {
+            return String(v || '').replace(/\s+/g, '').slice(0, 20);
+        },
+        passportSeries: function(v) {
+            const text = String(v || '').replace(/\s+/g, '').slice(0, 20);
+            const digits = text.replace(/\D/g, '');
+
+            if (digits.length === 4 && digits === text) {
+                return digits.slice(0, 2) + ' ' + digits.slice(2);
+            }
+
+            return text;
+        },
         inn: function(v) {
             return String(v || '').replace(/\D/g, '').slice(0, 12);
         },
@@ -138,12 +151,12 @@
         phone: 'phone',
         inn: 'inn',
         snils: 'snils',
-        'passport.series': 'series',
-        'passport.number': 'number',
+        'passport.series': 'passportSeries',
+        'passport.number': 'passportNumber',
         'passport.code': 'code',
         'passport.issuedAt': 'date',
-        'foreign.series': 'series',
-        'foreign.number': 'number',
+        'foreign.series': 'passportSeries',
+        'foreign.number': 'passportNumber',
         'foreign.code': 'code',
         'foreign.issuedAt': 'date',
         'artist.weight': 'number',
@@ -191,19 +204,19 @@
 
     function renderPassportCard(title, key) {
         const holder = empData[key] || {};
-        const numberText = [holder.series, holder.number].filter(Boolean).join(' ');
 
-        function passRow(label, path, className, display) {
+        function passRow(label, path, className) {
             return '<div class="p-pass__row">'
                 + '<span class="p-pass__label">' + escapeHtml(label) + '</span>'
-                + '<span class="p-pass__v ' + className + '">' + renderValue(path, display) + '</span>'
+                + '<span class="p-pass__v ' + className + '">' + renderValue(path) + '</span>'
                 + '</div>';
         }
 
         return '<div class="p-card">'
             + '<div class="sec">' + escapeHtml(title) + '</div>'
             + '<div class="p-pass">'
-            + passRow('Серия и номер', key + '.number', 'p-pass__num', numberText)
+            + passRow('Серия', key + '.series', 'p-pass__num')
+            + passRow('Номер', key + '.number', 'p-pass__num')
             + passRow('Код подразделения', key + '.code', 'p-pass__code')
             + passRow('Кем выдан', key + '.issuedBy', 'p-pass__by')
             + passRow('Дата выдачи', key + '.issuedAt', 'p-pass__date')
