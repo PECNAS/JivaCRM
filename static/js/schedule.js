@@ -24,7 +24,8 @@
         } catch (error) {}
     }
 
-    let currentView = localStorage.getItem(VIEW_STORAGE_KEY) === 'list' ? 'list' : 'calendar';    let currentOrders = [];
+    let currentView = 'calendar';
+    let currentOrders = [];
     let calendarDate = readStoredMonth() || new Date();
     let activeOrderId = null;
     let statusColors = {};
@@ -1140,7 +1141,7 @@
     }
 
     function applyFiltersAndSort(orders) {
-        return currentView === 'list' ? applyListFilters(orders) : applyCalendarFilters(orders);
+        return applyCalendarFilters(orders);
     }
 
     function listDateLabel(order) {
@@ -1470,8 +1471,8 @@
         const today = new Date();
         const filtered = applyFiltersAndSort(currentOrders);
 
-        const hasSearch = (searchInput.value || '').trim().length > 0;
-        const hasStatusFilter = statusSelect.value !== 'all';
+        const hasSearch = false;
+        const hasStatusFilter = calendarStatusSelect ? calendarStatusSelect.value !== 'all' : false;
 
         const isCurrentMonthView = month === today.getMonth() && year === today.getFullYear();
 
@@ -1488,8 +1489,8 @@
             return start <= monthEnd && end >= monthStart;
         });
 
-        const emptyNotice = (hasSearch || hasStatusFilter) && monthEvents.length === 0
-            ? `<div class="calendar-search-empty">${hasSearch ? 'По запросу «' + escapeHtml(searchInput.value.trim()) + '»' : 'По выбранному статусу'} в этом месяце ничего не найдено</div>`
+        const emptyNotice = hasStatusFilter && monthEvents.length === 0
+            ? '<div class="calendar-search-empty">По выбранному статусу в этом месяце ничего не найдено</div>'
             : '';
 
         if (emptyNotice) {
@@ -1674,26 +1675,15 @@
     }
 
     function render() {
-        if (currentView === 'list') {
-            dashboardList.style.display = 'flex';
-            dashboardCalendar.style.display = 'none';
-            renderList();
+        dashboardCalendar.style.display = 'block';
+        renderCalendar();
 
-            if (dashboardFilters) dashboardFilters.style.display = 'flex';
-            if (calendarFilters) calendarFilters.style.display = 'none';
-        } else {
-            dashboardList.style.display = 'none';
-            dashboardCalendar.style.display = 'block';
-            renderCalendar();
-
-            if (dashboardFilters) dashboardFilters.style.display = 'none';
-            if (calendarFilters) calendarFilters.style.display = 'flex';
-        }    }
+        if (dashboardFilters) dashboardFilters.style.display = 'none';
+        if (calendarFilters) calendarFilters.style.display = 'none';
+    }
 
     function applyInitialView() {
-        document.querySelectorAll('.view-switch__btn').forEach(b => {
-            b.classList.toggle('active', b.dataset.view === currentView);
-        });
+        currentView = 'calendar';
     }
 
     function isOnlyMyOrders() {
@@ -1895,20 +1885,6 @@
         showPastCompleted = pastCompletedToggle.checked;
     }
 
-    document.querySelectorAll('.view-switch__btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.view-switch__btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentView = this.dataset.view;
-            try {
-                localStorage.setItem(VIEW_STORAGE_KEY, currentView);
-            } catch {}
-            listLimit = LIST_PAGE_SIZE;
-            listHasMore = false;
-            loadOrders();
-        });
-    });
-
     if (myOrdersOnlyToggle) {
         let storedPreference = '1';
 
@@ -1935,15 +1911,6 @@
     if (isOnlyMyOrders() && dashboardFilters) {
         dashboardFilters.classList.add('open');
     }
-
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(render, 300);
-    });
-
-    sortSelect.addEventListener('change', render);
-    statusSelect.addEventListener('change', render);
 
     calendarPrev.addEventListener('click', function() {
         calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1);
@@ -2134,19 +2101,19 @@
             });
         });
 
-        document.addEventListener('click', function(e) {
+        document.addEventListener('mousedown', function(e) {
             if (!contextMenu.contains(e.target)) {
                 hideContextMenu();
             }
         });
 
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                hideContextMenu();
-            }
+            if (e.key === 'Escape') hideContextMenu();
         });
 
-        window.addEventListener('scroll', hideContextMenu, true);
+        window.addEventListener('scroll', function() {
+            hideContextMenu();
+        }, true);
     }
 
     if (eventModalCloseBtn) {
@@ -2296,14 +2263,6 @@
             closeClientFilterDropdown();
             render();
         });
-    }
-
-    if (searchInput) searchInput.addEventListener('input', render);
-    if (statusSelect) statusSelect.addEventListener('change', render);
-    if (sortSelect) {
-        const sortWrap = sortSelect.closest('.dashboard-filter') || sortSelect.parentElement;
-
-        if (sortWrap) sortWrap.style.display = 'none';
     }
 
     if (pastCompletedToggle) {
@@ -2466,6 +2425,7 @@
 
     const startParams = new URLSearchParams(window.location.search);
     const openingOrderId = parseInt(startParams.get('open_order') || startParams.get('order'), 10);
+    const openFormNow = startParams.get('open_form') === '1';
 
     applyInitialView();
     loadCalendarEvents().then(function() {
@@ -2475,6 +2435,27 @@
 
     if (!isNaN(openingOrderId)) {
         window.history.replaceState({}, '', window.location.pathname);
+
+        if (openFormNow) {
+            const openFormLink = function(orderId, attempts) {
+                if (typeof window.openOrderForm === 'function') {
+                    window.openOrderForm(orderId);
+                    return;
+                }
+
+                if (attempts <= 0) {
+                    openOrderByLink(orderId, 0);
+                    return;
+                }
+
+                setTimeout(function() {
+                    openFormLink(orderId, attempts - 1);
+                }, 200);
+            };
+
+            openFormLink(openingOrderId, 40);
+            return;
+        }
 
         openOrderByLink(openingOrderId, 10);
         return;

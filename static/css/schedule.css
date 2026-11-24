@@ -1,47 +1,30 @@
-.schedule-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    padding: 0.75rem;
-    background: #13110e;
-    border: 1px solid #2b2620;
-    border-radius: 12px;
-    position: fixed;
-    top: calc(var(--navbar-height, 64px) + 0.75rem);
-    left: 1rem;
-    width: 250px;
-    max-height: calc(100vh - var(--navbar-height, 64px) - 1.5rem);
-    overflow-y: auto;
-    z-index: 50;
-}
-
 .schedule-layout {
     display: block;
-    padding-top: 0.75rem;
-    padding-left: calc(250px + 1.5rem);
+    padding: 0.75rem 1rem 1rem;
     width: auto;
     margin-left: calc(50% - 50vw + 1rem);
     margin-right: calc(50% - 50vw + 1rem);
     box-sizing: border-box;
 }
 
-.schedule-sidebar ~ .schedule-main {
+.schedule-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     min-width: 0;
+}
+
+.schedule-main > .dashboard-calendar {
+    width: 100%;
+    max-width: 1400px;
 }
 
 @media (max-width: 1024px) {
     .schedule-layout {
         margin-left: 0;
         margin-right: 0;
-        padding-left: 0;
+        padding: 0.5rem;
         padding-bottom: 0.5rem;
-    }
-
-    .schedule-sidebar {
-        position: static;
-        width: auto;
-        max-height: none;
-        margin-bottom: 0.75rem;
     }
 }
 
@@ -58,56 +41,6 @@
     border-radius: 8px;
     padding: 0.45rem 0.7rem;
     font-size: 0.86rem;
-}
-
-.schedule-sidebar__add {
-    width: 100%;
-    justify-content: center;
-}
-
-.schedule-sidebar__toggle {
-    width: 100%;
-}
-
-.schedule-sidebar .dashboard-filters {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.45rem;
-    width: 100%;
-    padding: 0;
-    background: transparent;
-    border: none;
-}
-
-.schedule-sidebar .dashboard-filters .dashboard-search,
-.schedule-sidebar .dashboard-filters .dashboard-client-search,
-.schedule-sidebar .dashboard-filters .dashboard-select {
-    width: 100%;
-    min-width: 0;
-    flex: 1 1 auto;
-}
-
-.schedule-sidebar .my-orders-toggle {
-    border-radius: 10px;
-    padding: 0.45rem 0.65rem;
-    justify-content: flex-start;
-    white-space: normal;
-    text-align: left;
-}
-
-.schedule-main {
-    min-width: 0;
-}
-
-@media (max-width: 1024px) {
-    .schedule-layout {
-        grid-template-columns: 1fr;
-    }
-
-    .schedule-sidebar {
-        position: static;
-        max-height: none;
-    }
 }
 
 .dashboard-body {
@@ -132,6 +65,54 @@
     align-items: center;
     gap: 1rem;
     margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.dashboard-calendar__filters {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.calendar-status-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #14120f;
+    background-image: linear-gradient(45deg, transparent 50%, #9e9487 50%), linear-gradient(135deg, #9e9487 50%, transparent 50%);
+    background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    border: 1px solid #2b2620;
+    border-radius: 40px;
+    color: #ddd4c7;
+    font-family: inherit;
+    font-size: 0.82rem;
+    padding: 0.4rem 2rem 0.4rem 0.9rem;
+    cursor: pointer;
+    color-scheme: dark;
+    transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.calendar-status-select:hover {
+    border-color: #3b342c;
+    background-color: #1a1714;
+    color: #f5efe7;
+}
+
+.calendar-status-select:focus {
+    outline: none;
+    border-color: #f0a868;
+    box-shadow: 0 0 0 3px rgba(240, 168, 104, 0.15);
+}
+
+.calendar-status-select option {
+    background: #14120f;
+    color: #f5efe7;
 }
 
 .dashboard-calendar__nav {
@@ -585,7 +566,7 @@
     border-radius: 12px;
     padding: 0.3rem 0;
     min-width: 200px;
-    z-index: 3000;
+    z-index: 1500;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
     animation: contextMenuIn 0.15s ease;
 }
@@ -641,7 +622,7 @@
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 2500;
+    z-index: 1000;
     padding: 1rem;
 }
 
@@ -970,6 +951,26 @@
     .dashboard-calendar__title {
         font-size: 0.95rem;
         min-width: 140px;
+    }
+
+    .dashboard-calendar__header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .dashboard-calendar__filters {
+        position: static;
+        transform: none;
+        width: 100%;
+        justify-content: center;
+        order: 3;
+    }
+
+    .calendar-status-select {
+        width: 100%;
+        min-height: 38px;
+        font-size: 15px;
+        border-radius: 10px;
     }
 
     .context-menu {
@@ -1661,7 +1662,7 @@
 }
 
 .modal-overlay--stacked {
-    z-index: 2600;
+    z-index: 1100;
 }
 
 .modal--event-checklist {

@@ -1167,6 +1167,52 @@ class OrderEmployee(models.Model):
         return self.show.service_name
 
 
+class OrderShowPay(models.Model):
+    KIND_SERVICE = 'service'
+    KIND_DAILY = 'daily'
+    KIND_PROJECT = 'project'
+
+    KINDS = [
+        (KIND_SERVICE, 'За услугу'),
+        (KIND_DAILY, 'Суточные'),
+        (KIND_PROJECT, 'За проект'),
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='show_pays', verbose_name='Заказ')
+    show = models.ForeignKey(
+        OrderEstimate, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='show_pays', verbose_name='Услуга',
+    )
+    employee = models.ForeignKey(
+        Employee, on_delete=models.CASCADE, related_name='show_pays', verbose_name='Сотрудник',
+    )
+    kind = models.CharField('Вид начисления', max_length=20, choices=KINDS, default=KIND_SERVICE)
+    amount = models.DecimalField('Сумма', max_digits=12, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Оплата сотрудника за шоу'
+        verbose_name_plural = 'Оплаты сотрудников за шоу'
+        ordering = ['order', 'show_id', 'employee_id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(amount__gte=0), name='order_show_pay_amount_non_negative'),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(kind='service', show__isnull=False)
+                    | models.Q(kind__in=['daily', 'project'], show__isnull=True)
+                ),
+                name='order_show_pay_show_required',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['order']),
+            models.Index(fields=['employee']),
+        ]
+
+    def __str__(self):
+        return f'{self.order_id}: {self.employee_id} {self.kind} {self.amount}'
+
+
 class OrderContact(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='contact_items', verbose_name='Заказ')
     name = models.CharField('Имя', max_length=200, blank=True)

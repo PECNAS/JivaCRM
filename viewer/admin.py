@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Agency, AgencyAlias, AgencyManager, Role, Skill, Employee, EmployeeDocument, Client, Order,
-    OrderEstimate, OrderEmployee, OrderPayment, OrderFeedback,
+    OrderEstimate, OrderEmployee, OrderPayment, OrderFeedback, OrderShowPay,
     ChecklistTemplate, ChecklistItem, OrderShowTemplate,
     Service, ServiceStaffRow, ArtistSchedule,
     City, CityGroup, ArtistCard, ArtistCardRateRule, CalendarColor, PriceRisePeriod,
@@ -259,6 +259,14 @@ class OrderEmployeeAdmin(admin.ModelAdmin):
     list_display = ['id', 'order', 'employee_name', 'employee_role', 'show', 'payment', 'is_story', 'is_responsible']
     list_filter = ['is_story', 'is_responsible', 'role_code']
     search_fields = ['employee_name', 'order__name']
+
+
+@admin.register(OrderShowPay)
+class OrderShowPayAdmin(admin.ModelAdmin):
+    list_display = ['id', 'order', 'show', 'employee', 'kind', 'amount']
+    list_filter = ['kind']
+    search_fields = ['employee__full_name', 'order__name']
+    readonly_fields = ['updated_at']
 
 
 @admin.register(OrderPayment)

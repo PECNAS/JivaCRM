@@ -4580,10 +4580,13 @@
     }
 
     window.openOrderForm = function(orderId) {
-        if (!createModal) return false;
+        if (!createModal) {
+            if (typeof showToast === 'function') showToast('Модальное окно заказа не найдено');
+            return false;
+        }
 
         if (document.body.dataset.canManageOrders !== '1') {
-            showToast('У вас нет прав на редактирование заказов');
+            if (typeof showToast === 'function') showToast('У вас нет прав на редактирование заказов');
             return false;
         }
 
@@ -4594,6 +4597,8 @@
         createModal.classList.add('active');
         document.body.style.overflow = 'hidden';
 
+        createModal.dataset.pendingOrderId = String(orderId);
+
         safeCall('reset', function() { resetCreateOrderForm(''); });
         safeCall('mode', function() { setCreateOrderMode('edit', orderId); });
         safeCall('preview', syncCreateOrderPreview);
@@ -4602,7 +4607,7 @@
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
-                    showToast(data.error);
+                    if (typeof showToast === 'function') showToast(data.error);
                     closeCreateModal();
                     return;
                 }
@@ -4611,9 +4616,11 @@
 
                 safeCall('mode', function() { setCreateOrderMode('edit', orderId); });
                 safeCall('preview', syncCreateOrderPreview);
+
+                delete createModal.dataset.pendingOrderId;
             })
             .catch(error => {
-                showToast('Ошибка загрузки заказа');
+                if (typeof showToast === 'function') showToast('Ошибка загрузки заказа');
                 console.error(error);
                 closeCreateModal();
             });
