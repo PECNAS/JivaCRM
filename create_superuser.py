@@ -1,4 +1,6 @@
 import os
+import sys
+import time
 from datetime import date
 
 import django
@@ -6,11 +8,61 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jiva.settings')
 django.setup()
 
+from django.core.management import call_command
+from django.db import connections
+
 from django.contrib.auth.models import User
 from viewer.models import (
     CalendarColor, City, CityGroup, Employee, PriceRisePeriod, Role, ROLE_CHOICES,
     ROLE_SENIOR_ADMIN, ROLE_ARTIST,
 )
+
+
+RETRY_DELAYS = [2, 3, 5, 8, 10, 15, 20, 30]
+
+
+def database_alive():
+    try:
+        connection = connections['default']
+        connection.close()
+        connection.ensure_connection()
+
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+            cursor.fetchall()
+
+        return True
+    except Exception as error:
+        print(f'  База данных недоступна: {error}')
+
+        return False
+
+
+def setup_database():
+    """Подключение к БД терпеливее: приложение стартует, даже если база ещё поднимается."""
+    attempt = 0
+
+    while True:
+        if database_alive():
+            break
+
+        if attempt >= len(RETRY_DELAYS):
+            print('База данных так и не ответила. Пропускаю миграции и начальные данные.')
+            return False
+
+        delay = RETRY_DELAYS[attempt]
+        attempt += 1
+
+        print(f'  Повтор через {delay} c (попытка {attempt}).')
+        time.sleep(delay)
+
+    try:
+        call_command('migrate', interactive=False, verbosity=1)
+    except Exception as error:
+        print(f'Миграции не применились: {error}. Приложение продолжит работу.')
+        return False
+
+    return True
 
 
 SUPERUSER = {
@@ -288,9 +340,30 @@ def create_superuser():
     print('  Остальные данные создаются на странице /fill-data/')
 
 
+def main():
+    ready = setup_database()
+
+    if not ready:
+        print('Старт без базы данных: сайт будет показывать страницу «Нет связи с базой данных».')
+        return 0
+
+    steps = [
+        create_roles,
+        create_calendar_colors,
+        create_cities,
+        create_price_periods,
+        create_superuser,
+    ]
+
+    for step in steps:
+        try:
+            step()
+        except Exception as error:
+            print(f'Шаг {step.__name__} пропущен: {error}')
+            return 0
+
+    return 0
+
+
 if __name__ == '__main__':
-    create_roles()
-    create_calendar_colors()
-    create_cities()
-    create_price_periods()
-    create_superuser()
+    sys.exit(main())
