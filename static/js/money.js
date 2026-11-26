@@ -6,6 +6,8 @@
     const sortFilter = document.getElementById('moneySortFilter');
     const filtersNode = document.getElementById('moneyFilters');
     const tabButtons = document.querySelectorAll('.money-tab');
+    const filtersToggle = document.getElementById('moneyFiltersToggle');
+    const filtersCount = document.getElementById('moneyFiltersCount');
 
     if (!listNode) return;
 
@@ -1142,6 +1144,94 @@
     }, true);
 
     const TAB_STORAGE_KEY = 'jiva_money_tab';
+    const FILTERS_STORAGE_KEY = 'jiva_money_filters_open';
+    const MOBILE_QUERY = window.matchMedia('(max-width: 860px)');
+
+    function isMobileLayout() {
+        return MOBILE_QUERY.matches;
+    }
+
+    function activeFiltersCount() {
+        let count = 0;
+
+        if (statusFilter && statusFilter.value !== 'all') count += 1;
+        if ((dateFromInput && dateFromInput.value) || (dateToInput && dateToInput.value)) count += 1;
+        if (sortFilter && sortFilter.value !== 'date_asc') count += 1;
+
+        return count;
+    }
+
+    function syncFiltersToggle() {
+        if (!filtersToggle) return;
+
+        const open = filtersToggle.getAttribute('aria-expanded') === 'true';
+        const count = activeFiltersCount();
+
+        if (filtersCount) {
+            filtersCount.textContent = String(count);
+            filtersCount.hidden = count <= 0;
+        }
+
+        filtersToggle.classList.toggle('is-on', open || count > 0);
+    }
+
+    function setFiltersOpen(open) {
+        if (!filtersNode) return;
+
+        filtersNode.classList.toggle('is-collapsed', !open);
+        filtersNode.hidden = false;
+
+        if (filtersToggle) filtersToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        try {
+            localStorage.setItem(FILTERS_STORAGE_KEY, open ? '1' : '0');
+        } catch (error) {}
+
+        syncFiltersToggle();
+    }
+
+    function applyFiltersMode() {
+        if (!filtersToggle || !filtersNode) return;
+
+        if (!isMobileLayout()) {
+            filtersNode.hidden = false;
+            filtersNode.classList.remove('is-collapsed');
+            filtersToggle.hidden = true;
+            return;
+        }
+
+        filtersToggle.hidden = false;
+        filtersNode.hidden = false;
+
+        if (filtersToggle.getAttribute('aria-expanded') === null) {
+            let stored = '';
+
+            try {
+                stored = localStorage.getItem(FILTERS_STORAGE_KEY) || '';
+            } catch (error) {}
+
+            const open = stored === '1';
+
+            filtersNode.classList.toggle('is-collapsed', !open);
+            filtersToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        syncFiltersToggle();
+    }
+
+    if (filtersToggle) {
+        filtersToggle.addEventListener('click', function () {
+            const open = filtersToggle.getAttribute('aria-expanded') !== 'true';
+
+            setFiltersOpen(open);
+        });
+    }
+
+    if (MOBILE_QUERY.addEventListener) {
+        MOBILE_QUERY.addEventListener('change', applyFiltersMode);
+    } else if (MOBILE_QUERY.addListener) {
+        MOBILE_QUERY.addListener(applyFiltersMode);
+    }
 
     function applyTab(target) {
         tabButtons.forEach(function (item) {
@@ -1160,6 +1250,14 @@
             filtersNode.hidden = target !== 'shows';
         }
 
+        if (filtersToggle) {
+            filtersToggle.classList.toggle('is-hidden', isPayouts);
+        }
+
+        if (filtersNode) {
+            filtersNode.classList.toggle('is-payouts-mode', isPayouts);
+        }
+
         if (isPayouts && typeof window.loadMoneyPayouts === 'function') {
             window.loadMoneyPayouts();
         }
@@ -1167,6 +1265,8 @@
         if (target === 'history' && typeof window.renderMoneyPayoutHistory === 'function') {
             window.renderMoneyPayoutHistory();
         }
+
+        applyFiltersMode();
     }
 
     tabButtons.forEach(function (button) {
@@ -1181,10 +1281,12 @@
         });
     });
 
-    if (statusFilter) statusFilter.addEventListener('change', loadShows);
-    if (sortFilter) sortFilter.addEventListener('change', loadShows);
-    if (dateFromInput) dateFromInput.addEventListener('change', loadShows);
-    if (dateToInput) dateToInput.addEventListener('change', loadShows);
+    if (statusFilter) statusFilter.addEventListener('change', function () { syncFiltersToggle(); loadShows(); });
+    if (sortFilter) sortFilter.addEventListener('change', function () { syncFiltersToggle(); loadShows(); });
+    if (dateFromInput) dateFromInput.addEventListener('change', function () { syncFiltersToggle(); loadShows(); });
+    if (dateToInput) dateToInput.addEventListener('change', function () { syncFiltersToggle(); loadShows(); });
+
+    applyFiltersMode();
 
     loadShows();
 

@@ -18,6 +18,7 @@
     <meta name="apple-mobile-web-app-title" content="JIVA HUB">
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
     <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    <link rel="stylesheet" href="{% static 'css/mobile.css' %}">
     {% block css %}{% endblock %}
 </head>
 <body data-role="{{ user.employee_profile.primary_role|default:'' }}" data-employee-id="{{ user.employee_profile.id|default:'' }}" data-employee-name="{{ user.employee_profile.display_name|default:'' }}" data-can-manage-orders="{{ user.employee_profile.can_manage_orders|yesno:'1,0' }}" data-can-edit-checklists="{{ user.employee_profile.can_edit_checklists|yesno:'1,0' }}" data-can-manage-feedback="{{ user.employee_profile.can_manage_feedback|yesno:'1,0' }}">
@@ -27,7 +28,7 @@
                 <span class="brand__icon"></span>
                 <span class="brand__name" data-text="JIVA·HUB">JIVA·HUB</span>
             </a>
-            <nav class="navbar__menu" id="mainMenu">
+            <nav class="navbar__menu navbar__menu-slot" id="mainMenu">
                 <ul class="menu__list">
                     <li class="menu__item">
                         <a href="{% url 'schedule' %}" class="menu__link {% if request.resolver_match.url_name == 'schedule' %}active{% endif %}">
@@ -117,6 +118,12 @@
     </main>
 
     <div class="snowfall" id="snowfall" aria-hidden="true"></div>
+
+    {% if user.is_authenticated %}
+    {% include "_mobile_tabbar.html" %}
+    {% else %}
+    <script>document.addEventListener('DOMContentLoaded', function () { document.body.classList.add('mob-no-tabbar'); });</script>
+    {% endif %}
 
     <script src="{% static 'js/ui.js' %}"></script>
     <script src="{% static 'js/base.js' %}"></script>

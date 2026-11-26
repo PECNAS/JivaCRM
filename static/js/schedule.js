@@ -1427,6 +1427,16 @@
         return '<div class="calendar-event__time">' + escapeHtml(time) + '</div>';
     }
 
+    function calendarCompactHtml(order) {
+        const time = String(order.start_time_text || order.start_time || '').trim();
+        const name = String(order.name || '').trim() || order.city_name || '';
+
+        return '<div class="calendar-event__mob">'
+            + '<span class="calendar-event__mob-name">' + escapeHtml(name) + '</span>'
+            + (time ? '<span class="calendar-event__mob-time">' + escapeHtml(time) + '</span>' : '')
+            + '</div>';
+    }
+
     function calendarStaffHtml(order) {
         return '';
     }
@@ -1445,6 +1455,10 @@
 
         return '<div class="calendar-event calendar-event--event" data-event-id="' + item.id + '">'
             + '<div class="calendar-event__name">' + escapeHtml(item.title || 'Событие') + '</div>'
+            + '<div class="calendar-event__mob">'
+            + '<span class="calendar-event__mob-name">' + escapeHtml(item.title || 'Событие') + '</span>'
+            + (timeText ? '<span class="calendar-event__mob-time">' + escapeHtml(timeText) + '</span>' : '')
+            + '</div>'
             + (timeText ? '<div class="calendar-event__show">' + escapeHtml(timeText) + '</div>' : '')
             + (description ? '<div class="calendar-event__staff">' + escapeHtml(description) + '</div>' : '')
             + '</div>';
@@ -1551,10 +1565,13 @@
                                 ? `<div class="calendar-event__client">${escapeHtml(e.client || '—')}</div>`
                                 : '';
 
+                            const compactHtml = calendarCompactHtml(e);
+
                             return `
                                 <div class="${eventClass}" style="${style}" data-order-id="${e.id}" ${missingTitle ? `title="${escapeHtml(missingTitle)}"` : ''}>
                                     ${isOrderChanged(e) ? '<span class="calendar-event__flag" title="Заказ обновлён">!</span>' : ''}
                                     <div class="calendar-event__name">${calendarOrderNameHtml(e)}</div>
+                                    ${compactHtml}
                                     ${showTimeHtml}
                                     ${clientHtml}
                                     ${showsHtml}
@@ -1590,6 +1607,12 @@
         }
 
         calendarGrid.innerHTML = html;
+
+        if (startOffset > 0) {
+            calendarGrid.style.setProperty('--mob-first-day', String(startOffset + 1));
+        } else {
+            calendarGrid.style.removeProperty('--mob-first-day');
+        }
 
         calendarGrid.querySelectorAll('.calendar-event').forEach(ev => {
             if (ev.classList.contains('calendar-event--event')) return;

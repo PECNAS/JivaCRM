@@ -19,12 +19,19 @@
             <button class="money-tab" type="button" data-tab="history" role="tab">История выплат</button>
         </div>
 
-        <form class="money-searchbar" id="moneySearchForm" autocomplete="off">
-            <input type="text" class="money-filter__input money-searchbar__input" id="moneySearch" placeholder="Поиск сотрудника: имя или ФИО">
-        </form>
+        <div class="money-toolbar">
+            <form class="money-searchbar" id="moneySearchForm" autocomplete="off">
+                <input type="text" class="money-filter__input money-searchbar__input" id="moneySearch" placeholder="Поиск сотрудника: имя или ФИО">
+            </form>
+            <button type="button" class="money-filters-toggle" id="moneyFiltersToggle" aria-expanded="false" aria-controls="moneyFilters">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+                <span>Фильтры</span>
+                <span class="money-filters-toggle__count" id="moneyFiltersCount" hidden>0</span>
+            </button>
+        </div>
 
-        <div class="money-filters" id="moneyFilters">
-            <label class="money-filter">
+        <div class="money-filters money-filters--collapsible" id="moneyFilters">
+            <label class="money-filter" data-filter="status">
                 <span class="money-filter__label">Статус</span>
                 <select class="form-select money-filter__control" id="moneyStatusFilter">
                     <option value="all">Все статусы</option>
@@ -34,7 +41,7 @@
                 </select>
             </label>
 
-            <div class="money-filter">
+            <div class="money-filter" data-filter="date">
                 <span class="money-filter__label">Дата</span>
                 <div class="money-filter__range">
                     <label class="money-filter__row">
@@ -48,7 +55,7 @@
                 </div>
             </div>
 
-            <label class="money-filter">
+            <label class="money-filter" data-filter="sort">
                 <span class="money-filter__label">Сортировка</span>
                 <select class="form-select money-filter__control" id="moneySortFilter">
                     <option value="date_asc">Сначала старые</option>

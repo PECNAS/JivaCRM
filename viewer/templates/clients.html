@@ -82,8 +82,8 @@
                 </td>
                 <td class="clients-table__agency"{% if client.agency and client.agency.aliases.all %} title="Вариации: {% for alias in client.agency.aliases.all %}{{ alias.name }}{% if not forloop.last %}, {% endif %}{% endfor %}"{% endif %}>{{ client.agency.name|default:"—" }}</td>
                 <td class="clients-table__cities" title="{{ client.get_cities_display }}">{{ client.get_cities_display|default:"—" }}</td>
-                <td class="clients-table__num">{{ client.requests_count|default:0 }}</td>
-                <td class="clients-table__num">{{ client.orders_count|default:0 }}</td>
+                <td class="clients-table__num" data-label="Запросы">{{ client.requests_count|default:0 }}</td>
+                <td class="clients-table__num" data-label="Заказы">{{ client.orders_count|default:0 }}</td>
             </tr>
             {% empty %}
             <tr>

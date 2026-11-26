@@ -2631,8 +2631,8 @@
                 <td class="clients-table__telegram">${telegramHtml}</td>
                 <td class="clients-table__agency"${agencyAliasesTitle(client)}>${escapeHtml(client.agency || '—')}</td>
                 <td class="clients-table__cities" title="${escapeHtml(client.city || '')}">${escapeHtml(client.city || '—')}</td>
-                <td class="clients-table__num">${client.requests_count || 0}</td>
-                <td class="clients-table__num">${client.orders_count || 0}</td>
+                <td class="clients-table__num" data-label="Запросы">${client.requests_count || 0}</td>
+                <td class="clients-table__num" data-label="Заказы">${client.orders_count || 0}</td>
             </tr>
         `;
     }

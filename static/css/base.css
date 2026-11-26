@@ -1290,6 +1290,15 @@ body.menu-open {
   overflow: hidden;
 }
 
+@media (max-width: 1100px) and (min-width: 861px) {
+  body.menu-open {
+    position: fixed;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+}
+
 @media (max-width: 1100px) {
   .menu__item--session {
     margin-top: 0.75rem;
