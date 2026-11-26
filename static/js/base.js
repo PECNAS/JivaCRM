@@ -144,6 +144,20 @@
     }
   });
 
+  const tasksBadge = document.getElementById('tasksNavBadge');
+
+  if (tasksBadge) {
+    fetch('/tasks/badge/', { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        const count = Number(data.count) || 0;
+
+        tasksBadge.hidden = count <= 0;
+        tasksBadge.textContent = count > 99 ? '99+' : String(count);
+      })
+      .catch(function() {});
+  }
+
   const snowfallBox = document.getElementById('snowfall');
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 

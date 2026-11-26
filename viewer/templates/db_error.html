@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Нет связи с базой данных{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/db-error.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="dberr">
+    <div class="dberr__card">
+        <div class="dberr__face" aria-hidden="true">
+            <svg width="96" height="96" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="48" cy="48" r="34"/>
+                <circle cx="37" cy="40" r="2.6" fill="currentColor" stroke="none"/>
+                <circle cx="59" cy="40" r="2.6" fill="currentColor" stroke="none"/>
+                <path d="M34 66c4-7 9.5-10 14-10s10 3 14 10"/>
+                <path d="M24 26l-6-6M72 26l6-6"/>
+            </svg>
+        </div>
+
+        <h1 class="dberr__title">Нет связи с базой данных</h1>
+
+        <p class="dberr__text">
+            Сервер не получает ответ от базы данных, поэтому показать данные сейчас нельзя.
+            Обычно это временно: база перезапускается или пропала сеть.
+        </p>
+
+        <div class="dberr__hint">
+            <span class="dberr__dot"></span>
+            Страница обновится сама, как только связь восстановится
+        </div>
+
+        <div class="dberr__actions">
+            <a href="{{ retry_url }}" class="btn btn-primary dberr__btn" id="dberrRetry">Обновить страницу</a>
+            <a href="/" class="btn btn-outline dberr__btn">На главную</a>
+        </div>
+
+        <div class="dberr__status" id="dberrStatus">Проверяем соединение…</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+(function () {
+    var statusNode = document.getElementById('dberrStatus');
+    var retryNode = document.getElementById('dberrRetry');
+    var attempts = 0;
+
+    function setStatus(text, cls) {
+        if (!statusNode) return;
+
+        statusNode.textContent = text;
+        statusNode.className = 'dberr__status' + (cls ? ' ' + cls : '');
+    }
+
+    function check() {
+        attempts += 1;
+
+        fetch('/health/db/', { cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                if (result.ok && result.data && result.data.ok) {
+                    setStatus('Соединение восстановлено, обновляем…', 'is-ok');
+
+                    if (retryNode) {
+                        window.location.reload();
+                        return;
+                    }
+
+                    window.location.href = retryNode ? retryNode.href : '/';
+                    return;
+                }
+
+                setStatus('База данных пока не отвечает. Проверка №' + attempts + '.', '');
+            })
+            .catch(function () {
+                setStatus('База данных пока не отвечает. Проверка №' + attempts + '.', '');
+            });
+    }
+
+    setTimeout(check, 3000);
+
+    window.setInterval(function () {
+        if (attempts < 200) check();
+    }, 10000);
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) check();
+    });
+
+    if (retryNode) {
+        retryNode.addEventListener('click', function () {
+            setStatus('Обновляем…', '');
+        });
+    }
+})();
+</script>
+{% endblock %}

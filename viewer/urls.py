@@ -1,4 +1,5 @@
 from django.urls import path
+from .database_health import DatabaseHealthView
 from .views import (
     IndexView, LoginView, LogoutView, ManifestView,
     ClientsView, ClientDetailView, ClientUpdateView, ClientDeleteView, ClientListView,
@@ -21,6 +22,8 @@ from .views import (
     ProfileView, ProfileDetailView, ProfileUpdateView, ProfileScheduleView, ProfileTicketsView,
     ProfilePaymentsView, ProfileCredentialsView,
     MoneyView, MoneyShowsView, MoneyShowPayView, MoneyPayoutsView, MoneyPayoutDeleteView,
+    TasksView, TaskListView, TaskDetailView, TaskSaveView, TaskStatusView, TaskDeleteView,
+    TaskCommentView, TasksBadgeView,
     FillDataView,
     AvailabilityView, AvailabilityDetailView, AvailabilityScheduleView, AvailabilityByDateView,
     ReportsView,
@@ -31,6 +34,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('manifest.webmanifest', ManifestView.as_view(), name='manifest'),
+    path('health/db/', DatabaseHealthView.as_view(), name='database_health'),
 
     path('schedule/', ScheduleView.as_view(), name='schedule'),
     path('schedule/my-orders/', MyOrdersListView.as_view(), name='my_orders'),
@@ -112,6 +116,16 @@ urlpatterns = [
     path('money/shows/pay/', MoneyShowPayView.as_view(), name='money_show_pay'),
     path('money/payouts/', MoneyPayoutsView.as_view(), name='money_payouts'),
     path('money/payouts/<int:payout_id>/delete/', MoneyPayoutDeleteView.as_view(), name='money_payout_delete'),
+
+    path('tasks/', TasksView.as_view(), name='tasks'),
+    path('tasks/list/', TaskListView.as_view(), name='tasks_list'),
+    path('tasks/badge/', TasksBadgeView.as_view(), name='tasks_badge'),
+    path('tasks/create/', TaskSaveView.as_view(), name='tasks_create'),
+    path('tasks/<int:task_id>/', TaskDetailView.as_view(), name='task_detail'),
+    path('tasks/<int:task_id>/save/', TaskSaveView.as_view(), name='task_save'),
+    path('tasks/<int:task_id>/status/', TaskStatusView.as_view(), name='task_status'),
+    path('tasks/<int:task_id>/delete/', TaskDeleteView.as_view(), name='task_delete'),
+    path('tasks/<int:task_id>/comments/', TaskCommentView.as_view(), name='task_comment'),
 
     path('services/', ServicesView.as_view(), name='services'),
     path('services/tree/', ServiceTreeView.as_view(), name='service_tree'),

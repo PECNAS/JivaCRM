@@ -59,6 +59,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'viewer.database_health.DatabaseStatusMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -69,6 +70,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # 'viewer.middleware.RoleAccessMiddleware',
 ]
+
+WSGI_APPLICATION = 'jiva.wsgi.application'
+
+handler503 = 'viewer.database_health.handler503'
 
 ROOT_URLCONF = 'jiva.urls'
 

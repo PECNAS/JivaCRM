@@ -6,7 +6,7 @@ from .models import (
     Service, ServiceStaffRow, ArtistSchedule,
     City, CityGroup, ArtistCard, ArtistCardRateRule, CalendarColor, PriceRisePeriod,
     MoneyAccrual, MoneyPayout, OrderExpense, OrderReadMark, NarrowChat, OrderContact,
-    OrderChangeLog, CalendarEvent,
+    OrderChangeLog, CalendarEvent, Task, TaskComment,
 )
 
 admin.site.site_header = 'JIVA HUB'
@@ -376,3 +376,18 @@ class OrderChangeLogAdmin(admin.ModelAdmin):
     list_filter = ['changed_at', 'field']
     search_fields = ['order__name', 'field', 'old_value', 'new_value', 'changed_by_name']
     readonly_fields = ['order', 'field', 'old_value', 'new_value', 'changed_by', 'changed_by_name', 'changed_at']
+
+
+class TaskCommentInline(admin.TabularInline):
+    model = TaskComment
+    extra = 0
+
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ['id', 'title', 'status', 'priority', 'deadline', 'author', 'created_at']
+    list_filter = ['status', 'priority', 'deadline']
+    search_fields = ['title', 'description']
+    filter_horizontal = ['assignees']
+    readonly_fields = ['created_at', 'updated_at']
+    inlines = [TaskCommentInline]

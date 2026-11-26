@@ -502,6 +502,9 @@ class Employee(models.Model):
     def can_view_reports(self):
         return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
 
+    def can_manage_tasks(self):
+        return self.primary_role() in [ROLE_SENIOR_ADMIN, ROLE_BOSS, ROLE_MANAGER]
+
     def can_send_feedback(self):
         return True
 
@@ -1926,3 +1929,86 @@ class OrderChangeLog(models.Model):
             chunk = ids[:500]
             cls.objects.filter(id__in=chunk).delete()
             ids = ids[len(chunk):]
+
+
+class Task(models.Model):
+    STATUS_OPEN = 'open'
+    STATUS_IN_WORK = 'in_work'
+    STATUS_DONE = 'done'
+    STATUS_REJECTED = 'rejected'
+
+    STATUSES = [
+        (STATUS_OPEN, 'Новая'),
+        (STATUS_IN_WORK, 'В работе'),
+        (STATUS_DONE, 'Выполнена'),
+        (STATUS_REJECTED, 'Отклонена'),
+    ]
+
+    PRIORITY_LOW = 'low'
+    PRIORITY_NORMAL = 'normal'
+    PRIORITY_HIGH = 'high'
+
+    PRIORITIES = [
+        (PRIORITY_LOW, 'Низкий'),
+        (PRIORITY_NORMAL, 'Обычный'),
+        (PRIORITY_HIGH, 'Важный'),
+    ]
+
+    title = models.CharField('Название', max_length=200)
+    description = models.TextField('Описание', blank=True)
+    deadline = models.DateField('Дедлайн', null=True, blank=True)
+    status = models.CharField('Статус', max_length=20, choices=STATUSES, default=STATUS_OPEN)
+    priority = models.CharField('Приоритет', max_length=20, choices=PRIORITIES, default=PRIORITY_NORMAL)
+    author = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='authored_tasks', verbose_name='Автор',
+    )
+    assignees = models.ManyToManyField(
+        Employee, related_name='assigned_tasks', verbose_name='Исполнители', blank=True,
+    )
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Задача'
+        verbose_name_plural = 'Задачи'
+        ordering = ['status', 'deadline', '-id']
+        indexes = [
+            models.Index(fields=['status', 'deadline']),
+            models.Index(fields=['-created_at']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    def is_open(self):
+        return self.status in (self.STATUS_OPEN, self.STATUS_IN_WORK)
+
+    def status_percent(self):
+        return {
+            self.STATUS_OPEN: 0,
+            self.STATUS_IN_WORK: 50,
+            self.STATUS_DONE: 100,
+            self.STATUS_REJECTED: 0,
+        }.get(self.status, 0)
+
+
+class TaskComment(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments', verbose_name='Задача')
+    author = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='task_comments', verbose_name='Автор',
+    )
+    text = models.TextField('Текст')
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Комментарий к задаче'
+        verbose_name_plural = 'Комментарии к задачам'
+        ordering = ['created_at', 'id']
+        indexes = [
+            models.Index(fields=['task', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.task_id}: {self.text[:40]}'

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Задачи{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/tasks.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="tasks-page" id="tasksPage"
+     data-manage="{{ manage|yesno:'1,0' }}"
+     data-me="{{ employee.id }}"
+     data-open-count="{{ open_count }}">
+
+    <div class="tasks-topbar">
+        <div class="tasks-topbar__left">
+            <h1 class="tasks-title">Задачи</h1>
+            <span class="tasks-counter" id="tasksCounter">0</span>
+        </div>
+        <div class="tasks-topbar__right">
+            <label class="tasks-search">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input type="search" id="tasksSearch" placeholder="Поиск по названию" autocomplete="off">
+            </label>
+            {% if manage %}
+            <button type="button" class="btn btn-primary" id="tasksNew">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                Новая задача
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="tasks-shell">
+        <aside class="tasks-side" id="tasksSide">
+            <div class="tasks-side__tabs" id="tasksModes">
+                {% if manage %}
+                <button type="button" class="tasks-mode is-on" data-mode="all">Все</button>
+                <button type="button" class="tasks-mode" data-mode="open">Активные</button>
+                <button type="button" class="tasks-mode" data-mode="done">Выполненные</button>
+                <button type="button" class="tasks-mode" data-mode="rejected">Отклонённые</button>
+                {% else %}
+                <button type="button" class="tasks-mode is-on" data-mode="all">Мои задачи</button>
+                <button type="button" class="tasks-mode" data-mode="open">Активные</button>
+                <button type="button" class="tasks-mode" data-mode="done">Выполненные</button>
+                {% endif %}
+            </div>
+            <div class="tasks-list" id="tasksList">
+                <div class="tasks-empty">Загрузка...</div>
+            </div>
+        </aside>
+
+        <section class="tasks-main" id="tasksMain">
+            <div class="tasks-empty">Выберите задачу</div>
+        </section>
+    </div>
+
+    {% if manage %}
+    <div class="tasks-editor" id="tasksEditor" hidden>
+        <div class="tasks-editor__dialog">
+            <div class="tasks-editor__head">
+                <h2 class="tasks-editor__title" id="tasksEditorTitle">Новая задача</h2>
+                <button type="button" class="t-icon-btn" id="tasksEditorClose" aria-label="Закрыть">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="tasks-editor__body">
+                <label class="t-field">
+                    <span class="t-field__k">Название</span>
+                    <input type="text" class="t-input" id="taskTitle" maxlength="200" placeholder="Что нужно сделать">
+                </label>
+                <label class="t-field">
+                    <span class="t-field__k">Описание</span>
+                    <textarea class="t-input t-input--area" id="taskDesc" rows="4" placeholder="Детали, ссылки, уточнения"></textarea>
+                </label>
+                <div class="t-row">
+                    <label class="t-field">
+                        <span class="t-field__k">Дедлайн</span>
+                        <input type="date" class="t-input" id="taskDeadline">
+                    </label>
+                    <label class="t-field">
+                        <span class="t-field__k">Приоритет</span>
+                        <select class="t-input" id="taskPriority">
+                            <option value="low">Низкий</option>
+                            <option value="normal" selected>Обычный</option>
+                            <option value="high">Важный</option>
+                        </select>
+                    </label>
+                    <label class="t-field">
+                        <span class="t-field__k">Статус</span>
+                        <select class="t-input" id="taskStatus">
+                            <option value="open">Новая</option>
+                            <option value="in_work">В работе</option>
+                            <option value="done">Выполнена</option>
+                            <option value="rejected">Отклонена</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="t-field">
+                    <span class="t-field__k">Исполнители</span>
+                    <div class="t-picker" id="taskPicker">
+                        <div class="t-picker__box" id="taskPickerBox">
+                            <div class="t-picker__chips" id="taskPickerChips"></div>
+                            <input type="text" class="t-picker__input" id="taskPickerInput" placeholder="Найти сотрудника" autocomplete="off">
+                        </div>
+                        <div class="t-picker__drop" id="taskPickerDrop" hidden></div>
+                    </div>
+                </div>
+            </div>
+            <div class="tasks-editor__foot">
+                <span class="t-hint" id="taskPickHint">выбрано 0</span>
+                <button type="button" class="btn btn-outline" id="taskCancel">Отмена</button>
+                <button type="button" class="btn btn-primary" id="taskSave">Сохранить</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/tasks.js' %}"></script>
+{% endblock %}

@@ -33,6 +33,10 @@ from .profile import (
 )
 from .money import MoneyView, MoneyShowsView, MoneyShowPayView
 from .money_payouts import MoneyPayoutsView, MoneyPayoutDeleteView
+from .tasks import (
+    TasksView, TaskListView, TaskDetailView, TaskSaveView, TaskStatusView, TaskDeleteView,
+    TaskCommentView, TasksBadgeView,
+)
 from .fill_data import FillDataView
 from .availability import (
     AvailabilityView, AvailabilityDetailView, AvailabilityScheduleView, AvailabilityByDateView,

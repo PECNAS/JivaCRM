@@ -82,6 +82,13 @@
                     </li>
                     {% endif %}
 
+                    <li class="menu__item">
+                        <a href="{% url 'tasks' %}" class="menu__link menu__link--badge {% if request.resolver_match.url_name == 'tasks' %}active{% endif %}">
+                            Задачи
+                            <span class="menu__badge" id="tasksNavBadge" hidden></span>
+                        </a>
+                    </li>
+
                     <li class="menu__item menu__item--session">
                         <a href="{% url 'profile' %}" class="menu__link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
                             Профиль
