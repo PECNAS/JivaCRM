@@ -299,7 +299,7 @@
                 e.preventDefault();
                 openInlineClientForm(name);
                 setTimeout(() => {
-                    const contactInput = dropdown.querySelector('.client-inline-form [data-field="contact"]');
+                    const contactInput = dropdown.querySelector('.client-inline-form [data-field="phone"]');
 
                     if (contactInput) contactInput.focus();
                 }, 0);
@@ -370,7 +370,10 @@
                 </select>
                 <input type="text" class="client-inline-form__input" data-field="agency" placeholder="Название агентства *" autocomplete="off" style="display:none;">
                 <div class="client-inline-form__suggest" data-agency-suggest style="display:none;"></div>
-                <input type="text" class="client-inline-form__input" data-field="contact" placeholder="Телефон или @телеграм *" autocomplete="off">
+                <div class="client-inline-form__pair">
+                    <input type="tel" class="client-inline-form__input" data-field="phone" placeholder="Телефон" autocomplete="off">
+                    <input type="text" class="client-inline-form__input" data-field="telegram" placeholder="@телеграм" autocomplete="off">
+                </div>
                 <div class="client-inline-form__actions">
                     <button type="button" class="client-inline-form__cancel">Отмена</button>
                     <button type="button" class="client-inline-form__submit">Создать</button>
@@ -385,7 +388,8 @@
             const typeInput = form.querySelector('[data-field="client_type"]');
             const agencyInput = form.querySelector('[data-field="agency"]');
             const agencySuggest = form.querySelector('[data-agency-suggest]');
-            const contactInput = form.querySelector('[data-field="contact"]');
+            const contactInput = form.querySelector('[data-field="phone"]');
+            const telegramInput = form.querySelector('[data-field="telegram"]');
             const errorBox = form.querySelector('.client-inline-form__error');
 
             let agencyTimer = null;
@@ -473,6 +477,8 @@
             moveOnEnter(nameInput, typeInput.value === 'agency' ? agencyInput : contactInput);
             moveOnEnter(agencyInput, contactInput);
 
+            if (window.UI && window.UI.attachPhoneMask) window.UI.attachPhoneMask(contactInput);
+
             nameInput.focus();
             nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length);
 
@@ -485,7 +491,8 @@
                 const fullName = nameInput.value.trim();
                 const clientType = typeInput.value;
                 const agencyName = agencyInput.value.trim();
-                const contact = contactInput.value.trim();
+                const phone = contactInput.value.trim();
+                const telegramRaw = telegramInput.value.trim();
 
                 if (!fullName) {
                     errorBox.textContent = 'Укажите имя клиента';
@@ -501,7 +508,7 @@
                     return;
                 }
 
-                if (!contact) {
+                if (!phone && !telegramRaw) {
                     errorBox.textContent = 'Укажите телефон или телеграм';
                     errorBox.style.display = 'block';
                     contactInput.focus();
@@ -510,14 +517,13 @@
 
                 errorBox.style.display = 'none';
 
-                const isPhone = contact.replace(/\D/g, '').length >= 10;
-                const isTelegramHandle = /^[\w.]+$/.test(contact) && !isPhone;
+                const telegram = telegramRaw && !telegramRaw.startsWith('@') ? '@' + telegramRaw : telegramRaw;
 
                 const body = new URLSearchParams({
                     full_name: fullName,
                     agency_name: clientType === 'agency' ? agencyName : '',
-                    phone: isPhone ? contact : '',
-                    telegram: isPhone ? '' : (isTelegramHandle && !contact.startsWith('@') ? '@' + contact : contact),
+                    phone: phone,
+                    telegram: telegram,
                     client_type: clientType,
                     rating: 'medium',
                 });
@@ -2298,8 +2304,8 @@
 
             const query = input.value.trim().toLowerCase();
             const matches = query
-                ? services.filter(item => String(item.name).toLowerCase().includes(query)).slice(0, 10)
-                : services.slice(0, 10);
+                ? services.filter(item => String(item.name).toLowerCase().includes(query))
+                : services;
 
             if (!matches.length) {
                 close();
@@ -2333,7 +2339,7 @@
         }
 
         input.addEventListener('focus', function() {
-            load();
+            load().then(render);
         });
 
         input.addEventListener('input', function() {

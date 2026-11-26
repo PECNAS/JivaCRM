@@ -221,6 +221,7 @@
         const checkSlot = confirmModal.querySelector('[data-confirm-check-slot]');
         const checkbox = confirmModal.querySelector('[data-confirm-checkbox]');
         const checked = !!(checkSlot && !checkSlot.hidden && checkbox && checkbox.checked);
+        const wantsCheck = !!(checkSlot && !checkSlot.hidden && checkbox);
 
         confirmModal.classList.remove('active');
         confirmModal.style.zIndex = '';
@@ -232,7 +233,7 @@
             try { lastFocused.focus(); } catch (error) {}
         }
 
-        if (resolve) resolve(value ? { checked: checked } : false);
+        if (resolve) resolve(wantsCheck ? { checked: checked } : value);
     }
 
     function uiConfirm(options) {

@@ -17,7 +17,8 @@
         loaded: false,
         page: 1,
         hasMore: false,
-        loading: false
+        loading: false,
+        focusOrder: null
     };
 
     const PAGE_SIZE = 50;
@@ -102,6 +103,11 @@
                 }
 
                 pruneDrafts();
+
+                if (state.focusOrder && focusLoadedOrder()) {
+                    return;
+                }
+
                 render();
             })
             .catch(function (error) {
@@ -142,8 +148,8 @@
 
         order.columns.forEach(function (column) {
             const key = String(column.employee_id);
-            daily[key] = '0';
-            project[key] = '0';
+            daily[key] = '';
+            project[key] = '';
         });
 
         order.shows.forEach(function (show) {
@@ -155,7 +161,7 @@
                 cells.push({
                     show_id: show.id,
                     employee_id: employeeId,
-                    value: saved === undefined ? String(rateFor(column, order)) : String(saved)
+                    value: saved === undefined ? String(rateFor(column, order, show)) : String(saved)
                 });
             });
         });
@@ -167,10 +173,10 @@
 
             if (savedProject > 0) {
                 project[key] = String(savedProject);
-                daily[key] = '0';
+                daily[key] = '';
             } else {
-                project[key] = '0';
-                daily[key] = savedDaily > 0 ? String(savedDaily) : '0';
+                project[key] = '';
+                daily[key] = savedDaily > 0 ? String(savedDaily) : '';
             }
         });
 
@@ -184,12 +190,14 @@
         };
     }
 
-    function rateFor(column, order) {
+    function rateFor(column, order, show) {
         if (!column) return 0;
 
         const rate = Number(column.rate) || 0;
+        const bonuses = column.rate_bonuses || {};
+        const bonus = show && show.service_id ? Number(bonuses[String(show.service_id)]) || 0 : 0;
 
-        return Math.round(rate * 100) / 100;
+        return Math.round((rate + bonus) * 100) / 100;
     }
 
     function snapshot(order) {
@@ -380,6 +388,46 @@
         listNode.innerHTML = state.shows.map(renderCard).join('') + more;
     }
 
+    function revealOrder(orderId) {
+        const order = findShow(orderId);
+
+        if (!order) return false;
+
+        state.expanded[String(orderId)] = true;
+        ensureDraft(order);
+        render();
+
+        const card = listNode.querySelector('[data-order-id="' + orderId + '"]');
+
+        if (card) card.scrollIntoView({ block: 'start' });
+
+        return true;
+    }
+
+    function focusLoadedOrder() {
+        const orderId = state.focusOrder;
+
+        if (!orderId) return false;
+
+        if (findShow(orderId)) {
+            state.focusOrder = null;
+            revealOrder(orderId);
+            return true;
+        }
+
+        state.focusOrder = null;
+        return false;
+    }
+
+    function focusOrderById(orderId) {
+        if (!orderId) return;
+
+        if (revealOrder(orderId)) return;
+
+        state.focusOrder = orderId;
+        loadShows();
+    }
+
     function isFilled(draft, order) {
         let filled = false;
 
@@ -444,28 +492,6 @@
             '</th>';
         }).join('');
 
-        const serviceRows = order.shows.map(function (show) {
-            const cells = order.columns.map(function (column) {
-                const used = show.staff_ids.indexOf(column.employee_id) !== -1;
-
-                if (!used) {
-                    return '<td class="money-grid__cell money-grid__cell--off"><span class="money-grid__off">—</span></td>';
-                }
-
-                return '<td class="money-grid__cell">' +
-                    '<input type="text" inputmode="decimal" class="money-grid__input" ' +
-                        'value="' + escapeHtml(formatCell(cellValue(draft, show.id, column.employee_id))) + '" ' +
-                        'data-cell="1" data-show-id="' + show.id + '" data-employee-id="' + column.employee_id + '">' +
-                '</td>';
-            }).join('');
-
-            return '<tr class="money-grid__row">' +
-                '<th class="money-grid__label" scope="row"><span class="money-grid__label-text">' + escapeHtml(show.name) + '</span></th>' +
-                cells +
-                '<td class="money-grid__total money-grid__total--row">' + formatMoney(rowTotal(draft, { kind: 'service', show_id: show.id })) + '</td>' +
-            '</tr>';
-        }).join('');
-
         const rowCheckbox = function (rowKey) {
             const checked = draft.everywhere[order.id + ':' + rowKey] !== undefined;
             return '<label class="money-grid__all"><input type="checkbox" data-everywhere="' + rowKey + '"' + (checked ? ' checked' : '') + '><span>Всем</span></label>';
@@ -477,8 +503,39 @@
             if (value === undefined) return '';
 
             return '<div class="money-grid__bulk"><input type="text" inputmode="decimal" class="money-grid__input money-grid__input--bulk" ' +
-                'data-everywhere-input="' + rowKey + '" value="' + escapeHtml(value) + '"></div>';
+                'data-everywhere-input="' + rowKey + '" value="' + escapeHtml(formatCell(value)) + '"></div>';
         };
+
+        const serviceRows = order.shows.map(function (show) {
+            const rowKey = 'show:' + show.id;
+            const bulk = draft.everywhere[order.id + ':' + rowKey] !== undefined;
+
+            const cells = order.columns.map(function (column) {
+                const used = show.staff_ids.indexOf(column.employee_id) !== -1;
+
+                if (!used) {
+                    return '<td class="money-grid__cell money-grid__cell--off"><span class="money-grid__off">—</span></td>';
+                }
+
+                const locked = bulk;
+
+                return '<td class="money-grid__cell">' +
+                    '<input type="text" inputmode="decimal" class="money-grid__input' + (locked ? ' money-grid__input--locked' : '') + '" ' +
+                        (locked ? 'disabled ' : '') +
+                        'value="' + escapeHtml(formatCell(cellValue(draft, show.id, column.employee_id))) + '" ' +
+                        'data-cell="1" data-show-id="' + show.id + '" data-employee-id="' + column.employee_id + '">' +
+                '</td>';
+            }).join('');
+
+            return '<tr class="money-grid__row' + (bulk ? ' money-grid__row--locked' : '') + '">' +
+                '<th class="money-grid__label" scope="row">' +
+                    '<span class="money-grid__label-head"><span class="money-grid__label-text">' + escapeHtml(show.name) + '</span>' + rowCheckbox(rowKey) + '</span>' +
+                    everyValue(rowKey) +
+                '</th>' +
+                cells +
+                '<td class="money-grid__total money-grid__total--row">' + formatMoney(rowTotal(draft, { kind: 'service', show_id: show.id })) + '</td>' +
+            '</tr>';
+        }).join('');
 
         const dailyKey = 'daily';
         const projectKey = 'project';
@@ -494,7 +551,7 @@
             return '<td class="money-grid__cell">' +
                 '<input type="text" inputmode="decimal" class="money-grid__input' + (locked ? ' money-grid__input--locked' : '') + '" ' +
                     (locked ? 'disabled ' : '') +
-                    'value="' + escapeHtml(formatCell(Number(draft.daily[key]) || 0)) + '" ' +
+                    'value="' + escapeHtml(formatCell(draft.daily[key])) + '" ' +
                     'data-special="daily" data-employee-id="' + column.employee_id + '">' +
             '</td>';
         }).join('');
@@ -506,7 +563,7 @@
             return '<td class="money-grid__cell">' +
                 '<input type="text" inputmode="decimal" class="money-grid__input' + (locked ? ' money-grid__input--locked' : '') + '" ' +
                     (locked ? 'disabled ' : '') +
-                    'value="' + escapeHtml(formatCell(Number(draft.project[key]) || 0)) + '" ' +
+                    'value="' + escapeHtml(formatCell(draft.project[key])) + '" ' +
                     'data-special="project" data-employee-id="' + column.employee_id + '">' +
             '</td>';
         }).join('');
@@ -529,6 +586,7 @@
                     '</tr></thead>' +
                     '<tbody>' +
                         serviceRows +
+                        '<tr class="money-grid__sep"><td colspan="' + (order.columns.length + 2) + '"></td></tr>' +
                         '<tr class="' + rowClass(dailyKey) + '">' +
                             '<th class="money-grid__label" scope="row">' +
                                 '<span class="money-grid__label-head"><span class="money-grid__label-text">Суточные</span>' + rowCheckbox(dailyKey) + '</span>' +
@@ -563,9 +621,11 @@
     }
 
     function formatCell(value) {
+        if (value === '' || value === undefined || value === null) return '';
+
         const number = Number(value) || 0;
 
-        if (!number) return '0';
+        if (!number) return '';
 
         return String(Math.round(number * 100) / 100);
     }
@@ -637,17 +697,30 @@
     function applyEverywhere(order, draft, rowKey, value) {
         const normalized = normalizeNumber(value);
 
+        if (rowKey.indexOf('show:') === 0) {
+            const showId = Number(rowKey.slice(5));
+            const show = order.shows.find(function (item) { return item.id === showId; });
+
+            if (!show) return;
+
+            show.staff_ids.forEach(function (employeeId) {
+                setCellValue(draft, showId, employeeId, normalized);
+            });
+
+            return;
+        }
+
         order.columns.forEach(function (column) {
             const key = String(column.employee_id);
 
             if (rowKey === 'daily') {
                 draft.daily[key] = normalized;
 
-                if (normalized !== '0') draft.project[key] = '0';
+                if (normalized !== '0') draft.project[key] = '';
             } else {
                 draft.project[key] = normalized;
 
-                if (normalized !== '0') draft.daily[key] = '0';
+                if (normalized !== '0') draft.daily[key] = '';
             }
         });
     }
@@ -741,6 +814,22 @@
             return;
         }
 
+        const cell = event.target.closest('.money-grid__cell');
+
+        if (cell && event.target === cell) {
+            const input = cell.querySelector('.money-grid__input');
+
+            if (input && !input.disabled) {
+                input.focus();
+
+                if (input.setSelectionRange) {
+                    input.setSelectionRange(0, input.value.length);
+                }
+            }
+
+            return;
+        }
+
         const toggle = event.target.closest('[data-toggle]');
 
         if (toggle) {
@@ -786,7 +875,7 @@
     });
 
     function orderLink(orderId) {
-        return window.location.origin + '/schedule/?order=' + encodeURIComponent(orderId);
+        return window.location.origin + '/money/?tab=shows&order=' + encodeURIComponent(orderId);
     }
 
     function openOrderInNewTab(orderId) {
@@ -801,6 +890,8 @@
         link.click();
         link.remove();
     }
+
+    window.moneyOpenOrderInNewTab = openOrderInNewTab;
 
     listNode.addEventListener('contextmenu', function (event) {
         const head = event.target.closest ? event.target.closest('[data-toggle]') : null;
@@ -817,8 +908,6 @@
     });
 
     listNode.addEventListener('input', function (event) {
-        const input = event.target;
-
         if (!input.matches || !input.matches('.money-grid__input')) return;
 
         const card = input.closest('.money-show');
@@ -1052,19 +1141,43 @@
         }
     }, true);
 
+    const TAB_STORAGE_KEY = 'jiva_money_tab';
+
+    function applyTab(target) {
+        tabButtons.forEach(function (item) {
+            item.classList.toggle('active', item.dataset.tab === target);
+        });
+
+        document.querySelectorAll('.money-panel').forEach(function (panel) {
+            panel.classList.toggle('active', panel.id === 'moneyPanel' + target.charAt(0).toUpperCase() + target.slice(1));
+        });
+
+        const isPayouts = target === 'payouts' || target === 'history';
+
+        if (typeof window.applyMoneyPayoutsTab === 'function') {
+            window.applyMoneyPayoutsTab(isPayouts);
+        } else if (filtersNode) {
+            filtersNode.hidden = target !== 'shows';
+        }
+
+        if (isPayouts && typeof window.loadMoneyPayouts === 'function') {
+            window.loadMoneyPayouts();
+        }
+
+        if (target === 'history' && typeof window.renderMoneyPayoutHistory === 'function') {
+            window.renderMoneyPayoutHistory();
+        }
+    }
+
     tabButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             const target = button.dataset.tab;
 
-            tabButtons.forEach(function (item) {
-                item.classList.toggle('active', item === button);
-            });
+            try {
+                localStorage.setItem(TAB_STORAGE_KEY, target);
+            } catch (error) {}
 
-            document.querySelectorAll('.money-panel').forEach(function (panel) {
-                panel.classList.toggle('active', panel.id === 'moneyPanel' + target.charAt(0).toUpperCase() + target.slice(1));
-            });
-
-            if (filtersNode) filtersNode.hidden = target !== 'shows';
+            applyTab(target);
         });
     });
 
@@ -1074,4 +1187,25 @@
     if (dateToInput) dateToInput.addEventListener('change', loadShows);
 
     loadShows();
+
+    const startParams = new URLSearchParams(window.location.search);
+    const startOrderId = parseInt(startParams.get('order') || '', 10);
+    const startTab = startParams.get('tab');
+
+    let savedTab = 'shows';
+
+    try {
+        savedTab = localStorage.getItem(TAB_STORAGE_KEY) || 'shows';
+    } catch (error) {}
+
+    const initialTab = (startTab === 'shows' || startTab === 'payouts' || startTab === 'history')
+        ? startTab
+        : (savedTab === 'payouts' || savedTab === 'history' ? savedTab : 'shows');
+
+    applyTab(initialTab);
+
+    if (!isNaN(startOrderId)) {
+        window.history.replaceState({}, '', window.location.pathname);
+        focusOrderById(startOrderId);
+    }
 })();

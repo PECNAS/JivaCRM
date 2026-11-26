@@ -5,6 +5,7 @@
 
 {% block css %}
 <link rel="stylesheet" href="{% static 'css/money.css' %}">
+<link rel="stylesheet" href="{% static 'css/money-payouts.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -15,7 +16,12 @@
         <div class="money-tabs" role="tablist">
             <button class="money-tab active" type="button" data-tab="shows" role="tab">Заказы</button>
             <button class="money-tab" type="button" data-tab="payouts" role="tab">Выплаты</button>
+            <button class="money-tab" type="button" data-tab="history" role="tab">История выплат</button>
         </div>
+
+        <form class="money-searchbar" id="moneySearchForm" autocomplete="off">
+            <input type="text" class="money-filter__input money-searchbar__input" id="moneySearch" placeholder="Поиск сотрудника: имя или ФИО">
+        </form>
 
         <div class="money-filters" id="moneyFilters">
             <label class="money-filter">
@@ -50,6 +56,8 @@
                 </select>
             </label>
         </div>
+
+        <div class="money-filters money-filters--payouts" id="moneyPayoutFilters" hidden></div>
     </aside>
 
     <section class="money-content">
@@ -58,11 +66,19 @@
                 <div class="money-loading">Загрузка...</div>
             </div>
         </div>
-        <div class="money-panel" id="moneyPanelPayouts"></div>
+        <div class="money-panel" id="moneyPanelPayouts">
+            <div class="money-payouts-frame">
+                <div class="money-payouts-panel" id="moneyPayoutsMount"></div>
+            </div>
+        </div>
+        <div class="money-panel" id="moneyPanelHistory">
+            <div class="money-payouts-panel" id="moneyHistoryMount"></div>
+        </div>
     </section>
 </div>
 {% endblock %}
 
 {% block js %}
 <script src="{% static 'js/money.js' %}"></script>
+<script src="{% static 'js/money-payouts.js' %}"></script>
 {% endblock %}

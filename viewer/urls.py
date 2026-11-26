@@ -20,7 +20,7 @@ from .views import (
     CityGroupsView, OrderExpenseView,
     ProfileView, ProfileDetailView, ProfileUpdateView, ProfileScheduleView, ProfileTicketsView,
     ProfilePaymentsView, ProfileCredentialsView,
-    MoneyView, MoneyShowsView, MoneyShowPayView,
+    MoneyView, MoneyShowsView, MoneyShowPayView, MoneyPayoutsView, MoneyPayoutDeleteView,
     FillDataView,
     AvailabilityView, AvailabilityDetailView, AvailabilityScheduleView, AvailabilityByDateView,
     ReportsView,
@@ -110,6 +110,8 @@ urlpatterns = [
     path('reports/', ReportsView.as_view(), name='reports'),
     path('money/shows/', MoneyShowsView.as_view(), name='money_shows'),
     path('money/shows/pay/', MoneyShowPayView.as_view(), name='money_show_pay'),
+    path('money/payouts/', MoneyPayoutsView.as_view(), name='money_payouts'),
+    path('money/payouts/<int:payout_id>/delete/', MoneyPayoutDeleteView.as_view(), name='money_payout_delete'),
 
     path('services/', ServicesView.as_view(), name='services'),
     path('services/tree/', ServiceTreeView.as_view(), name='service_tree'),

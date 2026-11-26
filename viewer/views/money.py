@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.views import View
 
-from ..models import Employee, Order, OrderEstimate, OrderShowPay, CalendarColor
+from ..models import Employee, Order, OrderEstimate, OrderShowPay, CalendarColor, ArtistCardRateRule
 from .money_service import ZERO, parse_iso_date, price_percent_for
 from .helpers import role_label
 
@@ -77,6 +77,32 @@ def serialize_calendar_colors():
     return colors
 
 
+def rate_bonuses(employee_ids):
+    rules = (
+        ArtistCardRateRule.objects
+        .filter(
+            card__employee_id__in=list(employee_ids),
+            extra_rate__gt=0,
+        )
+        .prefetch_related('services')
+        .select_related('card')
+    )
+
+    bonuses = {}
+
+    for rule in rules:
+        extra = float(to_money(rule.extra_rate))
+
+        if extra <= 0:
+            continue
+
+        for service in rule.services.all():
+            per_employee = bonuses.setdefault(rule.card.employee_id, {})
+            per_employee[str(service.id)] = per_employee.get(str(service.id), 0.0) + extra
+
+    return bonuses
+
+
 def serialize_show_row(order, can_edit=False):
     shows = []
     columns = []
@@ -115,6 +141,7 @@ def serialize_show_row(order, can_edit=False):
 
         shows.append({
             'id': show.id,
+            'service_id': show.service_id,
             'name': show.service_name or '',
             'staff_ids': staff_ids,
             'employees': staff_rows,
@@ -131,6 +158,11 @@ def serialize_show_row(order, can_edit=False):
             'role_label': role_label(item.employee.primary_role()),
             'rate': float(item.employee.rate or 0),
         })
+
+    bonuses = rate_bonuses([column['employee_id'] for column in columns])
+
+    for column in columns:
+        column['rate_bonuses'] = bonuses.get(column['employee_id'], {})
 
     for item in order.show_pays.all():
         if item.kind == PAY_SERVICE and item.show_id:
@@ -225,7 +257,7 @@ class MoneyShowsView(View):
         date_to = parse_iso_date(date_to_raw)
 
         if not date_from_raw:
-            date_from = today if not date_to or today <= date_to else date_to
+            date_from = today.replace(day=1)
 
         if date_to and date_from and date_from > date_to:
             date_from, date_to = date_to, date_from

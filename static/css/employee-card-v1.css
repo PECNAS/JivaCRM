@@ -328,6 +328,20 @@
   padding-top: 0.15rem;
 }
 
+.p-rule__field {
+  position: relative;
+  min-width: 0;
+}
+
+.p-rule__box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.24rem;
+  min-height: 1.5rem;
+  min-width: 0;
+}
+
 .p-rule__chips {
   display: flex;
   flex-wrap: wrap;
@@ -367,11 +381,11 @@
   position: absolute;
   top: calc(100% + 2px);
   left: 0;
-  right: auto;
-  min-width: 260px;
+  right: 0;
+  min-width: 220px;
   max-height: 220px;
   overflow-y: auto;
-  z-index: 40;
+  z-index: 60;
   display: none;
   background: #14120f;
   border: 1px solid #2b2620;

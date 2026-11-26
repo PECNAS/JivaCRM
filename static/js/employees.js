@@ -287,6 +287,14 @@
         return String(Math.round(number));
     }
 
+    function serviceNameById(id) {
+        const found = (allServices || []).find(function(item) {
+            return String(item.id) === String(id);
+        });
+
+        return found ? (found.name || found.label || '') : '';
+    }
+
     function renderRateRules() {
         const rules = empData.rateRules || [];
 
@@ -296,8 +304,10 @@
 
         return rules.map(function(rule, index) {
             const chips = (rule.services || []).map(function(service) {
-                return '<span class="chip chip--accent p-rule__chip" title="' + escapeHtml(service.name) + '" data-rule-chip="' + index + '" data-service-id="' + escapeHtml(String(service.id)) + '">'
-                    + escapeHtml(service.name)
+                const label = service.name || serviceNameById(service.id) || 'Услуга ' + service.id;
+
+                return '<span class="chip chip--accent p-rule__chip" title="' + escapeHtml(label) + '" data-rule-chip="' + index + '" data-service-id="' + escapeHtml(String(service.id)) + '">'
+                    + '<span class="p-rule__chip-text">' + escapeHtml(label) + '</span>'
                     + '<button type="button" class="chip__x" data-rule-chip-remove="1" aria-label="Убрать услугу">&times;</button>'
                     + '</span>';
             }).join('');
@@ -309,9 +319,11 @@
                 + '</div>'
                 + '<div class="p-rule__row">'
                 + '<span class="p-rule__k" data-rule-focus="' + index + '">Исключения</span>'
-                + '<div class="p-rule__chips chips" data-rule-chips="' + index + '">'
+                + '<div class="p-rule__field">'
+                + '<div class="p-rule__box" data-rule-chips="' + index + '">'
                 + chips
                 + '<input type="text" class="p-input p-input--chip p-rule__input" placeholder="Добавить услугу" autocomplete="off">'
+                + '</div>'
                 + '<div class="city-selector__dropdown p-rule__dropdown"></div>'
                 + '</div>'
                 + '</div>'
@@ -448,8 +460,7 @@
 
         cardView.querySelectorAll('[data-rule-chips]').forEach(function(box) {
             mountRuleServicePicker(box, Number(box.dataset.ruleChips));
-        });
-    }
+        });    }
 
     function closeAllEdits() {
         const nodes = cardView ? cardView.querySelectorAll('.is-editing') : [];
@@ -871,9 +882,33 @@
 
     function mountRuleServicePicker(box, ruleIndex) {
         const input = box.querySelector('.p-rule__input');
-        const dropdown = box.querySelector('.p-rule__dropdown');
+        const dropdown = box.parentElement ? box.parentElement.querySelector('.p-rule__dropdown') : null;
 
         if (!input || !dropdown) return;
+
+        function fillNames() {
+            const rule = (empData.rateRules || [])[ruleIndex];
+
+            if (!rule || !rule.services) return;
+
+            let changed = false;
+
+            rule.services = rule.services.map(function(item) {
+                if (item.name) return item;
+
+                const label = serviceNameById(item.id);
+
+                if (!label) return item;
+
+                changed = true;
+
+                return { id: item.id, name: label };
+            });
+
+            if (changed) renderCard();
+        }
+
+        fillNames();
 
         function toggle(service) {
             const rule = (empData.rateRules || [])[ruleIndex];
@@ -1347,7 +1382,7 @@
             if (ruleChips) {
                 const input = ruleChips.querySelector('.p-rule__input');
 
-                if (input) input.focus();
+                if (input && e.target !== input) input.focus();
                 return;
             }
 
