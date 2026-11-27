@@ -1440,6 +1440,10 @@
     if (empDeactivateBtn) empDeactivateBtn.addEventListener('click', deactivateCurrentEmployee);
     if (addEmployeeBtn) addEmployeeBtn.addEventListener('click', openAddEmployee);
 
+const addEmployeeFab = document.getElementById('addEmployeeFab');
+
+if (addEmployeeFab) addEmployeeFab.addEventListener('click', openAddEmployee);
+
     if (modal) {
         window.UI.registerModal(modal, function() {
             if (closeAllEdits()) return;

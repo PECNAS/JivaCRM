@@ -915,6 +915,33 @@
         return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '₽';
     }
 
+    function renderV6Summary(data, typeKey, aliases, cities) {
+        const node = document.getElementById('v6Summary');
+
+        if (!node) return;
+
+        const typeLabel = typeKey === 'agency' ? 'Агентство' : (typeKey === 'organizer' ? 'Орг' : 'Без типа');
+        const ratingKey = data.rating_key || 'medium';
+        const ratingLabel = ratingKey === 'high' ? 'Высокий' : (ratingKey === 'low' ? 'Низкий' : 'Средний');
+        const ratingCls = ratingKey === 'high' ? ' chip--ok' : (ratingKey === 'low' ? ' chip--danger' : ' chip--warn');
+        const cityList = Array.isArray(cities) ? cities : [];
+        const aliasList = Array.isArray(aliases) ? aliases : [];
+
+        const chips = ['<span class="chip">' + escapeHtml(typeLabel) + '</span>',
+            '<span class="chip' + ratingCls + '">' + ratingLabel + '</span>'];
+
+        if (cityList.length) {
+            chips.push('<span class="chip">' + cityList.length + ' ' + (cityList.length === 1 ? 'город' : 'города') + '</span>');
+        }
+
+        if (aliasList.length) {
+            chips.push('<span class="chip">' + aliasList.length + ' вариации</span>');
+        }
+
+        node.innerHTML = chips.join('');
+        node.hidden = false;
+    }
+
     function renderV6Card(data) {
         currentClientData = data;
 
@@ -978,6 +1005,8 @@
         if (citiesNode) citiesNode.dataset.values = JSON.stringify(cities);
         setV6Switch(document.getElementById('v6RatingSwitch'), 'data-rating', data.rating_key || 'medium');
         setV6Text('v6Comment', data.comment || '');
+
+        renderV6Summary(data, typeKey, aliases, cities);
 
         setV6Text('v6OrdersCount', String(data.orders_count || 0));
         setV6Text('v6RequestsCount', String(data.requests_count || 0));
@@ -2315,6 +2344,10 @@
     });
 
     addClientBtn.addEventListener('click', openAddModal);
+
+const addClientFab = document.getElementById('addClientFab');
+
+if (addClientFab) addClientFab.addEventListener('click', openAddModal);
     addModalCloseBtn.addEventListener('click', requestCloseAddModal);
     addModalCancelBtn.addEventListener('click', requestCloseAddModal);
     addModal.addEventListener('click', function(e) {

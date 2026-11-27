@@ -570,6 +570,10 @@
 
     if (newBtn) newBtn.addEventListener('click', function () { openEditor(null); });
 
+const newFab = document.getElementById('tasksNewFab');
+
+if (newFab) newFab.addEventListener('click', function () { openEditor(null); });
+
     listNode.addEventListener('click', function (event) {
         const item = event.target.closest('[data-task]');
 

@@ -99,6 +99,10 @@
 <div class="load-more" id="clientsLoadMore" data-has-more="{% if has_more %}1{% else %}0{% endif %}">
     <button type="button" class="btn btn-outline" id="clientsLoadMoreBtn">Загрузить ещё</button>
 </div>
+
+<button type="button" class="mob-fab" id="addClientFab" aria-label="Добавить клиента" title="Добавить клиента">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
     </section>
 </div>
 
@@ -113,6 +117,7 @@
                 </svg>
             </button>
         </div>
+        <div class="m-summary" id="v6Summary" hidden></div>
         <div class="m-body">
             <div class="m-main">
                 <div class="m-group">

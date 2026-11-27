@@ -2298,6 +2298,16 @@
 
     if (calendarStatusSelect) calendarStatusSelect.addEventListener('change', render);
 
+    const mobCreateOrderFab = document.getElementById('mobCreateOrderFab');
+
+    if (mobCreateOrderFab) {
+        mobCreateOrderFab.addEventListener('click', function() {
+            if (typeof window.openCreateOrderModal === 'function') {
+                window.openCreateOrderModal('');
+            }
+        });
+    }
+
     document.addEventListener('click', function(e) {
         if (!clientFilterInput) return;
 

@@ -226,6 +226,12 @@
 
 <div class="notification-container" id="notificationContainer"></div>
 
+{% if user.employee_profile.can_manage_orders %}
+<button type="button" class="mob-fab" id="mobCreateOrderFab" aria-label="Создать заказ" title="Создать заказ">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+{% endif %}
+
 <div class="modal-overlay" id="createOrderModal">
     <div class="modal modal--create-order">
         <form id="createOrderForm" class="cof" autocomplete="off">

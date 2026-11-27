@@ -245,6 +245,21 @@
         editOrderConcept.style.height = Math.max(editOrderConcept.scrollHeight, 38) + 'px';
     }
 
+    function scrollActiveTabIntoView() {
+        if (!orderEditorTabs) return;
+
+        const active = orderEditorTabs.querySelector('.tab-btn.active');
+
+        if (!active) return;
+
+        const tabsRect = orderEditorTabs.getBoundingClientRect();
+        const btnRect = active.getBoundingClientRect();
+
+        if (btnRect.left < tabsRect.left || btnRect.right > tabsRect.right) {
+            orderEditorTabs.scrollLeft += (btnRect.left - tabsRect.left) - 12;
+        }
+    }
+
     function switchTab(tabName) {
         if (!orderEditorTabs) return;
 
@@ -257,12 +272,57 @@
                 node.classList.toggle('active', node.id === 'tab-' + tabName);
             });
         }
+
+        scrollActiveTabIntoView();
+        updateEditorFillCount();
+    }
+
+    function updateEditorFillCount() {
+        const footer = document.querySelector('#orderEditorModal .js-editor-footer');
+
+        if (!footer) return;
+
+        let node = footer.querySelector('.editor-fill-count');
+
+        if (!node) {
+            node = document.createElement('span');
+            node.className = 'editor-fill-count';
+            footer.insertBefore(node, footer.firstChild);
+        }
+
+        const fields = [
+            ['editOrderName'],
+            ['editOrderDate'],
+            ['editOrderCityInput'],
+            ['editOrderAddress'],
+            ['editOrderClientSearch'],
+            ['editOrderCost'],
+            ['editOrderManager']
+        ];
+
+        let filled = 0;
+
+        fields.forEach(function (item) {
+            const el = document.getElementById(item[0]);
+
+            if (!el) {
+                filled += 1;
+                return;
+            }
+
+            const value = el.tagName === 'SELECT' ? el.value : String(el.value || '').trim();
+
+            if (value && value !== '0' && value !== '0.00') filled += 1;
+        });
+
+        node.textContent = 'Заполнено ' + filled + ' из ' + fields.length;
     }
 
     function updateEditorTitle(data) {
         if (!editorOrderTitle) return;
 
         editorOrderTitle.textContent = data.name || ('Заказ #' + data.id);
+        updateEditorFillCount();
 
         const subtitle = document.getElementById('editorOrderSubtitle');
 
@@ -2663,6 +2723,9 @@
                         node.classList.toggle('active', node.id === 'tab-' + target);
                     });
                 }
+
+                scrollActiveTabIntoView();
+                updateEditorFillCount();
             };
         });
     }

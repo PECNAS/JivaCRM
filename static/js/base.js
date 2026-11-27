@@ -188,27 +188,53 @@
     '.p-body',
     '.tab-content',
     '.js-editor-body',
+    '.cof-write__scroll',
+    '.cof-preview__body',
+    '.cof-preview',
+    '.cof__body',
+    '#eventModalPreviewBody',
+    '#createOrderPreview',
+    '.event-modal__footer',
     '.tasks-editor__body',
     '.tasks-editor__dialog',
     '.tasks-main',
     '.tasks-list',
     '.money-list',
     '.client-combobox__dropdown',
+    '.city-selector__dropdown',
+    '.single-city-picker__dropdown',
     '.document-cards',
     '.emp-docs',
     '[data-modal-scroll]'
   ].join(', ');
 
+  function hasScrollableParent(node) {
+    let el = node;
+
+    while (el && el !== document.body) {
+      const style = window.getComputedStyle(el);
+      const canScrollY = /(auto|scroll)/.test(style.overflowY);
+
+      if (canScrollY && el.scrollHeight > el.clientHeight + 2) return true;
+
+      el = el.parentElement;
+    }
+
+    return false;
+  }
+
   document.addEventListener('touchmove', function(e) {
     if (!document.body.classList.contains('modal-lock')) return;
 
-    if (e.target.closest(SCROLLABLE_IN_MODAL)) return;
-
     const overlay = e.target.closest('.modal-overlay.active');
 
-    if (overlay) {
-      e.preventDefault();
-    }
+    if (!overlay) return;
+
+    if (e.target.closest(SCROLLABLE_IN_MODAL)) return;
+
+    if (hasScrollableParent(e.target)) return;
+
+    e.preventDefault();
   }, { passive: false });
 
   window.addEventListener('DOMContentLoaded', syncModalLock);
